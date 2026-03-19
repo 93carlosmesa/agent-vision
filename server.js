@@ -251,7 +251,7 @@ async function startServer() {
   }
 
   app.listen(port, () => {
-    console.log(`OpenClaw Agent Vision running at http://localhost:${port}`);
+    console.log(`Agent Vision running at http://localhost:${port}`);
   });
 }
 

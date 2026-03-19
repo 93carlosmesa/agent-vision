@@ -1,4 +1,4 @@
-# ANALYSIS — Pixel Agents (referencia) aplicado a OpenClaw Agent Vision
+# ANALYSIS — Pixel Agents (referencia) aplicado a Agent Vision
 
 ## Qué aporta Pixel Agents a nivel arquitectura
 
@@ -19,7 +19,7 @@
    - Overlay de tool/status y feedback visual inmediato.
    - Paneles auxiliares (debug, selección, controles) sin romper la vista principal.
 
-## Decisiones de réplica funcional en OpenClaw Agent Vision
+## Decisiones de réplica funcional en Agent Vision
 
 - Mantener stack actual (Express + frontend vanilla) para compatibilidad y simplicidad.
 - Implementar una **escena office web** con rejilla + desks + avatares por sesión.

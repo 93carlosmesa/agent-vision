@@ -1,4 +1,4 @@
-# OpenClaw Agent Vision
+# Agent Vision
 
 Real-time animated dashboard for visualizing OpenClaw agent sessions. Agents appear as pixel-art sprites that walk between zones based on their current status.
 

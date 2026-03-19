@@ -1,5 +1,5 @@
 {
-  "name": "openclaw-agent-vision",
+  "name": "agent-vision",
   "version": "1.0.0",
   "description": "Visual dashboard for OpenClaw agent sessions",
   "main": "server.js",
