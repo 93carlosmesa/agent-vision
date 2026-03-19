@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a3a6a"/>
+      <stop offset="60%" stop-color="#2a6090"/>
+      <stop offset="100%" stop-color="#3a90c0"/>
+    </linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a5a8a"/>
+      <stop offset="100%" stop-color="#2a7ab0"/>
+    </linearGradient>
+    <linearGradient id="sand" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#d4b878"/>
+      <stop offset="100%" stop-color="#c4a060"/>
+    </linearGradient>
+    <radialGradient id="moon-glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#fffbe0" stop-opacity="0.9"/>
+      <stop offset="40%" stop-color="#fffbe0" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#fffbe0" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- Sky -->
+  <rect width="800" height="240" fill="url(#sky)"/>
+  <!-- Moon -->
+  <circle cx="680" cy="60" r="50" fill="url(#moon-glow)"/>
+  <circle cx="680" cy="60" r="20" fill="#fffbe0" opacity="0.8"/>
+  <!-- Stars -->
+  <circle cx="100" cy="40" r="1.5" fill="#fff" opacity="0.6"/>
+  <circle cx="250" cy="25" r="1" fill="#fff" opacity="0.5"/>
+  <circle cx="400" cy="50" r="1.5" fill="#fff" opacity="0.4"/>
+  <circle cx="520" cy="30" r="1" fill="#fff" opacity="0.6"/>
+  <circle cx="150" cy="80" r="1" fill="#fff" opacity="0.3"/>
+  <circle cx="350" cy="15" r="1.5" fill="#fff" opacity="0.5"/>
+  <circle cx="580" cy="70" r="1" fill="#fff" opacity="0.4"/>
+  <!-- Sea -->
+  <rect y="180" width="800" height="80" fill="url(#sea)" opacity="0.8"/>
+  <!-- Wave lines -->
+  <path d="M0,200 Q50,192 100,200 Q150,208 200,200 Q250,192 300,200 Q350,208 400,200 Q450,192 500,200 Q550,208 600,200 Q650,192 700,200 Q750,208 800,200" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+  <path d="M0,220 Q60,212 120,220 Q180,228 240,220 Q300,212 360,220 Q420,228 480,220 Q540,212 600,220 Q660,228 720,220 Q780,212 800,220" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1.5"/>
+  <!-- Sand -->
+  <rect y="250" width="800" height="250" fill="url(#sand)" opacity="0.85"/>
+  <!-- Sand texture dots -->
+  <g opacity="0.15" fill="#8a7040">
+    <circle cx="50" cy="280" r="1"/><circle cx="150" cy="300" r="1.5"/><circle cx="300" cy="320" r="1"/>
+    <circle cx="450" cy="290" r="1.5"/><circle cx="600" cy="310" r="1"/><circle cx="700" cy="340" r="1.5"/>
+    <circle cx="100" cy="380" r="1"/><circle cx="350" cy="400" r="1.5"/><circle cx="550" cy="370" r="1"/>
+    <circle cx="200" cy="450" r="1.5"/><circle cx="500" cy="430" r="1"/><circle cx="750" cy="460" r="1.5"/>
+  </g>
+  <!-- Horizon shimmer -->
+  <rect y="248" width="800" height="4" fill="rgba(255,255,255,0.1)"/>
+</svg>
