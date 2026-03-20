@@ -8,6 +8,7 @@ const app = express();
 const SESSIONS_DIR = path.join(os.homedir(), '.openclaw', 'agents', 'main', 'sessions');
 const USER_ASSETS_DIR = path.join(os.homedir(), '.openclaw', 'assets');
 const DEFAULT_PORT = 4173;
+const HOST = process.env.HOST || '127.0.0.1';
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/user-assets', express.static(USER_ASSETS_DIR));
@@ -226,7 +227,7 @@ app.get('/api/backgrounds', (_req, res) => {
   });
 });
 
-function isPortFree(port) {
+function isPortFree(port, host = HOST) {
   return new Promise((resolve) => {
     const srv = net.createServer();
     srv.once('error', () => resolve(false));
@@ -234,24 +235,44 @@ function isPortFree(port) {
       srv.close();
       resolve(true);
     });
-    srv.listen(port);
+    srv.listen(port, host);
   });
 }
 
-async function startServer() {
-  let port = DEFAULT_PORT;
-  if (!(await isPortFree(port))) {
-    port = await new Promise((resolve) => {
-      const srv = net.createServer();
-      srv.listen(0, () => {
-        const p = srv.address().port;
-        srv.close(() => resolve(p));
-      });
+function getFreePort(host = HOST) {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.once('error', reject);
+    srv.listen(0, host, () => {
+      const address = srv.address();
+      const port = typeof address === 'object' && address ? address.port : DEFAULT_PORT;
+      srv.close(() => resolve(port));
     });
+  });
+}
+
+app.get('/health', (_req, res) => {
+  res.json({ ok: true, service: 'agent-vision', host: HOST, timestamp: new Date().toISOString() });
+});
+
+async function startServer() {
+  const requestedPort = Number(process.env.PORT || DEFAULT_PORT);
+  const allowFallback = process.env.ALLOW_FALLBACK_PORT === '1';
+  let port = requestedPort;
+
+  if (!(await isPortFree(port, HOST))) {
+    if (!allowFallback) {
+      console.error(`[Agent Vision] Port ${port} is busy on ${HOST}.`);
+      console.error('[Agent Vision] Stop the other process or run: ALLOW_FALLBACK_PORT=1 npm start');
+      process.exit(1);
+    }
+    port = await getFreePort(HOST);
+    console.warn(`[Agent Vision] Port ${requestedPort} busy, using fallback port ${port}.`);
   }
 
-  app.listen(port, () => {
-    console.log(`Agent Vision running at http://localhost:${port}`);
+  app.listen(port, HOST, () => {
+    console.log(`[Agent Vision] running at http://${HOST}:${port}`);
+    console.log(`[Agent Vision] health: http://${HOST}:${port}/health`);
   });
 }
 
