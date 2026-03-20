@@ -41,7 +41,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div className="app-title">🧠 Agent Vision v2</div>
+        <div className="app-title">🧠 Agent Vision</div>
         <div className="app-header-controls">
           <SceneSelector currentScene={currentScene.id} onSceneChange={setScene} />
           <StatusDot isConnected={isConnected} />
