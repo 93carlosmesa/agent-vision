@@ -12,6 +12,12 @@ interface AgentSceneProps {
   sessions: ISession[];
   agentNames: AgentNameMap;
   sceneConfig: ISceneConfig;
+  memberMetaBySession: Record<string, {
+    squadId: string;
+    squadLabel: string;
+    roleLabel: string;
+    collaborationTag: string;
+  }>;
 }
 
 const STATUS_EMOJI: Record<string, string> = {
@@ -53,7 +59,7 @@ function positionFor(status: ISession['status'], index: number): { left: string;
   return { left: `${left}%`, top: `${top}%` };
 }
 
-export function AgentScene({ sessions, agentNames, sceneConfig }: AgentSceneProps) {
+export function AgentScene({ sessions, agentNames, sceneConfig, memberMetaBySession }: AgentSceneProps) {
   const grouped: Record<string, ISession[]> = { running: [], waiting: [], idle: [] };
 
   for (const session of sessions) {
@@ -96,17 +102,21 @@ export function AgentScene({ sessions, agentNames, sceneConfig }: AgentSceneProp
       <div className="scene-avatar-layer">
         {positioned.map(({ session, position }) => {
           const { name, seed } = getAgentDisplay(session, agentNames);
+          const memberMeta = memberMetaBySession[session.key];
+          const squadClass = memberMeta?.squadId === 'squad-naming' ? 'agent-avatar--squad-naming' : 'agent-avatar--squad-movement';
 
           return (
             <div
               key={session.key}
-              className={`agent-avatar agent-avatar--walking agent-avatar--${session.status}`}
+              className={`agent-avatar agent-avatar--walking agent-avatar--${session.status} ${squadClass}`}
               style={position}
             >
+              <div className="agent-avatar-squad">{memberMeta?.squadLabel ?? 'Sin squad'}</div>
               <div className="agent-avatar-sprite"><PixelAvatar seed={seed} /></div>
               <div className="agent-avatar-name" title={name}>{name}</div>
+              <div className="agent-avatar-role" title={memberMeta?.roleLabel}>{memberMeta?.roleLabel ?? 'Rol pendiente'}</div>
               <div className={`agent-avatar-badge agent-avatar-badge--${session.status}`}>
-                {STATUS_EMOJI[session.status]} {session.status}
+                {STATUS_EMOJI[session.status]} {memberMeta?.collaborationTag ?? session.status}
               </div>
             </div>
           );

@@ -7,7 +7,7 @@ import { WebSocketClient } from '../services/WebSocketClient';
 import { SessionService } from '../services/SessionService';
 import type { ISession, AgentNameMap, ISceneConfig, ISquad, AgentRole } from '../types';
 import { scenes, DEFAULT_SCENE } from '../scenes/sceneConfig';
-import { ROLE_LABELS, SQUAD_DEFINITIONS, resolveRoleFromText } from '../config/squads';
+import { ROLE_LABELS, ROLE_TAGS, SQUAD_DEFINITIONS, resolveRoleFromText } from '../config/squads';
 
 export interface IUseAgentSessions {
   sessions: ISession[];
@@ -65,27 +65,38 @@ function mapSquads(sessions: ISession[], agentNames: AgentNameMap, currentScene:
       const candidate = roleBuckets.get(role)?.[squadIndex];
 
       if (!candidate) {
+        const roleTag = ROLE_TAGS[role];
+        const zoneLabel = currentScene.zoneLabels.idle;
         return {
           squadId: definition.id,
+          squadLabel: definition.name,
           role,
           roleLabel: ROLE_LABELS[role],
+          roleTag,
           sessionKey: `${definition.id}-${role}-placeholder`,
           agentId: 'unassigned',
           displayName: 'Pendiente',
           status: 'idle' as const,
-          zoneLabel: currentScene.zoneLabels.idle,
+          zoneLabel,
+          collaborationTag: `${roleTag} · ${zoneLabel}`,
         };
       }
 
+      const roleTag = ROLE_TAGS[role];
+      const zoneLabel = currentScene.zoneLabels[candidate.session.status];
+
       return {
         squadId: definition.id,
+        squadLabel: definition.name,
         role,
         roleLabel: ROLE_LABELS[role],
+        roleTag,
         sessionKey: candidate.session.key,
         agentId: candidate.session.agentId,
         displayName: candidate.displayName,
         status: candidate.session.status,
-        zoneLabel: currentScene.zoneLabels[candidate.session.status],
+        zoneLabel,
+        collaborationTag: `${roleTag} · ${zoneLabel}`,
       };
     });
 

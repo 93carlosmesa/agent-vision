@@ -2,7 +2,7 @@
  * App — Composition root.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useAgentSessions } from './hooks/useAgentSessions';
 import { AgentScene } from './components/AgentScene';
 import { SceneSelector } from './components/SceneSelector';
@@ -13,6 +13,18 @@ import { setIdleFavicon, startActiveFavicon } from './utils/favicon';
 
 export default function App() {
   const { sessions, agentNames, isConnected, currentScene, setScene, squads } = useAgentSessions();
+
+  const memberMetaBySession = useMemo(
+    () => Object.fromEntries(
+      squads.flatMap((squad) => squad.members.map((member) => [member.sessionKey, {
+        squadId: member.squadId,
+        squadLabel: member.squadLabel,
+        roleLabel: member.roleLabel,
+        collaborationTag: member.collaborationTag,
+      }])),
+    ),
+    [squads],
+  );
 
   useEffect(() => {
     const hasRunningAgents = sessions.some((s) => s.status === 'running');
@@ -41,6 +53,7 @@ export default function App() {
           sessions={sessions}
           agentNames={agentNames}
           sceneConfig={currentScene}
+          memberMetaBySession={memberMetaBySession}
         />
       </main>
 

@@ -8,23 +8,30 @@ export interface SquadDefinition {
 }
 
 export const ROLE_LABELS: Record<AgentRole, string> = {
-  seniorFrontendArchitect: 'Senior Frontend Architect',
-  codeReviewer: 'Code Reviewer',
-  slinter: 'Slinter',
-  formateur: 'Formateur',
+  seniorFrontendArchitect: 'Arquitectura Frontend',
+  codeReviewer: 'Revisión de Código',
+  slinter: 'Calidad Lint',
+  formateur: 'Formato & Estilo',
+};
+
+export const ROLE_TAGS: Record<AgentRole, string> = {
+  seniorFrontendArchitect: 'ARQ',
+  codeReviewer: 'REV',
+  slinter: 'LINT',
+  formateur: 'FMT',
 };
 
 export const SQUAD_DEFINITIONS: SquadDefinition[] = [
   {
     id: 'squad-movement',
-    name: 'Squad 1 · Movement',
-    focus: 'Animar desplazamiento caminando entre zonas',
+    name: 'Squad 1 · Movimiento',
+    focus: 'Ruta y desplazamiento entre zonas',
     roles: ['seniorFrontendArchitect', 'codeReviewer', 'slinter', 'formateur'],
   },
   {
     id: 'squad-naming',
-    name: 'Squad 2 · Naming',
-    focus: 'Nombres claros y colaboración visual en grupo',
+    name: 'Squad 2 · Naming/Collab',
+    focus: 'Nombres claros + colaboración visual por rol',
     roles: ['seniorFrontendArchitect', 'codeReviewer', 'slinter', 'formateur'],
   },
 ];
