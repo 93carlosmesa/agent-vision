@@ -4,7 +4,9 @@
   "description": "Visual dashboard for OpenClaw agent sessions",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "start:4173": "PORT=4173 HOST=127.0.0.1 node server.js",
+    "start:any": "ALLOW_FALLBACK_PORT=1 node server.js"
   },
   "dependencies": {
     "express": "^4.21.0"

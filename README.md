@@ -1,88 +1,139 @@
 # Agent Vision
 
-Real-time animated dashboard for visualizing OpenClaw agent sessions. Agents appear as pixel-art sprites that walk between zones based on their current status.
+Visual dashboard for OpenClaw sessions with animated pixel avatars (“muñequitos”), timeline, and session detail.
 
-## Features
+## What runs where
 
-- **2D Animated Sprites** — Procedurally generated 16×16 pixel art characters with walk/idle animations and directional facing
-- **Smooth Movement** — Agents smoothly walk to their target zones instead of teleporting
-- **Three Themes** — People, Creatures (original monster-like designs), and Animals
-- **Two Scenes** — Office and Beach, each with 3 status-mapped zones
-- **Real-time Updates** — Polls agent sessions every 2.5s with live status indicators
-- **Session Inspector** — Click any avatar to view detailed event history
+- **Backend:** `server.js` (Express)
+- **Frontend:** static files in `public/` served by the same Express server
+- **Default URL:** `http://127.0.0.1:4173/`
 
-## Quick Start
+So yes: frontend + server run together in one process.
+
+---
+
+## Quick start
 
 ```bash
 npm install
+npm run start:4173
+```
+
+Open:
+- App: `http://127.0.0.1:4173/`
+- Health: `http://127.0.0.1:4173/health`
+
+If port `4173` is already busy, `start:4173` will fail intentionally so you notice it immediately.
+
+---
+
+## Run modes
+
+### 1) Strict fixed port (recommended)
+
+```bash
+npm run start:4173
+```
+
+- Binds to `127.0.0.1:4173`
+- Exits with clear error if port is occupied
+
+### 2) Default start (same behavior as strict, port 4173)
+
+```bash
 npm start
 ```
 
-The server starts on port **4173** (auto-selects a free port if busy). Open the URL printed in the terminal.
+- Uses `PORT` env if provided, otherwise `4173`
+- Fails if requested port is busy
 
-## Controls & Behavior
+### 3) Allow automatic fallback port
 
-| Control | Description |
-|---------|-------------|
-| **Scene** dropdown | Switch between Office and Beach layouts |
-| **Skin** dropdown | Switch character theme: People, Creatures, Animals |
-| **Click avatar** | View that session's event history in the sidebar |
-| **Green dot** (header) | Server connection status |
-
-### Agent Status → Zone Mapping
-
-| Status | Office Zone | Beach Zone | Color |
-|--------|------------|------------|-------|
-| Running | Desks | Bar | Green |
-| Waiting | Meeting | Orilla | Yellow |
-| Idle | Lounge | Sombrillas | Gray |
-
-Agents smoothly walk to their assigned zone when status changes. Walking agents show a blue glow; running agents show a green glow.
-
-### Animation System
-
-- Sprites cycle through 4 animation frames at ~5 fps
-- Walk animation plays while agents move between zones
-- Idle animation plays when agents reach their target position
-- Left/right direction is determined by movement direction
-
-## Architecture
-
-```
-server.js          Express server, reads ~/.openclaw session JSONL files
-public/
-  index.html       Main page
-  style.css        Dark theme styles
-  sprites.js       Procedural pixel-art sprite engine (16×16, 3× scaled)
-  app.js           Animation system, smooth movement, scene rendering
-  assets/          Reserved for future static sprite assets
+```bash
+npm run start:any
 ```
 
-## API Endpoints
+- If requested/default port is busy, it auto-picks a free port
+- Useful for temporary debugging
 
-- `GET /api/sessions` — Summary of all active sessions
-- `GET /api/sessions/:sessionKey` — Detailed session with full event history
-- `GET /api/timeline?limit=N` — Recent events across all sessions
+---
 
-## Data Source
+## Project structure
 
-Reads JSONL session files from `~/.openclaw/agents/main/sessions/`. Each session's status is determined by:
-- **Running**: Last message was from assistant, within 20 seconds
-- **Waiting**: Last message was user/tool_result, within 60 seconds
-- **Idle**: Otherwise
+```text
+agent-vision/
+├── server.js            # Express API + static hosting
+├── public/
+│   ├── index.html       # UI shell
+│   ├── style.css        # dashboard styles
+│   ├── sprites.js       # procedural pixel sprite engine
+│   ├── app.js           # scene/timeline rendering + polling
+│   └── assets/          # scene backgrounds and static assets
+├── package.json
+└── README.md
+```
 
-## License Notes
+---
 
-All sprite assets are original procedural art — no copyrighted material is used. See [ASSETS_LICENSES.md](ASSETS_LICENSES.md) for details. The "Creatures" theme contains entirely original designs unrelated to any franchise.
+## API endpoints
 
-## Dependencies
+- `GET /api/sessions` — active session summaries
+- `GET /api/sessions/:sessionKey` — details + events for one session
+- `GET /api/timeline?limit=N` — merged recent events across sessions
+- `GET /api/agent-names` — display names/emojis from OpenClaw config
+- `GET /api/backgrounds` — optional user backgrounds (`~/.openclaw/assets`)
+- `GET /health` — service health check
 
-- [Express](https://expressjs.com/) (MIT) — HTTP server
-- No other runtime dependencies; vanilla JS frontend
+---
 
-## Future Improvements
+## Data source
 
-- Replace procedural sprites with hand-crafted PNG sprite sheets
-- Add SSE/WebSocket for real-time updates without polling
-- Add pathfinding and obstacle avoidance
-- Minimap and focus mode for active sessions
+Reads OpenClaw session JSONL files from:
+
+`~/.openclaw/agents/main/sessions/`
+
+Status mapping:
+- **running**: recent assistant activity
+- **waiting**: waiting after user/tool_result activity
+- **idle**: otherwise
+
+---
+
+## Troubleshooting
+
+### "I don’t know what port it is running on"
+Use strict mode:
+
+```bash
+npm run start:4173
+```
+
+Terminal will print the exact URL and health endpoint.
+
+### "Port 4173 is busy"
+Find process:
+
+```bash
+lsof -nP -iTCP:4173 -sTCP:LISTEN
+```
+
+Then stop it, or run temporary fallback mode:
+
+```bash
+npm run start:any
+```
+
+### "No avatars appear"
+- Confirm `/api/sessions` returns data
+- Confirm `~/.openclaw/agents/main/sessions/` contains `.jsonl` files
+- Reload page hard (`Cmd+Shift+R`)
+
+---
+
+## Branch policy (team rule)
+
+- No direct push to `main`, `master`, or `develop`
+- Work only in `feature/*` or `hotfix/*`
+- Merge by MR/PR only
+
+(Repository protections should enforce this on remote.)
