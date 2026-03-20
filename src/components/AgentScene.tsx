@@ -26,11 +26,19 @@ const ZONE_STYLES: Record<string, CSSProperties> = {
   idle: { left: '50%', top: '50%', width: '50%', height: '50%' },
 };
 
-const ZONE_ORIGIN: Record<string, { x: number; y: number; cols: number }> = {
-  running: { x: 6, y: 16, cols: 4 },
-  waiting: { x: 56, y: 16, cols: 3 },
-  idle: { x: 56, y: 62, cols: 3 },
+const ZONE_LAYOUT: Record<string, { x: number; y: number; width: number; height: number }> = {
+  running: { x: 0, y: 0, width: 50, height: 100 },
+  waiting: { x: 50, y: 0, width: 50, height: 50 },
+  idle: { x: 50, y: 50, width: 50, height: 50 },
 };
+
+const AVATAR_SLOT = {
+  width: 14,
+  height: 26,
+};
+
+const ZONE_PADDING = 4;
+const ZONE_HEADER_SPACE = 11;
 
 function getAgentDisplay(session: ISession, agentNames: AgentNameMap): { name: string; seed: string } {
   const agentId = session.agentId || SessionService.extractAgentId(session.key);
@@ -43,14 +51,25 @@ function getAgentDisplay(session: ISession, agentNames: AgentNameMap): { name: s
   return { seed: agentId, name: agentId };
 }
 
-function positionFor(status: ISession['status'], index: number): { left: string; top: string } {
-  const zone = ZONE_ORIGIN[status];
-  const col = index % zone.cols;
-  const row = Math.floor(index / zone.cols);
+function positionFor(status: ISession['status'], index: number): { left: string; top: string; topNumber: number } {
+  const zone = ZONE_LAYOUT[status];
 
-  const left = zone.x + col * 10;
-  const top = zone.y + row * 18;
-  return { left: `${left}%`, top: `${top}%` };
+  const usableWidth = Math.max(AVATAR_SLOT.width, zone.width - ZONE_PADDING * 2);
+  const usableHeight = Math.max(AVATAR_SLOT.height, zone.height - ZONE_PADDING * 2 - ZONE_HEADER_SPACE);
+
+  const cols = Math.max(1, Math.floor(usableWidth / AVATAR_SLOT.width));
+  const rows = Math.max(1, Math.ceil((index + 1) / cols));
+
+  const col = index % cols;
+  const row = Math.floor(index / cols);
+
+  const stepX = cols <= 1 ? 0 : (usableWidth - AVATAR_SLOT.width) / (cols - 1);
+  const stepY = rows <= 1 ? 0 : Math.min(AVATAR_SLOT.height - 2, (usableHeight - AVATAR_SLOT.height) / (rows - 1));
+
+  const left = zone.x + ZONE_PADDING + AVATAR_SLOT.width / 2 + col * stepX;
+  const top = zone.y + ZONE_PADDING + ZONE_HEADER_SPACE + AVATAR_SLOT.height / 2 + row * stepY;
+
+  return { left: `${left}%`, top: `${top}%`, topNumber: top };
 }
 
 export function AgentScene({ sessions, agentNames, sceneConfig }: AgentSceneProps) {
@@ -101,7 +120,7 @@ export function AgentScene({ sessions, agentNames, sceneConfig }: AgentSceneProp
             <div
               key={session.key}
               className={`agent-avatar agent-avatar--walking agent-avatar--${session.status}`}
-              style={position}
+              style={{ left: position.left, top: position.top, zIndex: Math.round(position.topNumber * 10) }}
             >
               <div className="agent-avatar-sprite"><PixelAvatar seed={seed} /></div>
               <div className="agent-avatar-name" title={name}>{name}</div>
