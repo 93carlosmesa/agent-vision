@@ -1,6 +1,5 @@
 /**
- * App — Composition root. No business logic.
- * Wires useAgentSessions hook with UI components.
+ * App — Composition root.
  */
 
 import { useEffect } from 'react';
@@ -9,10 +8,11 @@ import { AgentScene } from './components/AgentScene';
 import { SceneSelector } from './components/SceneSelector';
 import { StatusDot } from './components/StatusDot';
 import { TimelinePanel } from './components/TimelinePanel';
+import { SquadPanel } from './components/SquadPanel';
 import { setIdleFavicon, startActiveFavicon } from './utils/favicon';
 
 export default function App() {
-  const { sessions, agentNames, isConnected, currentScene, setScene } = useAgentSessions();
+  const { sessions, agentNames, isConnected, currentScene, setScene, squads } = useAgentSessions();
 
   useEffect(() => {
     const hasRunningAgents = sessions.some((s) => s.status === 'running');
@@ -45,6 +45,7 @@ export default function App() {
       </main>
 
       <aside className="app-sidebar">
+        <SquadPanel squads={squads} />
         <TimelinePanel sessions={sessions} />
       </aside>
     </div>

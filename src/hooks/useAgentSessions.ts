@@ -1,13 +1,13 @@
 /**
- * useAgentSessions — SRP: connects WebSocketClient + SessionService to React lifecycle.
- * No business logic. Just wires services to state and exposes clean API.
+ * useAgentSessions — wires WebSocket + services to React state.
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { WebSocketClient } from '../services/WebSocketClient';
 import { SessionService } from '../services/SessionService';
-import type { ISession, AgentNameMap, ISceneConfig } from '../types';
+import type { ISession, AgentNameMap, ISceneConfig, ISquad, AgentRole } from '../types';
 import { scenes, DEFAULT_SCENE } from '../scenes/sceneConfig';
+import { ROLE_LABELS, SQUAD_DEFINITIONS, resolveRoleFromText } from '../config/squads';
 
 export interface IUseAgentSessions {
   sessions: ISession[];
@@ -15,6 +15,87 @@ export interface IUseAgentSessions {
   isConnected: boolean;
   currentScene: ISceneConfig;
   setScene: (sceneId: string) => void;
+  squads: ISquad[];
+}
+
+const ROLE_ORDER: AgentRole[] = ['seniorFrontendArchitect', 'codeReviewer', 'slinter', 'formateur'];
+
+function resolveDisplayName(session: ISession, agentNames: AgentNameMap): string {
+  const agentId = session.agentId || SessionService.extractAgentId(session.key);
+  const resolvedName = agentNames[agentId] ?? agentId;
+  return resolvedName.replace(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F?)\s*/u, '').trim();
+}
+
+function mapSquads(sessions: ISession[], agentNames: AgentNameMap, currentScene: ISceneConfig): ISquad[] {
+  const enriched = sessions.map((session) => {
+    const displayName = resolveDisplayName(session, agentNames);
+    const roleFromName = resolveRoleFromText(`${session.agentId} ${displayName}`);
+    return {
+      session,
+      displayName,
+      role: roleFromName,
+    };
+  });
+
+  const roleBuckets = new Map<AgentRole, typeof enriched>();
+  for (const role of ROLE_ORDER) roleBuckets.set(role, []);
+
+  const leftovers: typeof enriched = [];
+
+  for (const item of enriched) {
+    if (item.role) {
+      roleBuckets.get(item.role)?.push(item);
+    } else {
+      leftovers.push(item);
+    }
+  }
+
+  // Fill missing role buckets with leftovers to keep both squads populated.
+  for (const role of ROLE_ORDER) {
+    const bucket = roleBuckets.get(role);
+    if (!bucket || bucket.length >= 2) continue;
+    while (bucket.length < 2 && leftovers.length > 0) {
+      const next = leftovers.shift();
+      if (next) bucket.push({ ...next, role });
+    }
+  }
+
+  return SQUAD_DEFINITIONS.map((definition, squadIndex) => {
+    const members = definition.roles.map((role) => {
+      const candidate = roleBuckets.get(role)?.[squadIndex];
+
+      if (!candidate) {
+        return {
+          squadId: definition.id,
+          role,
+          roleLabel: ROLE_LABELS[role],
+          sessionKey: `${definition.id}-${role}-placeholder`,
+          agentId: 'unassigned',
+          displayName: 'Pendiente',
+          status: 'idle' as const,
+          zoneLabel: currentScene.zoneLabels.idle,
+        };
+      }
+
+      return {
+        squadId: definition.id,
+        role,
+        roleLabel: ROLE_LABELS[role],
+        sessionKey: candidate.session.key,
+        agentId: candidate.session.agentId,
+        displayName: candidate.displayName,
+        status: candidate.session.status,
+        zoneLabel: currentScene.zoneLabels[candidate.session.status],
+      };
+    });
+
+    return {
+      id: definition.id,
+      name: definition.name,
+      focus: definition.focus,
+      members,
+    };
+  });
 }
 
 export function useAgentSessions(): IUseAgentSessions {
@@ -33,18 +114,15 @@ export function useAgentSessions(): IUseAgentSessions {
     wsClientRef.current = wsClient;
     sessionServiceRef.current = sessionService;
 
-    // Wire WS → SessionService
     wsClient.onMessage((raw) => {
       sessionService.processRaw(raw);
     });
 
-    // Wire SessionService → React state
     sessionService.onChange((state) => {
       setSessions([...state.sessions]);
       setAgentNames({ ...state.agentNames });
     });
 
-    // Connection status
     wsClient.onConnect(() => setIsConnected(true));
     wsClient.onDisconnect(() => setIsConnected(false));
 
@@ -63,5 +141,10 @@ export function useAgentSessions(): IUseAgentSessions {
 
   const currentScene = scenes[sceneId] ?? scenes[DEFAULT_SCENE];
 
-  return { sessions, agentNames, isConnected, currentScene, setScene };
+  const squads = useMemo(
+    () => mapSquads(sessions, agentNames, currentScene),
+    [sessions, agentNames, currentScene],
+  );
+
+  return { sessions, agentNames, isConnected, currentScene, setScene, squads };
 }
