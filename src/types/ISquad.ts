@@ -6,13 +6,16 @@ export type AgentRole =
 
 export interface ISquadMember {
   squadId: string;
+  squadLabel: string;
   role: AgentRole;
   roleLabel: string;
+  roleTag: string;
   sessionKey: string;
   agentId: string;
   displayName: string;
   status: 'running' | 'waiting' | 'idle';
   zoneLabel: string;
+  collaborationTag: string;
 }
 
 export interface ISquad {

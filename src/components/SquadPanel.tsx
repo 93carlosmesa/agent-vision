@@ -13,7 +13,7 @@ export function SquadPanel({ squads }: SquadPanelProps) {
       </div>
       <div className="squad-list">
         {squads.map((squad) => (
-          <div key={squad.id} className="squad-card">
+          <div key={squad.id} className={`squad-card ${squad.id === 'squad-naming' ? 'squad-card--naming' : 'squad-card--movement'}`}>
             <div className="squad-card-header">
               <div className="squad-name">{squad.name}</div>
               <div className="squad-focus">{squad.focus}</div>
@@ -25,7 +25,7 @@ export function SquadPanel({ squads }: SquadPanelProps) {
                   <span className="squad-member-role">{member.roleLabel}</span>
                   <span className="squad-member-name" title={member.displayName}>{member.displayName}</span>
                   <span className={`agent-avatar-badge agent-avatar-badge--${member.status}`}>
-                    {member.zoneLabel}
+                    {member.collaborationTag}
                   </span>
                 </li>
               ))}

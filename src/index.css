@@ -17,6 +17,8 @@
   --accent-green: #22c55e;
   --accent-yellow: #eab308;
   --accent-gray: #64748b;
+  --squad-movement: #38bdf8;
+  --squad-naming: #c084fc;
   --zone-running: rgba(34, 197, 94, 0.06);
   --zone-waiting: rgba(234, 179, 8, 0.06);
   --zone-idle: rgba(100, 116, 139, 0.06);
@@ -217,6 +219,14 @@ body {
   border: 1px solid rgba(255,255,255,0.14);
 }
 
+.agent-avatar-squad {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
 .agent-avatar-name {
   font-size: 11px;
   font-weight: 600;
@@ -225,6 +235,23 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.agent-avatar-role {
+  font-size: 10px;
+  color: var(--text-secondary);
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agent-avatar--squad-movement {
+  border-color: color-mix(in srgb, var(--squad-movement) 65%, white 35%);
+}
+
+.agent-avatar--squad-naming {
+  border-color: color-mix(in srgb, var(--squad-naming) 65%, white 35%);
 }
 
 .agent-avatar-badge {
@@ -341,6 +368,14 @@ body {
   padding: 8px;
   display: grid;
   gap: 7px;
+}
+
+.squad-card--movement {
+  box-shadow: inset 2px 0 0 0 var(--squad-movement);
+}
+
+.squad-card--naming {
+  box-shadow: inset 2px 0 0 0 var(--squad-naming);
 }
 
 .squad-name {
