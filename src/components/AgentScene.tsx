@@ -87,12 +87,31 @@ export function AgentScene({ sessions, agentNames, sceneConfig, memberMetaBySess
     }
   }
 
-  const positioned = (['running', 'waiting', 'idle'] as const).flatMap((status) =>
-    grouped[status].map((session, index) => ({
-      session,
-      position: positionFor(status, index),
-    })),
-  );
+  const hasActiveWork = grouped.running.length > 0 || grouped.waiting.length > 0;
+
+  const positioned = hasActiveWork
+    ? (['running', 'waiting', 'idle'] as const).flatMap((status) =>
+        grouped[status].map((session, index) => ({
+          session,
+          position: positionFor(status, index),
+        })),
+      )
+    : (() => {
+        const movement = sessions.filter((s) => memberMetaBySession[s.key]?.squadId !== 'squad-naming');
+        const naming = sessions.filter((s) => memberMetaBySession[s.key]?.squadId === 'squad-naming');
+
+        const placeSquad = (items: ISession[], baseLeft: number) =>
+          items.map((session, slotInSquad) => {
+            const left = baseLeft + (slotInSquad % 2) * 8;
+            const top = 72 + Math.floor(slotInSquad / 2) * 16;
+            return {
+              session,
+              position: { left: `${left}%`, top: `${top}%`, topNumber: top },
+            };
+          });
+
+        return [...placeSquad(movement, 63), ...placeSquad(naming, 86)];
+      })();
 
   return (
     <div
