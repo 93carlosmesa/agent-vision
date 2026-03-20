@@ -1,139 +1,85 @@
-# Agent Vision
+# Agent Vision (React + TypeScript)
 
-Visual dashboard for OpenClaw sessions with animated pixel avatars (“muñequitos”), timeline, and session detail.
+Dashboard visual en tiempo real para sesiones OpenClaw: escena de agentes, timeline y detalle por sesión.
 
-## What runs where
+## Runtime actual (cerrado y estable)
 
-- **Backend:** `server.js` (Express)
-- **Frontend:** static files in `public/` served by the same Express server
-- **Default URL:** `http://127.0.0.1:4173/`
+- **Frontend:** React + TypeScript (Vite)
+- **Backend/API:** Express + WebSocket (`server/index.ts`)
+- **URL objetivo:** `http://127.0.0.1:4173/`
+- **Healthcheck:** `http://127.0.0.1:4173/health`
 
-So yes: frontend + server run together in one process.
+Sí: el objetivo final es que funcione como conjunto frontend + server, y quede accesible desde el mismo puerto 4173.
 
 ---
 
-## Quick start
+## Comandos
 
 ```bash
 npm install
-npm run start:4173
 ```
 
-Open:
-- App: `http://127.0.0.1:4173/`
-- Health: `http://127.0.0.1:4173/health`
+### Desarrollo UI (Vite, hot reload)
 
-If port `4173` is already busy, `start:4173` will fail intentionally so you notice it immediately.
+```bash
+npm run dev
+```
 
----
+> Arranca React en `127.0.0.1:4173`.
 
-## Run modes
-
-### 1) Strict fixed port (recommended)
+### Modo integrado (build + server Express)
 
 ```bash
 npm run start:4173
 ```
 
-- Binds to `127.0.0.1:4173`
-- Exits with clear error if port is occupied
+Hace build y levanta backend sirviendo la app compilada en `127.0.0.1:4173`.
 
-### 2) Default start (same behavior as strict, port 4173)
-
-```bash
-npm start
-```
-
-- Uses `PORT` env if provided, otherwise `4173`
-- Fails if requested port is busy
-
-### 3) Allow automatic fallback port
+### Preview estático de Vite
 
 ```bash
-npm run start:any
-```
-
-- If requested/default port is busy, it auto-picks a free port
-- Useful for temporary debugging
-
----
-
-## Project structure
-
-```text
-agent-vision/
-├── server.js            # Express API + static hosting
-├── public/
-│   ├── index.html       # UI shell
-│   ├── style.css        # dashboard styles
-│   ├── sprites.js       # procedural pixel sprite engine
-│   ├── app.js           # scene/timeline rendering + polling
-│   └── assets/          # scene backgrounds and static assets
-├── package.json
-└── README.md
+npm run preview:4173
 ```
 
 ---
 
-## API endpoints
+## Endpoints API
 
-- `GET /api/sessions` — active session summaries
-- `GET /api/sessions/:sessionKey` — details + events for one session
-- `GET /api/timeline?limit=N` — merged recent events across sessions
-- `GET /api/agent-names` — display names/emojis from OpenClaw config
-- `GET /api/backgrounds` — optional user backgrounds (`~/.openclaw/assets`)
-- `GET /health` — service health check
+- `GET /health`
+- `GET /api/sessions`
+- `GET /api/sessions/:sessionKey`
+- `GET /api/timeline?limit=N`
+- `GET /api/agent-names`
 
 ---
 
-## Data source
+## Fuentes de datos
 
-Reads OpenClaw session JSONL files from:
-
-`~/.openclaw/agents/main/sessions/`
-
-Status mapping:
-- **running**: recent assistant activity
-- **waiting**: waiting after user/tool_result activity
-- **idle**: otherwise
+- Sesiones: `~/.openclaw/agents/main/sessions`
+- Config agentes: `~/.openclaw/openclaw.json`
 
 ---
 
 ## Troubleshooting
 
-### "I don’t know what port it is running on"
-Use strict mode:
-
-```bash
-npm run start:4173
-```
-
-Terminal will print the exact URL and health endpoint.
-
-### "Port 4173 is busy"
-Find process:
+### El puerto 4173 está ocupado
 
 ```bash
 lsof -nP -iTCP:4173 -sTCP:LISTEN
 ```
 
-Then stop it, or run temporary fallback mode:
+Cierra el proceso que lo ocupa y vuelve a ejecutar `npm run start:4173`.
 
-```bash
-npm run start:any
-```
+### No aparecen agentes
 
-### "No avatars appear"
-- Confirm `/api/sessions` returns data
-- Confirm `~/.openclaw/agents/main/sessions/` contains `.jsonl` files
-- Reload page hard (`Cmd+Shift+R`)
+1. Comprueba `GET /api/sessions`
+2. Verifica que existan `.jsonl` en `~/.openclaw/agents/main/sessions`
+3. Hard refresh en navegador (`Cmd+Shift+R`)
 
 ---
 
-## Branch policy (team rule)
+## Política de ramas
 
-- No direct push to `main`, `master`, or `develop`
-- Work only in `feature/*` or `hotfix/*`
-- Merge by MR/PR only
-
-(Repository protections should enforce this on remote.)
+- No push directo a `main/master/develop`
+- Siempre `feature/*` o `hotfix/*`
+- Merge solo por MR/PR
