@@ -182,7 +182,7 @@ function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps)
   }, [sessions, agentNames]);
 
   // Office life simulation for idle agents (runs in useFrame)
-  const officeLifeRef = useOfficeLife(idleAgentIds);
+  const { ref: officeLifeRef, version: officeLifeVersion } = useOfficeLife(idleAgentIds);
 
   // Build final agent entries with waypoints
   const agents = useMemo(() => {
@@ -299,9 +299,9 @@ function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps)
     }
 
     return result;
-  // officeLifeRef is a stable ref, but we read .current inside — this is intentional.
-  // The memo recomputes when sessions/agentNames change, and idle positions are read from the ref.
-  }, [sessions, agentNames, agentDataList, idleAgentIds, officeLifeRef]);
+  // officeLifeVersion triggers recomputation when agents change activities.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions, agentNames, agentDataList, idleAgentIds, officeLifeRef, officeLifeVersion]);
 
   const beams = useMemo(() => {
     return interactions

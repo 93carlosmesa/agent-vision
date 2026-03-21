@@ -5,7 +5,7 @@
  * to idle agents, cycling every 20-40 seconds with staggered starts.
  */
 
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import type { RoomKey } from '../utils/officePathfinding';
 
@@ -53,12 +53,19 @@ export interface OfficeLifeEntry {
   positionOffset: [number, number, number];
 }
 
+export interface OfficeLifeResult {
+  ref: React.MutableRefObject<Map<string, OfficeLifeEntry>>;
+  version: number;
+}
+
 export function useOfficeLife(
   idleAgentIds: string[],
-): React.MutableRefObject<Map<string, OfficeLifeEntry>> {
+): OfficeLifeResult {
   const lifeRef = useRef<Map<string, AgentLifeState>>(new Map());
   const outputRef = useRef<Map<string, OfficeLifeEntry>>(new Map());
   const elapsedRef = useRef(0);
+  const dirtyRef = useRef(false);
+  const [version, setVersion] = useState(0);
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.1);
@@ -91,6 +98,7 @@ export function useOfficeLife(
           wasIdle: true,
         };
         life.set(id, state);
+        dirtyRef.current = true;
       }
 
       // Time to change activity?
@@ -100,6 +108,7 @@ export function useOfficeLife(
         // Next change in 20-40 seconds
         const interval = 20 + seededRandom(id.length * 13 + tick) * 20;
         state.nextChangeAt = elapsed + interval;
+        dirtyRef.current = true;
       }
 
       output.set(id, {
@@ -110,5 +119,16 @@ export function useOfficeLife(
     }
   });
 
-  return outputRef;
+  // Batch dirty flag into React state at ~1Hz to limit re-renders
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (dirtyRef.current) {
+        dirtyRef.current = false;
+        setVersion(v => v + 1);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return { ref: outputRef, version };
 }
