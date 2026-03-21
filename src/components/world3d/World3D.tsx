@@ -5,9 +5,11 @@
  * Agents are placed based on their status AND context (dev vs investment).
  */
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
+import { CameraControls3D, CameraHUD } from './CameraControls3D';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { Agent3D } from './Agent3D';
 import { SkillFolders3D } from './Folder3D';
@@ -95,6 +97,7 @@ function gridPosition(
 
 /* ── Scene internals ── */
 function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps) {
+  const controlsRef = useRef<OrbitControlsImpl>(null);
   const { agents, positionMap } = useMemo(() => {
     const context = detectContext(sessions);
     const sessionByAgent = new Map<string, ISession>();
@@ -240,12 +243,14 @@ function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps)
 
       {/* Controls */}
       <OrbitControls
+        ref={controlsRef}
         makeDefault
         minDistance={5}
         maxDistance={50}
         maxPolarAngle={Math.PI / 2.1}
         target={[0, 0, 0]}
       />
+      <CameraControls3D controlsRef={controlsRef} />
 
       {/* Postprocessing */}
       <EffectComposer>
@@ -257,7 +262,7 @@ function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps)
 
 export function World3D({ sessions, agentNames, interactions }: World3DProps) {
   return (
-    <div style={{ width: '100%', height: '100%', background: '#1a1a24' }}>
+    <div style={{ width: '100%', height: '100%', background: '#1a1a24', position: 'relative' }}>
       <Canvas
         camera={{ position: [0, 25, 30], fov: 50 }}
         gl={{ antialias: true, alpha: false }}
@@ -265,6 +270,7 @@ export function World3D({ sessions, agentNames, interactions }: World3DProps) {
       >
         <SceneContent sessions={sessions} agentNames={agentNames} interactions={interactions} />
       </Canvas>
+      <CameraHUD />
     </div>
   );
 }
