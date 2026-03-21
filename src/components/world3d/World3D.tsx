@@ -1,6 +1,6 @@
 /**
  * World3D — R3F Canvas with cyberpunk office scene: dark floor, grid, 3 glowing zones,
- * agent avatars placed by status.
+ * agent avatars placed by status, skill crystals, and interaction beams.
  */
 
 import { useMemo } from 'react';
@@ -9,11 +9,13 @@ import { OrbitControls, Grid } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { Agent3D } from './Agent3D';
 import { SkillObjects3D } from './SkillObject3D';
-import type { ISession, AgentNameMap, SessionStatus } from '../../types';
+import { InteractionBeam3D } from './InteractionBeam3D';
+import type { ISession, AgentNameMap, IInteraction, SessionStatus } from '../../types';
 
 export interface World3DProps {
   sessions: ISession[];
   agentNames: AgentNameMap;
+  interactions?: IInteraction[];
 }
 
 /* ── Zone centers in 3D space ── */
@@ -77,17 +79,15 @@ function Desks() {
 }
 
 /* ── Scene internals (rendered inside Canvas) ── */
-function SceneContent({ sessions, agentNames }: World3DProps) {
-  const agents = useMemo(() => {
+function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps) {
+  const { agents, positionMap } = useMemo(() => {
     const sessionByAgent = new Map<string, ISession>();
     for (const s of sessions) {
       sessionByAgent.set(s.agentId, s);
     }
 
-    // All agent IDs: from agentNames + sessions
     const allIds = new Set([...Object.keys(agentNames), ...sessions.map(s => s.agentId)]);
 
-    // Group by status
     const groups: Record<SessionStatus, { id: string; name: string }[]> = {
       running: [], waiting: [], idle: [],
     };
@@ -100,8 +100,8 @@ function SceneContent({ sessions, agentNames }: World3DProps) {
       groups[status].push({ id, name });
     }
 
-    // Build positioned agents
     const result: { id: string; name: string; pos: [number, number, number]; status: SessionStatus; isActive: boolean }[] = [];
+    const posMap = new Map<string, [number, number, number]>();
 
     for (const status of ['running', 'waiting', 'idle'] as SessionStatus[]) {
       const zone = ZONE_CENTERS[status];
@@ -116,11 +116,35 @@ function SceneContent({ sessions, agentNames }: World3DProps) {
           status,
           isActive: status !== 'idle',
         });
+        posMap.set(list[i].id, pos);
       }
     }
 
-    return result;
+    // Also map session keys to positions
+    const sessionKeyMap = new Map<string, [number, number, number]>();
+    for (const s of sessions) {
+      const agentPos = posMap.get(s.agentId);
+      if (agentPos) sessionKeyMap.set(s.key, agentPos);
+    }
+
+    return { agents: result, positionMap: sessionKeyMap };
   }, [sessions, agentNames]);
+
+  const beams = useMemo(() => {
+    return interactions
+      .map((inter) => {
+        const from = positionMap.get(inter.fromSessionKey);
+        const to = positionMap.get(inter.toSessionKey);
+        if (!from || !to) return null;
+        return {
+          id: inter.id,
+          from: [from[0], 1, from[2]] as [number, number, number],
+          to: [to[0], 1, to[2]] as [number, number, number],
+          type: inter.type,
+        };
+      })
+      .filter((b): b is NonNullable<typeof b> => b !== null);
+  }, [interactions, positionMap]);
 
   return (
     <>
@@ -174,6 +198,11 @@ function SceneContent({ sessions, agentNames }: World3DProps) {
         />
       ))}
 
+      {/* Interaction beams */}
+      {beams.map((b) => (
+        <InteractionBeam3D key={b.id} from={b.from} to={b.to} type={b.type} />
+      ))}
+
       {/* Skill crystals */}
       <SkillObjects3D />
 
@@ -194,7 +223,7 @@ function SceneContent({ sessions, agentNames }: World3DProps) {
   );
 }
 
-export function World3D({ sessions, agentNames }: World3DProps) {
+export function World3D({ sessions, agentNames, interactions }: World3DProps) {
   return (
     <div style={{ width: '100%', height: '100%', background: '#0a0a1a' }}>
       <Canvas
@@ -202,7 +231,7 @@ export function World3D({ sessions, agentNames }: World3DProps) {
         gl={{ antialias: true, alpha: false }}
         style={{ width: '100%', height: '100%' }}
       >
-        <SceneContent sessions={sessions} agentNames={agentNames} />
+        <SceneContent sessions={sessions} agentNames={agentNames} interactions={interactions} />
       </Canvas>
     </div>
   );

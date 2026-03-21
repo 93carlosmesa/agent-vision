@@ -7,6 +7,7 @@ import { useAgentSessions } from './hooks/useAgentSessions';
 import { useSkillVisits } from './hooks/useSkillVisits';
 import { useInteractions } from './hooks/useInteractions';
 import { AgentScene } from './components/AgentScene';
+import { World3D } from './components/world3d/World3D';
 import { CreatorPanel } from './components/CreatorPanel';
 import { OrchestratorView } from './components/OrchestratorView';
 import { SceneSelector } from './components/SceneSelector';
@@ -59,14 +60,18 @@ export default function App() {
       </header>
 
       <main className="app-main">
-        <AgentScene
-          sessions={sessions}
-          agentNames={agentNames}
-          sceneConfig={currentScene}
-          memberMetaBySession={memberMetaBySession}
-          skillVisits={skillVisits}
-          interactions={interactions}
-        />
+        {currentScene.id === '3d' ? (
+          <World3D sessions={sessions} agentNames={agentNames} interactions={interactions} />
+        ) : (
+          <AgentScene
+            sessions={sessions}
+            agentNames={agentNames}
+            sceneConfig={currentScene}
+            memberMetaBySession={memberMetaBySession}
+            skillVisits={skillVisits}
+            interactions={interactions}
+          />
+        )}
       </main>
 
       <aside className="app-sidebar">
