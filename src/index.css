@@ -92,16 +92,30 @@ body {
   grid-template-rows: minmax(230px, 42%) 1fr;
 }
 
-/* ── Scene ── */
-.agent-scene {
+/* ── Scene Viewport (pannable container) ── */
+.agent-scene-viewport {
   position: relative;
   width: 100%;
   height: 100%;
-  background-size: 100% auto;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-color: var(--bg-base);
   overflow: hidden;
+  cursor: grab;
+  background-color: var(--bg-base);
+}
+
+.agent-scene-viewport:active {
+  cursor: grabbing;
+}
+
+.agent-scene-world {
+  position: relative;
+  width: 100%;
+  /* height set inline via WORLD_HEIGHT_RATIO */
+  background-size: 100% 56%;
+  background-repeat: no-repeat;
+  background-position: top center;
+  background-color: var(--bg-base);
+  will-change: transform;
+  transition: none;
 }
 
 /* ── Zones ── */
@@ -510,4 +524,139 @@ body {
   white-space: nowrap;
   text-align: right;
   padding-top: 2px;
+}
+
+/* ── Skill Districts ── */
+.skill-district {
+  position: absolute;
+  min-height: 34%;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(15, 19, 24, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(6px);
+}
+
+.skill-district--inv {
+  border-top: 2px solid rgba(245, 158, 11, 0.4);
+  box-shadow: 0 -4px 24px rgba(245, 158, 11, 0.06);
+}
+
+.skill-district--dev {
+  border-top: 2px solid rgba(59, 130, 246, 0.4);
+  box-shadow: 0 -4px 24px rgba(59, 130, 246, 0.06);
+}
+
+.skill-district--global {
+  border-top: 2px solid rgba(139, 92, 246, 0.4);
+  box-shadow: 0 -4px 24px rgba(139, 92, 246, 0.06);
+}
+
+.skill-district-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin-bottom: 10px;
+}
+
+.skill-district-icon {
+  font-size: 15px;
+}
+
+.skill-district-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+}
+
+/* ── Skill Rooms ── */
+.skill-room {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 12px;
+  min-width: 80px;
+  background: rgba(15, 19, 24, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  transform: translateX(-50%);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  cursor: default;
+  pointer-events: auto;
+}
+
+.skill-room:hover {
+  border-color: var(--skill-color, rgba(255, 255, 255, 0.25));
+  box-shadow:
+    0 0 12px color-mix(in srgb, var(--skill-color, #fff) 30%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--skill-color, #fff) 10%, transparent);
+}
+
+.skill-room-icon {
+  font-size: 22px;
+  line-height: 1;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.2));
+}
+
+.skill-room-label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  text-align: center;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-room-glow {
+  position: absolute;
+  inset: -1px;
+  border-radius: 10px;
+  background: radial-gradient(
+    ellipse at center,
+    color-mix(in srgb, var(--skill-color, #fff) 8%, transparent),
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Agent visiting skill room */
+.agent-avatar--visiting {
+  border-color: rgba(255, 200, 50, 0.6) !important;
+  box-shadow: 0 0 10px rgba(255, 200, 50, 0.15);
+}
+
+/* ── World Scroll Hint ── */
+.world-scroll-hint {
+  position: absolute;
+  bottom: 2%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.5;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.world-scroll-hint span {
+  font-size: 16px;
+  animation: hint-bounce 2s ease-in-out infinite;
+}
+
+@keyframes hint-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
 }

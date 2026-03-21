@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo } from 'react';
 import { useAgentSessions } from './hooks/useAgentSessions';
+import { useSkillVisits } from './hooks/useSkillVisits';
 import { AgentScene } from './components/AgentScene';
 import { SceneSelector } from './components/SceneSelector';
 import { StatusDot } from './components/StatusDot';
@@ -13,6 +14,7 @@ import { setIdleFavicon, startActiveFavicon } from './utils/favicon';
 
 export default function App() {
   const { sessions, agentNames, isConnected, currentScene, setScene, squads } = useAgentSessions();
+  const skillVisits = useSkillVisits(sessions);
 
   const memberMetaBySession = useMemo(
     () => Object.fromEntries(
@@ -54,6 +56,7 @@ export default function App() {
           agentNames={agentNames}
           sceneConfig={currentScene}
           memberMetaBySession={memberMetaBySession}
+          skillVisits={skillVisits}
         />
       </main>
 
