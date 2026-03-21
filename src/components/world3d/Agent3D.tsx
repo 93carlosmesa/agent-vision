@@ -13,6 +13,7 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
+import * as THREE from 'three';
 import type { Group, Mesh } from 'three';
 import type { SessionStatus } from '../../types';
 import type { AgentMotionState } from '../../hooks/useAgentMotion';
@@ -101,6 +102,7 @@ function MasterAvatar({
   const bodyRef     = useRef<Group>(null);
   const haloRef     = useRef<Group>(null);
   const headRef     = useRef<Group>(null);
+  const torsoRef    = useRef<Mesh>(null);
   const leftArmRef  = useRef<Mesh>(null);
   const rightArmRef = useRef<Mesh>(null);
   const leftLegRef  = useRef<Mesh>(null);
@@ -135,14 +137,14 @@ function MasterAvatar({
     // Position from motion system
     if (motion) {
       const bobSpeed = isMoving ? 6 : status === 'idle' ? 0.8 : 1.3;
-      const bobAmount = isMoving ? 0.08 : status === 'idle' ? 0.04 : 0.07;
+      const bobAmount = isMoving ? 0.12 : status === 'idle' ? 0.15 : 0.07;
       groupRef.current.position.x = motion.currentPos[0];
       groupRef.current.position.z = motion.currentPos[2];
       groupRef.current.position.y = motion.currentPos[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
     } else {
       // Fallback: use initial position with bobbing
       const bobSpeed = status === 'idle' ? 0.8 : 1.3;
-      const bobAmount = status === 'idle' ? 0.04 : 0.07;
+      const bobAmount = status === 'idle' ? 0.15 : 0.07;
       groupRef.current.position.y = position[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
     }
 
@@ -153,11 +155,16 @@ function MasterAvatar({
     if (isMoving) {
       bodyRef.current.rotation.x = 0.12;
     } else if (status === 'running') {
-      bodyRef.current.rotation.x = 0.08;
+      bodyRef.current.rotation.x = 0.15;
     } else if (status === 'idle') {
-      bodyRef.current.rotation.x = -0.05;
+      bodyRef.current.rotation.x = -0.12;
     } else {
       bodyRef.current.rotation.x = 0;
+    }
+
+    // Breathing animation — torso scale.y oscillates
+    if (torsoRef.current) {
+      torsoRef.current.scale.y = 1.0 + Math.sin(t * 1.5 + seed) * 0.015 + 0.015;
     }
 
     // Head animation
@@ -166,14 +173,14 @@ function MasterAvatar({
         headRef.current.rotation.y = 0;
         headRef.current.rotation.x = 0;
       } else if (status === 'running') {
-        headRef.current.rotation.x = Math.sin(t * 1.5 + seed) * 0.06;
+        headRef.current.rotation.x = Math.sin(t * 1.5 + seed) * 0.2;
         headRef.current.rotation.y = 0;
       } else if (status === 'waiting') {
-        headRef.current.rotation.y = Math.sin(t * 0.5 + seed) * 0.3;
+        headRef.current.rotation.y = Math.sin(t * 0.5 + seed) * 0.6;
         headRef.current.rotation.x = 0;
       } else {
         headRef.current.rotation.x = 0;
-        headRef.current.rotation.y = Math.sin(t * 0.2 + seed) * 0.1;
+        headRef.current.rotation.y = Math.sin(t * 0.2 + seed) * 0.25;
       }
     }
 
@@ -189,21 +196,23 @@ function MasterAvatar({
     if (leftArmRef.current && rightArmRef.current) {
       if (isMoving) {
         const walkCycle = Math.sin(t * 6 + seed);
-        leftArmRef.current.rotation.x = walkCycle * 0.4;
-        rightArmRef.current.rotation.x = -walkCycle * 0.4;
+        leftArmRef.current.rotation.x = walkCycle * 0.6;
+        rightArmRef.current.rotation.x = -walkCycle * 0.6;
         leftArmRef.current.rotation.z = 0;
         rightArmRef.current.rotation.z = 0;
       } else if (status === 'running') {
-        leftArmRef.current.rotation.x = -0.5 + Math.sin(t * 3 + seed) * 0.05;
-        rightArmRef.current.rotation.x = -0.5 + Math.sin(t * 3.2 + seed + 1) * 0.05;
+        // Typing motion — arms oscillate up/down like actually typing
+        leftArmRef.current.rotation.x = -0.5 + Math.sin(t * 3 + seed) * 0.2;
+        rightArmRef.current.rotation.x = -0.5 + Math.sin(t * 3.2 + seed + 1) * 0.2;
         leftArmRef.current.rotation.z = 0;
         rightArmRef.current.rotation.z = 0;
       } else if (status === 'waiting') {
+        // Dramatic arm gesture — raises to shoulder height
         const gesture = Math.sin(t * 0.7 + seed);
-        leftArmRef.current.rotation.x = 0;
-        rightArmRef.current.rotation.x = gesture > 0.5 ? -0.3 * (gesture - 0.5) * 2 : 0;
-        leftArmRef.current.rotation.z = 0;
-        rightArmRef.current.rotation.z = gesture > 0.5 ? -0.15 * (gesture - 0.5) * 2 : 0;
+        leftArmRef.current.rotation.x = gesture > 0.3 ? -0.8 * ((gesture - 0.3) / 0.7) : 0;
+        rightArmRef.current.rotation.x = gesture > 0.5 ? -0.8 * ((gesture - 0.5) / 0.5) : 0;
+        leftArmRef.current.rotation.z = gesture > 0.3 ? -0.3 * ((gesture - 0.3) / 0.7) : 0;
+        rightArmRef.current.rotation.z = gesture > 0.5 ? 0.3 * ((gesture - 0.5) / 0.5) : 0;
       } else {
         leftArmRef.current.rotation.x = 0;
         rightArmRef.current.rotation.x = 0;
@@ -216,19 +225,20 @@ function MasterAvatar({
     if (leftLegRef.current && rightLegRef.current) {
       if (isMoving) {
         const walkCycle = Math.sin(t * 6 + seed);
-        leftLegRef.current.rotation.x = -walkCycle * 0.35;
-        rightLegRef.current.rotation.x = walkCycle * 0.35;
+        leftLegRef.current.rotation.x = -walkCycle * 0.5;
+        rightLegRef.current.rotation.x = walkCycle * 0.5;
       } else {
         leftLegRef.current.rotation.x = 0;
         rightLegRef.current.rotation.x = 0;
       }
     }
 
-    // Halo animation
+    // Halo animation — rotation + vertical bob
     if (haloRef.current) {
       const haloSpeed = status === 'idle' ? 0.25 : 0.6;
       haloRef.current.rotation.z = t * haloSpeed;
       haloRef.current.rotation.x = Math.PI / 2 + Math.sin(t * 0.4) * 0.15;
+      haloRef.current.position.y = 1.80 + Math.sin(t * 0.8 + seed) * 0.1;
     }
   });
 
@@ -237,7 +247,7 @@ function MasterAvatar({
       <group ref={bodyRef}>
 
         {/* ── BLAZER / JACKET ── */}
-        <mesh position={[0, 0.50, 0]}>
+        <mesh ref={torsoRef} position={[0, 0.50, 0]}>
           <cylinderGeometry args={[0.22, 0.30, 0.85, 16]} />
           <meshStandardMaterial color={color} emissive={glow.color} emissiveIntensity={glow.intensity} metalness={0.15} roughness={0.55} />
         </mesh>
@@ -562,6 +572,8 @@ function RobotAvatar({
   const bodyRef     = useRef<Group>(null);
   const antennaRef  = useRef<Group>(null);
   const headRef     = useRef<Mesh>(null);
+  const torsoRef    = useRef<Mesh>(null);
+  const visorRef    = useRef<Mesh>(null);
   const leftArmRef  = useRef<Mesh>(null);
   const rightArmRef = useRef<Mesh>(null);
   const leftLegRef  = useRef<Mesh>(null);
@@ -585,14 +597,14 @@ function RobotAvatar({
     // Position from motion system
     if (motion) {
       const bobSpeed = isMoving ? 7 : status === 'idle' ? 0.8 : 1.5;
-      const bobAmount = isMoving ? 0.06 : status === 'idle' ? 0.03 : 0.05;
+      const bobAmount = isMoving ? 0.12 : status === 'idle' ? 0.15 : 0.05;
       groupRef.current.position.x = motion.currentPos[0];
       groupRef.current.position.z = motion.currentPos[2];
       groupRef.current.position.y = motion.currentPos[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
     } else {
       // Fallback: use initial position with bobbing
       const bobSpeed = status === 'idle' ? 0.8 : 1.5;
-      const bobAmount = status === 'idle' ? 0.03 : 0.05;
+      const bobAmount = status === 'idle' ? 0.15 : 0.05;
       groupRef.current.position.y = position[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
     }
 
@@ -603,11 +615,16 @@ function RobotAvatar({
     if (isMoving) {
       bodyRef.current.rotation.x = 0.1;
     } else if (status === 'running') {
-      bodyRef.current.rotation.x = 0.06;
+      bodyRef.current.rotation.x = 0.15;
     } else if (status === 'idle') {
-      bodyRef.current.rotation.x = -0.04;
+      bodyRef.current.rotation.x = -0.12;
     } else {
       bodyRef.current.rotation.x = 0;
+    }
+
+    // Breathing animation — torso scale.y oscillates
+    if (torsoRef.current) {
+      torsoRef.current.scale.y = 1.0 + Math.sin(t * 1.5 + seed) * 0.015 + 0.015;
     }
 
     // Head animation
@@ -616,43 +633,57 @@ function RobotAvatar({
         headRef.current.rotation.y = 0;
         headRef.current.rotation.x = 0;
       } else if (status === 'running') {
-        headRef.current.rotation.x = Math.sin(t * 2 + seed) * 0.05;
+        headRef.current.rotation.x = Math.sin(t * 2 + seed) * 0.2;
         headRef.current.rotation.y = 0;
       } else if (status === 'waiting') {
-        headRef.current.rotation.y = Math.sin(t * 0.5 + seed) * 0.25;
+        headRef.current.rotation.y = Math.sin(t * 0.5 + seed) * 0.6;
         headRef.current.rotation.x = 0;
       } else {
         headRef.current.rotation.x = 0;
-        headRef.current.rotation.y = Math.sin(t * 0.15 + seed) * 0.08;
+        headRef.current.rotation.y = Math.sin(t * 0.15 + seed) * 0.25;
       }
     }
 
-    // Antenna pulse speed varies by status
+    // Antenna pulse speed varies by status — dramatic pulsing
     if (antennaRef.current) {
       const pulseSpeed = isMoving ? 4 : status === 'running' ? 5 : status === 'idle' ? 1.2 : 3;
-      const pulseAmount = status === 'idle' ? 0.06 : 0.12;
+      const pulseAmount = status === 'idle' ? 0.15 : 0.3;
       antennaRef.current.scale.y = 1 + Math.sin(t * pulseSpeed + seed) * pulseAmount;
+    }
+
+    // Visor glow — emissive intensity oscillation
+    if (visorRef.current) {
+      const mat = visorRef.current.material as THREE.MeshStandardMaterial;
+      if (status === 'running') {
+        mat.emissiveIntensity = 2.75 + Math.sin(t * 3 + seed) * 1.25;
+      } else if (status === 'waiting') {
+        mat.emissiveIntensity = 2.0 + Math.sin(t * 1.5 + seed) * 0.8;
+      } else {
+        mat.emissiveIntensity = 1.8 + Math.sin(t * 0.8 + seed) * 0.6;
+      }
     }
 
     // Arm animation
     if (leftArmRef.current && rightArmRef.current) {
       if (isMoving) {
         const walkCycle = Math.sin(t * 7 + seed);
-        leftArmRef.current.rotation.x = walkCycle * 0.35;
-        rightArmRef.current.rotation.x = -walkCycle * 0.35;
+        leftArmRef.current.rotation.x = walkCycle * 0.6;
+        rightArmRef.current.rotation.x = -walkCycle * 0.6;
         leftArmRef.current.rotation.z = 0.18;
         rightArmRef.current.rotation.z = -0.18;
       } else if (status === 'running') {
-        leftArmRef.current.rotation.x = -0.4 + Math.sin(t * 3 + seed) * 0.04;
-        rightArmRef.current.rotation.x = -0.4 + Math.sin(t * 3.3 + seed + 1) * 0.04;
+        // Typing motion — arms oscillate up/down like actually typing
+        leftArmRef.current.rotation.x = -0.5 + Math.sin(t * 3 + seed) * 0.2;
+        rightArmRef.current.rotation.x = -0.5 + Math.sin(t * 3.3 + seed + 1) * 0.2;
         leftArmRef.current.rotation.z = 0.18;
         rightArmRef.current.rotation.z = -0.18;
       } else if (status === 'waiting') {
+        // Dramatic arm gesture — raises to shoulder height
         const gesture = Math.sin(t * 0.6 + seed);
-        leftArmRef.current.rotation.x = 0;
-        rightArmRef.current.rotation.x = gesture > 0.4 ? -0.25 * (gesture - 0.4) / 0.6 : 0;
-        leftArmRef.current.rotation.z = 0.18;
-        rightArmRef.current.rotation.z = -0.18 + (gesture > 0.4 ? -0.1 * (gesture - 0.4) / 0.6 : 0);
+        leftArmRef.current.rotation.x = gesture > 0.3 ? -0.8 * ((gesture - 0.3) / 0.7) : 0;
+        rightArmRef.current.rotation.x = gesture > 0.4 ? -0.8 * ((gesture - 0.4) / 0.6) : 0;
+        leftArmRef.current.rotation.z = 0.18 + (gesture > 0.3 ? -0.3 * ((gesture - 0.3) / 0.7) : 0);
+        rightArmRef.current.rotation.z = -0.18 + (gesture > 0.4 ? 0.3 * ((gesture - 0.4) / 0.6) : 0);
       } else {
         leftArmRef.current.rotation.x = 0;
         rightArmRef.current.rotation.x = 0;
@@ -665,8 +696,8 @@ function RobotAvatar({
     if (leftLegRef.current && rightLegRef.current) {
       if (isMoving) {
         const walkCycle = Math.sin(t * 7 + seed);
-        leftLegRef.current.rotation.x = -walkCycle * 0.3;
-        rightLegRef.current.rotation.x = walkCycle * 0.3;
+        leftLegRef.current.rotation.x = -walkCycle * 0.5;
+        rightLegRef.current.rotation.x = walkCycle * 0.5;
       } else {
         leftLegRef.current.rotation.x = 0;
         rightLegRef.current.rotation.x = 0;
@@ -679,7 +710,7 @@ function RobotAvatar({
       <group ref={bodyRef}>
 
         {/* ── Cuerpo principal (caja) ── */}
-        <mesh position={[0, 0.55, 0]}>
+        <mesh ref={torsoRef} position={[0, 0.55, 0]}>
           <boxGeometry args={[0.52, 0.72, 0.32]} />
           <meshStandardMaterial color={bodyColor} emissive={glow.color} emissiveIntensity={glow.intensity} metalness={0.7} roughness={0.3} />
         </mesh>
@@ -709,7 +740,7 @@ function RobotAvatar({
         </mesh>
 
         {/* Visor (pantalla frontal) */}
-        <mesh position={[0, 1.10, 0.155]}>
+        <mesh ref={visorRef} position={[0, 1.10, 0.155]}>
           <boxGeometry args={[0.28, 0.14, 0.01]} />
           <meshStandardMaterial
             color="#001122"
