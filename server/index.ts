@@ -17,7 +17,7 @@ import { WebSocketServer } from './WebSocketServer.js';
 const PORT = Number(process.env.PORT) || 4173;
 
 // Paths to OpenClaw data
-const SESSIONS_DIR = join(homedir(), '.openclaw', 'agents', 'main', 'sessions');
+const AGENTS_BASE = join(homedir(), '.openclaw', 'agents');
 const OPENCLAW_CONFIG = join(homedir(), '.openclaw', 'openclaw.json');
 
 // Static files directory: prefer Vite build (dist), fallback to public
@@ -39,8 +39,11 @@ app.get('/health', (_req, res) => {
 });
 
 // ─── Domain modules ───
-const sessionReader = new SessionReader(SESSIONS_DIR);
+const sessionReader = new SessionReader(AGENTS_BASE);
 const nameResolver = new AgentNameResolver(OPENCLAW_CONFIG);
+
+// Register all known agents so idle ones still appear
+sessionReader.setRegisteredAgents(nameResolver.getAgentIds());
 
 // ─── Legacy REST compatibility for v1 UI ───
 // v1 frontend expects these routes while v2 uses WebSocket pushes.
@@ -108,7 +111,7 @@ const BIND_HOST = process.env.BIND_HOST || '127.0.0.1';
 
 httpServer.listen(PORT, BIND_HOST, () => {
   console.log(`[agent-vision] Server running at http://${BIND_HOST}:${PORT}`);
-  console.log(`[agent-vision] Sessions dir: ${SESSIONS_DIR}`);
+  console.log(`[agent-vision] Agents base: ${AGENTS_BASE}`);
   console.log(`[agent-vision] Config: ${OPENCLAW_CONFIG}`);
 });
 

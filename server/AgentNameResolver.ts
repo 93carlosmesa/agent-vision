@@ -63,4 +63,24 @@ export class AgentNameResolver {
 
     return names;
   }
+
+  /**
+   * Return the list of all registered agent IDs from openclaw.json.
+   */
+  getAgentIds(): string[] {
+    const ids: string[] = ['main'];
+    try {
+      const raw = readFileSync(this.configPath, 'utf-8');
+      const config = JSON.parse(raw) as OpenClawConfig;
+      const list = config.agents?.list ?? [];
+      for (const entry of list) {
+        if (entry.id && entry.id !== 'main') {
+          ids.push(entry.id);
+        }
+      }
+    } catch {
+      // Config not available
+    }
+    return ids;
+  }
 }

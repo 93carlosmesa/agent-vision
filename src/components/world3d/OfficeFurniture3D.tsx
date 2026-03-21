@@ -343,18 +343,266 @@ export function LobbyFurniture() {
   );
 }
 
-/** Sala de Descanso: sofas, coffee table, coffee machine */
+/** TV / flat screen on wall */
+function WallTV({ position, rotation = 0 }: { position: [number, number, number]; rotation?: number }) {
+  return (
+    <group position={position} rotation={[0, rotation, 0]}>
+      {/* Screen bezel */}
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={[1.6, 0.9, 0.05]} />
+        <meshStandardMaterial color="#1a1a1a" metalness={0.4} roughness={0.3} />
+      </mesh>
+      {/* Screen surface — emissive glow */}
+      <mesh position={[0, 0, 0.028]}>
+        <boxGeometry args={[1.45, 0.78, 0.005]} />
+        <meshStandardMaterial color="#112244" emissive="#4488cc" emissiveIntensity={1.2} roughness={0.1} />
+      </mesh>
+      {/* Wall mount bracket */}
+      <mesh position={[0, 0, -0.04]}>
+        <boxGeometry args={[0.3, 0.2, 0.06]} />
+        <meshStandardMaterial color="#333" metalness={0.6} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Water cooler / dispenser */
+function WaterCooler({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      {/* Base cabinet */}
+      <mesh position={[0, 0.25, 0]}>
+        <boxGeometry args={[0.3, 0.5, 0.3]} />
+        <meshStandardMaterial color="#e0e0e0" roughness={0.5} />
+      </mesh>
+      {/* Water bottle (inverted) */}
+      <mesh position={[0, 0.72, 0]}>
+        <cylinderGeometry args={[0.1, 0.1, 0.45, 12]} />
+        <meshStandardMaterial color="#aaddff" transparent opacity={0.5} roughness={0.1} />
+      </mesh>
+      {/* Bottle cap */}
+      <mesh position={[0, 0.95, 0]}>
+        <sphereGeometry args={[0.1, 10, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <meshStandardMaterial color="#aaddff" transparent opacity={0.4} roughness={0.1} />
+      </mesh>
+      {/* Tap area */}
+      <mesh position={[0, 0.48, 0.16]}>
+        <boxGeometry args={[0.08, 0.04, 0.02]} />
+        <meshStandardMaterial color="#888" metalness={0.6} />
+      </mesh>
+      {/* Drip tray */}
+      <mesh position={[0, 0.38, 0.12]}>
+        <boxGeometry args={[0.18, 0.02, 0.08]} />
+        <meshStandardMaterial color="#999" metalness={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Small decorative bookshelf */
+function SmallBookshelf({ position, rotation = 0 }: { position: [number, number, number]; rotation?: number }) {
+  const bookColors = ['#8b2500', '#1a4a6b', '#2d5a27', '#6b3a8a', '#8a6b3a'];
+  return (
+    <group position={position} rotation={[0, rotation, 0]}>
+      {/* Shelf frame */}
+      <mesh position={[0, 0.5, 0]}>
+        <boxGeometry args={[0.6, 1.0, 0.25]} />
+        <meshStandardMaterial color="#4a3a2e" roughness={0.8} />
+      </mesh>
+      {/* Shelves */}
+      {[0.15, 0.5, 0.85].map((y, i) => (
+        <mesh key={i} position={[0, y, 0]}>
+          <boxGeometry args={[0.56, 0.03, 0.23]} />
+          <meshStandardMaterial color="#5a4a3e" roughness={0.7} />
+        </mesh>
+      ))}
+      {/* Books on shelves */}
+      {bookColors.map((col, i) => {
+        const shelfY = i < 2 ? 0.28 : i < 4 ? 0.63 : 0.93;
+        const xOff = (i % 2 === 0 ? -0.12 : 0.12) + (i % 3) * 0.04;
+        const h = 0.18 + (i % 3) * 0.03;
+        return (
+          <mesh key={i} position={[xOff, shelfY, 0]}>
+            <boxGeometry args={[0.06, h, 0.16]} />
+            <meshStandardMaterial color={col} roughness={0.7} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
+/** Wall clock */
+function WallClock({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      {/* Clock face */}
+      <mesh>
+        <circleGeometry args={[0.25, 24]} />
+        <meshStandardMaterial color="#f5f0e8" roughness={0.5} />
+      </mesh>
+      {/* Rim */}
+      <mesh>
+        <ringGeometry args={[0.24, 0.27, 24]} />
+        <meshStandardMaterial color="#3a3a3a" metalness={0.5} />
+      </mesh>
+      {/* Hour marks */}
+      {Array.from({ length: 12 }).map((_, i) => {
+        const angle = (i * Math.PI * 2) / 12;
+        const r = 0.20;
+        return (
+          <mesh key={i} position={[Math.sin(angle) * r, Math.cos(angle) * r, 0.01]}>
+            <boxGeometry args={[0.015, 0.04, 0.005]} />
+            <meshStandardMaterial color="#333" />
+          </mesh>
+        );
+      })}
+      {/* Hour hand */}
+      <mesh position={[0, 0.06, 0.015]} rotation={[0, 0, -0.8]}>
+        <boxGeometry args={[0.015, 0.12, 0.005]} />
+        <meshStandardMaterial color="#222" />
+      </mesh>
+      {/* Minute hand */}
+      <mesh position={[0, 0.08, 0.02]} rotation={[0, 0, 0.4]}>
+        <boxGeometry args={[0.01, 0.16, 0.005]} />
+        <meshStandardMaterial color="#222" />
+      </mesh>
+      {/* Center dot */}
+      <mesh position={[0, 0, 0.025]}>
+        <sphereGeometry args={[0.015, 8, 8]} />
+        <meshStandardMaterial color="#333" metalness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Coffee cup (small) */
+function CoffeeCup({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 0.04, 0]}>
+        <cylinderGeometry args={[0.03, 0.025, 0.06, 8]} />
+        <meshStandardMaterial color="#f0f0f0" roughness={0.4} />
+      </mesh>
+      {/* Handle */}
+      <mesh position={[0.04, 0.04, 0]}>
+        <torusGeometry args={[0.015, 0.004, 6, 12, Math.PI]} />
+        <meshStandardMaterial color="#f0f0f0" roughness={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Coffee counter surface */
+function CoffeeCounter({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      {/* Counter base */}
+      <mesh position={[0, 0.4, 0]}>
+        <boxGeometry args={[1.2, 0.8, 0.5]} />
+        <meshStandardMaterial color="#4a3a2e" roughness={0.7} />
+      </mesh>
+      {/* Counter top */}
+      <mesh position={[0, 0.81, 0]}>
+        <boxGeometry args={[1.3, 0.04, 0.55]} />
+        <meshStandardMaterial color="#6b5a4a" roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Stool for coffee counter */
+function Stool({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 0.35, 0]}>
+        <cylinderGeometry args={[0.15, 0.15, 0.04, 10]} />
+        <meshStandardMaterial color="#3a3a3a" metalness={0.4} />
+      </mesh>
+      <mesh position={[0, 0.17, 0]}>
+        <cylinderGeometry args={[0.03, 0.03, 0.33, 8]} />
+        <meshStandardMaterial color="#444" metalness={0.6} />
+      </mesh>
+      {[0, 1.57, 3.14, 4.71].map((a, i) => (
+        <mesh key={i} position={[Math.cos(a) * 0.12, 0.02, Math.sin(a) * 0.12]}>
+          <sphereGeometry args={[0.025, 6, 6]} />
+          <meshStandardMaterial color="#333" metalness={0.5} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Bean bag / armchair for lounge */
+function BeanBag({ position, rotation = 0 }: { position: [number, number, number]; rotation?: number }) {
+  return (
+    <group position={position} rotation={[0, rotation, 0]}>
+      <mesh position={[0, 0.22, 0]} scale={[1, 0.6, 0.9]}>
+        <sphereGeometry args={[0.35, 12, 12]} />
+        <meshStandardMaterial color="#3a2a4e" roughness={0.92} />
+      </mesh>
+      <mesh position={[0, 0.42, -0.18]} scale={[0.9, 0.8, 0.5]}>
+        <sphereGeometry args={[0.28, 10, 10]} />
+        <meshStandardMaterial color="#3a2a4e" roughness={0.92} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Sala de Descanso — 3 distinct seating areas, spread out.
+ *  Area 1: Main U-shaped sofa (center-left ~x=-12, z=6)
+ *  Area 2: Coffee corner (upper-right ~x=-4, z=8)
+ *  Area 3: Lounge area (lower-left ~x=-16, z=4.5) with bean bags + TV
+ */
 export function DescansoFurniture() {
   return (
     <group>
-      {/* L-shaped sofa arrangement */}
-      <Sofa position={[-13, 0, 5.5]} rotation={Math.PI / 2} />
-      <Sofa position={[-13, 0, 7.5]} rotation={Math.PI / 2} />
-      <Sofa position={[-10.5, 0, 8.5]} rotation={0} />
-      <CoffeeTable position={[-10.5, 0, 6]} />
-      <CoffeeMachine position={[-5, 0, 8.5]} />
-      <PottedPlant position={[-3, 0, 5]} seed={1} />
-      <PottedPlant position={[-16, 0, 8.5]} seed={3} />
+      {/* ═══ AREA 1: Main sofa U-shape (x=-14 to -10, z=5 to 8.5) ═══ */}
+      {/* Left arm (vertical, facing inward) */}
+      <Sofa position={[-14, 0, 6]} rotation={Math.PI / 2} />
+      {/* Back sofa (horizontal, facing south) */}
+      <Sofa position={[-12, 0, 8.5]} rotation={0} />
+      {/* Right arm (vertical, facing inward) */}
+      <Sofa position={[-10, 0, 6]} rotation={-Math.PI / 2} />
+      {/* Coffee table in the center */}
+      <CoffeeTable position={[-12, 0, 6]} />
+
+      {/* ── Rug under sofa area ── */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-12, 0.015, 6.5]}>
+        <planeGeometry args={[6, 5]} />
+        <meshStandardMaterial color="#8b4513" roughness={0.95} opacity={0.7} transparent />
+      </mesh>
+
+      {/* ═══ AREA 2: Coffee corner (x=-5 to -3, z=8 to 9) ═══ */}
+      <CoffeeCounter position={[-4, 0, 8.5]} />
+      <CoffeeMachine position={[-4, 0.83, 8.5]} />
+      <CoffeeCup position={[-4.4, 0.83, 8.3]} />
+      <CoffeeCup position={[-3.6, 0.83, 8.3]} />
+      {/* Stools for sitting at counter */}
+      <Stool position={[-4.5, 0, 7.8]} />
+      <Stool position={[-3.5, 0, 7.8]} />
+
+      {/* ═══ AREA 3: Lounge (x=-18 to -14, z=3.5 to 5.5) ═══ */}
+      {/* Bean bags / armchairs */}
+      <BeanBag position={[-16, 0, 4.5]} rotation={0} />
+      <BeanBag position={[-14.5, 0, 4.5]} rotation={0.3} />
+      {/* TV on the south wall */}
+      <WallTV position={[-10, 1.6, 3.2]} rotation={0} />
+
+      {/* ═══ UTILITIES ═══ */}
+      {/* Water cooler (far left wall) */}
+      <WaterCooler position={[-18, 0, 8]} />
+      {/* Small bookshelf (far left wall) */}
+      <SmallBookshelf position={[-18, 0, 6]} rotation={Math.PI / 2} />
+
+      {/* ── Wall clock ── */}
+      <WallClock position={[-7, 2.2, 3.25]} />
+
+      {/* ── Plants (decorative) ── */}
+      <PottedPlant position={[-2, 0, 5]} seed={1} />
+      <PottedPlant position={[-19, 0, 9]} seed={3} />
+      <PottedPlant position={[-7, 0, 4]} seed={5} />
+      <PottedPlant position={[-8, 0, 9]} seed={7} />
     </group>
   );
 }

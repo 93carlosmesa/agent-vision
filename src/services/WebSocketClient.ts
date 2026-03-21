@@ -5,8 +5,8 @@
 
 type MessageCallback = (raw: string) => void;
 
-const WS_HOST = window.location.hostname || '127.0.0.1';
-const WS_URL = `ws://${WS_HOST}:4173/ws`;
+const WS_PROTOCOL = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const WS_URL = `${WS_PROTOCOL}//${window.location.host}/ws`;
 const RECONNECT_DELAY_MS = 3000;
 
 export class WebSocketClient {
