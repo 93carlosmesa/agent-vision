@@ -41,10 +41,27 @@ export const playa: ISceneConfig = {
   },
 };
 
+export const world3d: ISceneConfig = {
+  id: '3d',
+  title: '3D World',
+  backgroundImage: '',
+  zoneLabels: {
+    running: 'Zona de trabajo',
+    waiting: 'Zona de comunicación',
+    idle: 'Zona relax',
+  },
+  zoneDefs: {
+    running: { key: 'trabajo', label: 'Trabajo', x: 25, y: 50, w: 44, h: 70, deco: '🖥️' },
+    waiting: { key: 'comunicacion', label: 'Comunicación', x: 75, y: 28, w: 44, h: 40, deco: '🗣️' },
+    idle: { key: 'relax', label: 'Relax', x: 75, y: 74, w: 44, h: 40, deco: '☕' },
+  },
+};
+
 /** All available scenes */
 export const scenes: SceneRegistry = {
   oficina,
   playa,
+  '3d': world3d,
 };
 
 /** Default scene ID */
