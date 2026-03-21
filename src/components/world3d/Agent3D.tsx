@@ -15,6 +15,7 @@ import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import type { Group, Mesh } from 'three';
 import type { SessionStatus } from '../../types';
+import type { AgentMotionState } from '../../hooks/useAgentMotion';
 
 /* ── Masters — conjunto fijo de IDs ── */
 const MASTER_IDS = new Set(['main', 'samantha', 'ginny', 'emma']);
@@ -74,11 +75,12 @@ const MASTER_HALO: Record<string, string> = {
 export interface Agent3DProps {
   name: string;
   agentId: string;
+  /** Initial position — runtime position comes from motionRef */
   position: [number, number, number];
   status: SessionStatus;
   isActive: boolean;
-  isMoving?: boolean;
-  facingAngle?: number;
+  /** Shared ref from useAgentMotion — read in useFrame for zero-overhead updates */
+  motionRef: React.RefObject<Map<string, AgentMotionState>>;
 }
 
 /* ── Hair color por master ── */
@@ -93,7 +95,7 @@ const MASTER_HAIR: Record<string, string> = {
    MASTER AVATAR — female humanoid Pixar-style
    ══════════════════════════════════════════ */
 function MasterAvatar({
-  agentId, name, position, status, isActive, isMoving = false, facingAngle = 0,
+  agentId, name, position, status, isActive, motionRef,
 }: Agent3DProps) {
   const groupRef    = useRef<Group>(null);
   const bodyRef     = useRef<Group>(null);
@@ -125,13 +127,27 @@ function MasterAvatar({
 
     if (!groupRef.current || !bodyRef.current) return;
 
-    // Bobbing
-    const bobSpeed = isMoving ? 6 : status === 'idle' ? 0.8 : 1.3;
-    const bobAmount = isMoving ? 0.08 : status === 'idle' ? 0.04 : 0.07;
-    groupRef.current.position.y = position[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
+    // Read motion state from shared ref (no React re-render needed)
+    const motion = motionRef.current?.get(agentId);
+    const isMoving = motion?.isMoving ?? false;
+    const currentFacingAngle = motion?.facingAngle ?? 0;
+
+    // Position from motion system
+    if (motion) {
+      const bobSpeed = isMoving ? 6 : status === 'idle' ? 0.8 : 1.3;
+      const bobAmount = isMoving ? 0.08 : status === 'idle' ? 0.04 : 0.07;
+      groupRef.current.position.x = motion.currentPos[0];
+      groupRef.current.position.z = motion.currentPos[2];
+      groupRef.current.position.y = motion.currentPos[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
+    } else {
+      // Fallback: use initial position with bobbing
+      const bobSpeed = status === 'idle' ? 0.8 : 1.3;
+      const bobAmount = status === 'idle' ? 0.04 : 0.07;
+      groupRef.current.position.y = position[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
+    }
 
     // Facing direction
-    bodyRef.current.rotation.y = facingAngle;
+    bodyRef.current.rotation.y = currentFacingAngle;
 
     // Body lean
     if (isMoving) {
@@ -540,7 +556,7 @@ function MasterAvatar({
    ROBOT AVATAR — agente genérico mecánico
    ══════════════════════════════════════════ */
 function RobotAvatar({
-  agentId, name, position, status, isActive, isMoving = false, facingAngle = 0,
+  agentId, name, position, status, isActive, motionRef,
 }: Agent3DProps) {
   const groupRef    = useRef<Group>(null);
   const bodyRef     = useRef<Group>(null);
@@ -561,13 +577,27 @@ function RobotAvatar({
 
     if (!groupRef.current || !bodyRef.current) return;
 
-    // Base Y (bobbing)
-    const bobSpeed = isMoving ? 7 : status === 'idle' ? 0.8 : 1.5;
-    const bobAmount = isMoving ? 0.06 : status === 'idle' ? 0.03 : 0.05;
-    groupRef.current.position.y = position[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
+    // Read motion state from shared ref (no React re-render needed)
+    const motion = motionRef.current?.get(agentId);
+    const isMoving = motion?.isMoving ?? false;
+    const currentFacingAngle = motion?.facingAngle ?? 0;
+
+    // Position from motion system
+    if (motion) {
+      const bobSpeed = isMoving ? 7 : status === 'idle' ? 0.8 : 1.5;
+      const bobAmount = isMoving ? 0.06 : status === 'idle' ? 0.03 : 0.05;
+      groupRef.current.position.x = motion.currentPos[0];
+      groupRef.current.position.z = motion.currentPos[2];
+      groupRef.current.position.y = motion.currentPos[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
+    } else {
+      // Fallback: use initial position with bobbing
+      const bobSpeed = status === 'idle' ? 0.8 : 1.5;
+      const bobAmount = status === 'idle' ? 0.03 : 0.05;
+      groupRef.current.position.y = position[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
+    }
 
     // Facing direction
-    bodyRef.current.rotation.y = facingAngle;
+    bodyRef.current.rotation.y = currentFacingAngle;
 
     // Body lean
     if (isMoving) {
