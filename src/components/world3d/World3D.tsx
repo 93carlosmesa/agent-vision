@@ -11,7 +11,7 @@ import { OrbitControls, Grid } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { CameraControls3D, CameraHUD } from './CameraControls3D';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import { Agent3D } from './Agent3D';
+import { AgentMotionSystem } from './AgentMotionSystem';
 import { SkillFolders3D } from './Folder3D';
 import { InteractionBeam3D } from './InteractionBeam3D';
 import { OfficeLayout3D } from './OfficeLayout3D';
@@ -221,17 +221,8 @@ function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps)
       <TrabajoFurniture />
       <BibliotecaFurniture />
 
-      {/* Agents */}
-      {agents.map((a) => (
-        <Agent3D
-          key={a.id}
-          name={a.name}
-          agentId={a.id}
-          position={a.pos}
-          status={a.status}
-          isActive={a.isActive}
-        />
-      ))}
+      {/* Agents with smooth motion system */}
+      <AgentMotionSystem agents={agents} />
 
       {/* Interaction beams */}
       {beams.map((b) => (
