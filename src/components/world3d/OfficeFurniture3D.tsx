@@ -1,9 +1,7 @@
 /**
- * OfficeFurniture3D — Realistic office furniture built from Three.js primitives.
+ * OfficeFurniture3D — Realistic office furniture organized by room.
  *
- * Zona de Trabajo: desks with laptops, office chairs, desk lamps
- * Zona de Comunicación: whiteboard, potted plants, meeting table
- * Zona Relax: sofas, coffee table, coffee machine
+ * Rooms: Lobby, Sala de Descanso, Sala de Comunicación, Sala de Trabajo, Biblioteca
  */
 
 import { useRef } from 'react';
@@ -11,10 +9,9 @@ import { useFrame } from '@react-three/fiber';
 import type { Group } from 'three';
 
 /* ═══════════════════════════════════════════════════════════════════
-   ZONA DE TRABAJO — Desks, laptops, chairs, lamps
+   SHARED PRIMITIVES
    ═══════════════════════════════════════════════════════════════════ */
 
-/** Single realistic desk: flat tabletop on 4 thin legs */
 function Desk({ position }: { position: [number, number, number] }) {
   const legR = 0.03;
   const legH = 0.7;
@@ -22,20 +19,15 @@ function Desk({ position }: { position: [number, number, number] }) {
   const topD = 0.7;
   const topH = 0.05;
   const topY = legH + topH / 2;
-
-  // Leg offsets from center
   const lx = topW / 2 - 0.06;
   const lz = topD / 2 - 0.06;
 
   return (
     <group position={position}>
-      {/* Tabletop */}
       <mesh position={[0, topY, 0]}>
         <boxGeometry args={[topW, topH, topD]} />
         <meshStandardMaterial color="#5c4a3a" roughness={0.7} />
       </mesh>
-
-      {/* 4 legs */}
       {[[-lx, -lz], [lx, -lz], [-lx, lz], [lx, lz]].map(([x, z], i) => (
         <mesh key={i} position={[x, legH / 2, z]}>
           <cylinderGeometry args={[legR, legR, legH, 8]} />
@@ -46,54 +38,39 @@ function Desk({ position }: { position: [number, number, number] }) {
   );
 }
 
-/** Laptop: base slab + angled screen with emissive glow */
 function Laptop({ position }: { position: [number, number, number] }) {
   return (
     <group position={position}>
-      {/* Base */}
       <mesh position={[0, 0.01, 0]}>
         <boxGeometry args={[0.35, 0.02, 0.25]} />
         <meshStandardMaterial color="#2a2a2a" metalness={0.4} />
       </mesh>
-      {/* Screen — angled ~110° from base (20° tilt back) */}
       <mesh position={[0, 0.135, -0.115]} rotation={[-1.22, 0, 0]}>
         <boxGeometry args={[0.35, 0.25, 0.01]} />
-        <meshStandardMaterial
-          color="#111122"
-          emissive="#88bbff"
-          emissiveIntensity={0.8}
-        />
+        <meshStandardMaterial color="#111122" emissive="#88bbff" emissiveIntensity={0.8} />
       </mesh>
     </group>
   );
 }
 
-/** Office chair: seat + backrest + central leg + 5 wheel spheres */
 function OfficeChair({ position }: { position: [number, number, number] }) {
   const wheelAngles = [0, 1, 2, 3, 4].map(i => (i * Math.PI * 2) / 5);
   return (
     <group position={position}>
-      {/* Seat */}
       <mesh position={[0, 0.45, 0]}>
         <boxGeometry args={[0.4, 0.05, 0.4]} />
         <meshStandardMaterial color="#2a2a3e" />
       </mesh>
-      {/* Backrest */}
       <mesh position={[0, 0.72, -0.175]}>
         <boxGeometry args={[0.4, 0.5, 0.05]} />
         <meshStandardMaterial color="#2a2a3e" />
       </mesh>
-      {/* Central leg */}
       <mesh position={[0, 0.22, 0]}>
         <cylinderGeometry args={[0.03, 0.03, 0.44, 8]} />
         <meshStandardMaterial color="#3a3a3a" metalness={0.7} />
       </mesh>
-      {/* 5 wheels */}
       {wheelAngles.map((angle, i) => (
-        <mesh
-          key={i}
-          position={[Math.cos(angle) * 0.18, 0.03, Math.sin(angle) * 0.18]}
-        >
+        <mesh key={i} position={[Math.cos(angle) * 0.18, 0.03, Math.sin(angle) * 0.18]}>
           <sphereGeometry args={[0.03, 8, 8]} />
           <meshStandardMaterial color="#222" metalness={0.5} />
         </mesh>
@@ -102,109 +79,94 @@ function OfficeChair({ position }: { position: [number, number, number] }) {
   );
 }
 
-/** Desk lamp with warm point light */
 function DeskLamp({ position }: { position: [number, number, number] }) {
   return (
     <group position={position}>
-      {/* Base */}
       <mesh position={[0, 0.02, 0]}>
         <cylinderGeometry args={[0.06, 0.08, 0.04, 12]} />
         <meshStandardMaterial color="#333" metalness={0.6} />
       </mesh>
-      {/* Arm */}
       <mesh position={[0, 0.2, 0]}>
         <cylinderGeometry args={[0.012, 0.012, 0.35, 6]} />
         <meshStandardMaterial color="#555" metalness={0.5} />
       </mesh>
-      {/* Shade */}
       <mesh position={[0, 0.38, 0]}>
         <coneGeometry args={[0.08, 0.06, 12, 1, true]} />
         <meshStandardMaterial color="#444" side={2} />
       </mesh>
-      {/* Warm light */}
       <pointLight position={[0, 0.35, 0]} intensity={2} color="#ffd699" distance={3} />
     </group>
   );
 }
 
-/** All furniture for Zona de Trabajo */
-export function TrabajoFurniture() {
-  // 6 desk positions matching the old Desks component layout
-  const deskPositions: [number, number, number][] = [
-    [-7, 0, -1], [-5, 0, -1], [-3, 0, -1],
-    [-7, 0, 1.5], [-5, 0, 1.5], [-3, 0, 1.5],
-  ];
-
+function Sofa({ position, rotation = 0 }: { position: [number, number, number]; rotation?: number }) {
   return (
-    <group>
-      {deskPositions.map((pos, i) => {
-        const deskTopY = 0.75; // leg height + half tabletop
-        return (
-          <group key={i}>
-            <Desk position={pos} />
-            <Laptop position={[pos[0], deskTopY, pos[2]]} />
-            <OfficeChair position={[pos[0], 0, pos[2] + 0.6]} />
-            <DeskLamp position={[pos[0] + 0.5, deskTopY, pos[2] - 0.2]} />
-          </group>
-        );
-      })}
+    <group position={position} rotation={[0, rotation, 0]}>
+      <mesh position={[0, 0.175, 0]}>
+        <boxGeometry args={[1.2, 0.35, 0.6]} />
+        <meshStandardMaterial color="#2a2a3e" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 0.55, -0.275]}>
+        <boxGeometry args={[1.2, 0.4, 0.1]} />
+        <meshStandardMaterial color="#2a2a3e" roughness={0.9} />
+      </mesh>
+      <mesh position={[-0.55, 0.35, 0]}>
+        <boxGeometry args={[0.1, 0.25, 0.6]} />
+        <meshStandardMaterial color="#2a2a3e" roughness={0.9} />
+      </mesh>
+      <mesh position={[0.55, 0.35, 0]}>
+        <boxGeometry args={[0.1, 0.25, 0.6]} />
+        <meshStandardMaterial color="#2a2a3e" roughness={0.9} />
+      </mesh>
     </group>
   );
 }
 
-
-/* ═══════════════════════════════════════════════════════════════════
-   ZONA DE COMUNICACIÓN — Whiteboard, plants, meeting table
-   ═══════════════════════════════════════════════════════════════════ */
-
-/** Whiteboard on legs with dark frame */
-function Whiteboard({ position }: { position: [number, number, number] }) {
+function CoffeeTable({ position }: { position: [number, number, number] }) {
+  const lx = 0.35;
+  const lz = 0.2;
   return (
     <group position={position}>
-      {/* Board surface */}
-      <mesh position={[0, 1.4, 0]}>
-        <boxGeometry args={[2, 1.2, 0.05]} />
-        <meshStandardMaterial color="#e8e8e8" roughness={0.3} />
+      <mesh position={[0, 0.35, 0]}>
+        <boxGeometry args={[0.8, 0.03, 0.5]} />
+        <meshStandardMaterial color="#5c4a3a" roughness={0.6} />
       </mesh>
-      {/* Frame — top */}
-      <mesh position={[0, 2.01, 0]}>
-        <boxGeometry args={[2.06, 0.04, 0.07]} />
-        <meshStandardMaterial color="#333" metalness={0.4} />
-      </mesh>
-      {/* Frame — bottom */}
-      <mesh position={[0, 0.79, 0]}>
-        <boxGeometry args={[2.06, 0.04, 0.07]} />
-        <meshStandardMaterial color="#333" metalness={0.4} />
-      </mesh>
-      {/* Frame — left */}
-      <mesh position={[-1.01, 1.4, 0]}>
-        <boxGeometry args={[0.04, 1.24, 0.07]} />
-        <meshStandardMaterial color="#333" metalness={0.4} />
-      </mesh>
-      {/* Frame — right */}
-      <mesh position={[1.01, 1.4, 0]}>
-        <boxGeometry args={[0.04, 1.24, 0.07]} />
-        <meshStandardMaterial color="#333" metalness={0.4} />
-      </mesh>
-      {/* Left leg */}
-      <mesh position={[-0.8, 0.4, 0]}>
-        <cylinderGeometry args={[0.025, 0.025, 0.78, 8]} />
-        <meshStandardMaterial color="#333" metalness={0.5} />
-      </mesh>
-      {/* Right leg */}
-      <mesh position={[0.8, 0.4, 0]}>
-        <cylinderGeometry args={[0.025, 0.025, 0.78, 8]} />
-        <meshStandardMaterial color="#333" metalness={0.5} />
-      </mesh>
+      {[[-lx, -lz], [lx, -lz], [-lx, lz], [lx, lz]].map(([x, z], i) => (
+        <mesh key={i} position={[x, 0.17, z]}>
+          <cylinderGeometry args={[0.025, 0.025, 0.33, 6]} />
+          <meshStandardMaterial color="#3a3a3a" metalness={0.4} />
+        </mesh>
+      ))}
     </group>
   );
 }
 
-/** Potted plant: cylinder pot + sphere/cone leaf clusters */
+function CoffeeMachine({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 0.3, 0]}>
+        <boxGeometry args={[0.3, 0.6, 0.25]} />
+        <meshStandardMaterial color="#222" metalness={0.3} roughness={0.6} />
+      </mesh>
+      <mesh position={[0, 0.62, 0]}>
+        <boxGeometry args={[0.28, 0.04, 0.23]} />
+        <meshStandardMaterial color="#333" metalness={0.4} />
+      </mesh>
+      <mesh position={[0.0, 0.08, 0.18]}>
+        <cylinderGeometry args={[0.04, 0.035, 0.08, 8]} />
+        <meshStandardMaterial color="#ddd" roughness={0.3} />
+      </mesh>
+      <mesh position={[0, 0.5, 0.13]}>
+        <sphereGeometry args={[0.02, 8, 8]} />
+        <meshStandardMaterial color="#ff6600" emissive="#ff6600" emissiveIntensity={2} />
+      </mesh>
+      <pointLight position={[0, 0.3, 0.2]} intensity={0.5} color="#ff9944" distance={1.5} />
+    </group>
+  );
+}
+
 function PottedPlant({ position, seed = 0 }: { position: [number, number, number]; seed?: number }) {
   const groupRef = useRef<Group>(null);
-
-  // Gentle sway
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
     const t = clock.getElapsedTime();
@@ -213,17 +175,14 @@ function PottedPlant({ position, seed = 0 }: { position: [number, number, number
 
   return (
     <group position={position} ref={groupRef}>
-      {/* Pot */}
       <mesh position={[0, 0.12, 0]}>
         <cylinderGeometry args={[0.12, 0.1, 0.24, 12]} />
         <meshStandardMaterial color="#6b4423" roughness={0.8} />
       </mesh>
-      {/* Soil */}
       <mesh position={[0, 0.25, 0]}>
         <cylinderGeometry args={[0.11, 0.11, 0.02, 12]} />
         <meshStandardMaterial color="#3a2a1a" />
       </mesh>
-      {/* Leaf clusters */}
       <mesh position={[0, 0.55, 0]}>
         <sphereGeometry args={[0.2, 8, 8]} />
         <meshStandardMaterial color="#2d6b30" roughness={0.8} />
@@ -240,18 +199,32 @@ function PottedPlant({ position, seed = 0 }: { position: [number, number, number
   );
 }
 
-/** Meeting table with legs */
+function Whiteboard({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 1.4, 0]}>
+        <boxGeometry args={[2, 1.2, 0.05]} />
+        <meshStandardMaterial color="#e8e8e8" roughness={0.3} />
+      </mesh>
+      <mesh position={[0, 2.01, 0]}><boxGeometry args={[2.06, 0.04, 0.07]} /><meshStandardMaterial color="#333" metalness={0.4} /></mesh>
+      <mesh position={[0, 0.79, 0]}><boxGeometry args={[2.06, 0.04, 0.07]} /><meshStandardMaterial color="#333" metalness={0.4} /></mesh>
+      <mesh position={[-1.01, 1.4, 0]}><boxGeometry args={[0.04, 1.24, 0.07]} /><meshStandardMaterial color="#333" metalness={0.4} /></mesh>
+      <mesh position={[1.01, 1.4, 0]}><boxGeometry args={[0.04, 1.24, 0.07]} /><meshStandardMaterial color="#333" metalness={0.4} /></mesh>
+      <mesh position={[-0.8, 0.4, 0]}><cylinderGeometry args={[0.025, 0.025, 0.78, 8]} /><meshStandardMaterial color="#333" metalness={0.5} /></mesh>
+      <mesh position={[0.8, 0.4, 0]}><cylinderGeometry args={[0.025, 0.025, 0.78, 8]} /><meshStandardMaterial color="#333" metalness={0.5} /></mesh>
+    </group>
+  );
+}
+
 function MeetingTable({ position }: { position: [number, number, number] }) {
   const lx = 1.1;
   const lz = 0.5;
   return (
     <group position={position}>
-      {/* Tabletop */}
       <mesh position={[0, 0.72, 0]}>
         <boxGeometry args={[2.5, 0.05, 1.2]} />
         <meshStandardMaterial color="#5c4a3a" roughness={0.6} />
       </mesh>
-      {/* 4 legs */}
       {[[-lx, -lz], [lx, -lz], [-lx, lz], [lx, lz]].map(([x, z], i) => (
         <mesh key={i} position={[x, 0.35, z]}>
           <cylinderGeometry args={[0.035, 0.035, 0.7, 8]} />
@@ -262,153 +235,200 @@ function MeetingTable({ position }: { position: [number, number, number] }) {
   );
 }
 
-/** All furniture for Zona de Comunicación */
-export function ComunicacionFurniture() {
-  return (
-    <group>
-      <Whiteboard position={[7, 0, -4.5]} />
-      <MeetingTable position={[5, 0, -3]} />
-      <PottedPlant position={[3.2, 0, -4.5]} seed={0} />
-      <PottedPlant position={[3.5, 0, -1.5]} seed={2} />
-      <PottedPlant position={[6.8, 0, -1.3]} seed={4} />
-    </group>
-  );
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════
-   ZONA RELAX — Sofas, coffee table, coffee machine
-   ═══════════════════════════════════════════════════════════════════ */
-
-/** Low-poly sofa: seat + backrest + 2 armrests */
-function Sofa({ position, rotation = 0 }: { position: [number, number, number]; rotation?: number }) {
-  return (
-    <group position={position} rotation={[0, rotation, 0]}>
-      {/* Seat cushion */}
-      <mesh position={[0, 0.175, 0]}>
-        <boxGeometry args={[1.2, 0.35, 0.6]} />
-        <meshStandardMaterial color="#2a2a3e" roughness={0.9} />
-      </mesh>
-      {/* Backrest */}
-      <mesh position={[0, 0.55, -0.275]}>
-        <boxGeometry args={[1.2, 0.4, 0.1]} />
-        <meshStandardMaterial color="#2a2a3e" roughness={0.9} />
-      </mesh>
-      {/* Left armrest */}
-      <mesh position={[-0.55, 0.35, 0]}>
-        <boxGeometry args={[0.1, 0.25, 0.6]} />
-        <meshStandardMaterial color="#2a2a3e" roughness={0.9} />
-      </mesh>
-      {/* Right armrest */}
-      <mesh position={[0.55, 0.35, 0]}>
-        <boxGeometry args={[0.1, 0.25, 0.6]} />
-        <meshStandardMaterial color="#2a2a3e" roughness={0.9} />
-      </mesh>
-    </group>
-  );
-}
-
-/** Low coffee table */
-function CoffeeTable({ position }: { position: [number, number, number] }) {
-  const lx = 0.35;
-  const lz = 0.2;
+/** Small reception desk */
+function ReceptionDesk({ position }: { position: [number, number, number] }) {
   return (
     <group position={position}>
-      {/* Top */}
-      <mesh position={[0, 0.35, 0]}>
-        <boxGeometry args={[0.8, 0.03, 0.5]} />
-        <meshStandardMaterial color="#5c4a3a" roughness={0.6} />
+      {/* Main counter — curved-front approximation with box */}
+      <mesh position={[0, 0.5, 0]}>
+        <boxGeometry args={[2.5, 1, 0.8]} />
+        <meshStandardMaterial color="#4a3a2e" roughness={0.7} />
       </mesh>
-      {/* 4 short legs */}
-      {[[-lx, -lz], [lx, -lz], [-lx, lz], [lx, lz]].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.17, z]}>
-          <cylinderGeometry args={[0.025, 0.025, 0.33, 6]} />
-          <meshStandardMaterial color="#3a3a3a" metalness={0.4} />
+      {/* Top surface (lighter) */}
+      <mesh position={[0, 1.01, 0]}>
+        <boxGeometry args={[2.6, 0.04, 0.85]} />
+        <meshStandardMaterial color="#6b5a4a" roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Bench / waiting chair for lobby */
+function WaitingBench({ position, rotation = 0 }: { position: [number, number, number]; rotation?: number }) {
+  return (
+    <group position={position} rotation={[0, rotation, 0]}>
+      <mesh position={[0, 0.3, 0]}>
+        <boxGeometry args={[1.8, 0.06, 0.5]} />
+        <meshStandardMaterial color="#3a3a3a" metalness={0.3} />
+      </mesh>
+      {/* 4 legs */}
+      {[[-0.8, -0.2], [0.8, -0.2], [-0.8, 0.2], [0.8, 0.2]].map(([x, z], i) => (
+        <mesh key={i} position={[x, 0.14, z]}>
+          <cylinderGeometry args={[0.025, 0.025, 0.27, 8]} />
+          <meshStandardMaterial color="#333" metalness={0.5} />
+        </mesh>
+      ))}
+      {/* Backrest */}
+      <mesh position={[0, 0.55, -0.22]}>
+        <boxGeometry args={[1.8, 0.35, 0.04]} />
+        <meshStandardMaterial color="#3a3a3a" metalness={0.3} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Tall bookshelf for Biblioteca */
+function TallBookshelf({ position, width = 3 }: { position: [number, number, number]; width?: number }) {
+  const shelves = 4;
+  const shelfH = 2.2;
+  return (
+    <group position={position}>
+      {/* Side panels */}
+      <mesh position={[-width / 2, shelfH / 2, 0]}>
+        <boxGeometry args={[0.04, shelfH, 0.4]} />
+        <meshStandardMaterial color="#4a3a2e" roughness={0.8} />
+      </mesh>
+      <mesh position={[width / 2, shelfH / 2, 0]}>
+        <boxGeometry args={[0.04, shelfH, 0.4]} />
+        <meshStandardMaterial color="#4a3a2e" roughness={0.8} />
+      </mesh>
+      {/* Back panel */}
+      <mesh position={[0, shelfH / 2, -0.18]}>
+        <boxGeometry args={[width, shelfH, 0.03]} />
+        <meshStandardMaterial color="#3a2a1e" roughness={0.9} />
+      </mesh>
+      {/* Shelf planks */}
+      {Array.from({ length: shelves + 1 }).map((_, i) => (
+        <mesh key={i} position={[0, (i * shelfH) / shelves, 0]}>
+          <boxGeometry args={[width, 0.04, 0.4]} />
+          <meshStandardMaterial color="#5a4a3e" roughness={0.7} />
         </mesh>
       ))}
     </group>
   );
 }
 
-/** Coffee machine with a small cup and warm glow */
-function CoffeeMachine({ position }: { position: [number, number, number] }) {
+/** Small reading/study table */
+function ReadingTable({ position }: { position: [number, number, number] }) {
   return (
     <group position={position}>
-      {/* Machine body */}
-      <mesh position={[0, 0.3, 0]}>
-        <boxGeometry args={[0.3, 0.6, 0.25]} />
-        <meshStandardMaterial color="#222" metalness={0.3} roughness={0.6} />
+      <mesh position={[0, 0.65, 0]}>
+        <boxGeometry args={[1.2, 0.04, 0.8]} />
+        <meshStandardMaterial color="#5c4a3a" roughness={0.7} />
       </mesh>
-      {/* Top section */}
-      <mesh position={[0, 0.62, 0]}>
-        <boxGeometry args={[0.28, 0.04, 0.23]} />
-        <meshStandardMaterial color="#333" metalness={0.4} />
-      </mesh>
-      {/* Small cup */}
-      <mesh position={[0.0, 0.08, 0.18]}>
-        <cylinderGeometry args={[0.04, 0.035, 0.08, 8]} />
-        <meshStandardMaterial color="#ddd" roughness={0.3} />
-      </mesh>
-      {/* Warm glow indicator */}
-      <mesh position={[0, 0.5, 0.13]}>
-        <sphereGeometry args={[0.02, 8, 8]} />
-        <meshStandardMaterial color="#ff6600" emissive="#ff6600" emissiveIntensity={2} />
-      </mesh>
-      <pointLight position={[0, 0.3, 0.2]} intensity={0.5} color="#ff9944" distance={1.5} />
+      {[[-0.5, -0.3], [0.5, -0.3], [-0.5, 0.3], [0.5, 0.3]].map(([x, z], i) => (
+        <mesh key={i} position={[x, 0.32, z]}>
+          <cylinderGeometry args={[0.025, 0.025, 0.63, 8]} />
+          <meshStandardMaterial color="#3a3a3a" metalness={0.5} />
+        </mesh>
+      ))}
     </group>
   );
 }
-
-/** All furniture for Zona Relax */
-export function RelaxFurniture() {
-  return (
-    <group>
-      <Sofa position={[4, 0, 4.5]} rotation={0.3} />
-      <Sofa position={[6, 0, 5.5]} rotation={-0.5} />
-      <Sofa position={[4.5, 0, 6.5]} rotation={0.8} />
-      <CoffeeTable position={[5, 0, 5]} />
-      <CoffeeMachine position={[7.2, 0, 4]} />
-    </group>
-  );
-}
-
 
 /* ═══════════════════════════════════════════════════════════════════
-   ENVIRONMENT — Glass walls around perimeter
+   ROOM FURNITURE GROUPS
    ═══════════════════════════════════════════════════════════════════ */
 
-/** Translucent glass wall panel */
-function GlassWall({ position, size, rotation = 0 }: {
-  position: [number, number, number];
-  size: [number, number];
-  rotation?: number;
-}) {
+/** Lobby: reception desk + waiting benches */
+export function LobbyFurniture() {
   return (
-    <mesh position={position} rotation={[0, rotation, 0]}>
-      <boxGeometry args={[size[0], 2.5, 0.06]} />
-      <meshStandardMaterial
-        color="#aabbcc"
-        transparent
-        opacity={0.12}
-        metalness={0.3}
-        roughness={0.1}
-      />
-    </mesh>
+    <group>
+      <ReceptionDesk position={[0, 0, 12.5]} />
+      <WaitingBench position={[-6, 0, 12]} rotation={0} />
+      <WaitingBench position={[6, 0, 12]} rotation={0} />
+      <WaitingBench position={[-12, 0, 12.5]} rotation={Math.PI / 6} />
+      <WaitingBench position={[12, 0, 12.5]} rotation={-Math.PI / 6} />
+    </group>
   );
 }
 
-/** Glass perimeter walls */
-export function GlassPerimeter() {
+/** Sala de Descanso: sofas, coffee table, coffee machine */
+export function DescansoFurniture() {
   return (
     <group>
-      {/* Front wall (positive Z) */}
-      <GlassWall position={[0, 1.25, 12]} size={[26, 2.5]} />
-      {/* Back wall (negative Z) */}
-      <GlassWall position={[0, 1.25, -12]} size={[26, 2.5]} />
-      {/* Left wall */}
-      <GlassWall position={[-13, 1.25, 0]} size={[24, 2.5]} rotation={Math.PI / 2} />
-      {/* Right wall */}
-      <GlassWall position={[13, 1.25, 0]} size={[24, 2.5]} rotation={Math.PI / 2} />
+      {/* L-shaped sofa arrangement */}
+      <Sofa position={[-13, 0, 5.5]} rotation={Math.PI / 2} />
+      <Sofa position={[-13, 0, 7.5]} rotation={Math.PI / 2} />
+      <Sofa position={[-10.5, 0, 8.5]} rotation={0} />
+      <CoffeeTable position={[-10.5, 0, 6]} />
+      <CoffeeMachine position={[-5, 0, 8.5]} />
+      <PottedPlant position={[-3, 0, 5]} seed={1} />
+      <PottedPlant position={[-16, 0, 8.5]} seed={3} />
+    </group>
+  );
+}
+
+/** Sala de Comunicación: meeting table, whiteboard, plants */
+export function ComunicacionFurniture() {
+  return (
+    <group>
+      <MeetingTable position={[10, 0, 6.5]} />
+      <Whiteboard position={[16, 0, 9]} />
+      <PottedPlant position={[4, 0, 8.5]} seed={0} />
+      <PottedPlant position={[17, 0, 5]} seed={2} />
+      <PottedPlant position={[4, 0, 4.5]} seed={4} />
+      <PottedPlant position={[16, 0, 4.5]} seed={6} />
+      {/* Extra chairs around table */}
+      <OfficeChair position={[8, 0, 5.8]} />
+      <OfficeChair position={[12, 0, 5.8]} />
+      <OfficeChair position={[8, 0, 7.2]} />
+      <OfficeChair position={[12, 0, 7.2]} />
+      <OfficeChair position={[10, 0, 5.5]} />
+      <OfficeChair position={[10, 0, 7.5]} />
+    </group>
+  );
+}
+
+/** Sala de Trabajo: 12+ desks with laptops, chairs, lamps in rows */
+export function TrabajoFurniture() {
+  // 4 columns x 3 rows = 12 desks
+  const desks: [number, number, number][] = [];
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 4; col++) {
+      desks.push([-12 + col * 7, 0, -3.5 + row * 2.5]);
+    }
+  }
+
+  return (
+    <group>
+      {desks.map((pos, i) => {
+        const deskTopY = 0.75;
+        return (
+          <group key={i}>
+            <Desk position={pos} />
+            <Laptop position={[pos[0], deskTopY, pos[2]]} />
+            <OfficeChair position={[pos[0], 0, pos[2] + 0.6]} />
+            <DeskLamp position={[pos[0] + 0.5, deskTopY, pos[2] - 0.2]} />
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+/** Biblioteca: bookshelves, reading tables, quiet lighting */
+export function BibliotecaFurniture() {
+  return (
+    <group>
+      {/* 3 tall bookshelves — one per district */}
+      <TallBookshelf position={[-12, 0, -13.5]} width={4} />
+      <TallBookshelf position={[0, 0, -13.5]} width={5} />
+      <TallBookshelf position={[12, 0, -13.5]} width={4} />
+
+      {/* Reading tables */}
+      <ReadingTable position={[-6, 0, -8]} />
+      <ReadingTable position={[6, 0, -8]} />
+
+      {/* Chairs at reading tables */}
+      <OfficeChair position={[-6, 0, -7.2]} />
+      <OfficeChair position={[-6, 0, -8.8]} />
+      <OfficeChair position={[6, 0, -7.2]} />
+      <OfficeChair position={[6, 0, -8.8]} />
+
+      {/* Subtle warm lights for reading areas */}
+      <pointLight position={[-6, 3, -8]} intensity={3} color="#ffd699" distance={6} />
+      <pointLight position={[6, 3, -8]} intensity={3} color="#ffd699" distance={6} />
     </group>
   );
 }

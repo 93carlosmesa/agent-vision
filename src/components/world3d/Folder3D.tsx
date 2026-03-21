@@ -1,6 +1,6 @@
 /**
- * Folder3D — Portfolio folders replacing crystal skill objects.
- * Each skill is a Manila-style folder on a bookshelf, grouped by district.
+ * Folder3D — Portfolio folders on Biblioteca bookshelves.
+ * Each skill is a Manila-style folder placed on shelves, grouped by district.
  */
 
 import { useRef } from 'react';
@@ -8,7 +8,7 @@ import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import type { Mesh } from 'three';
 
-/* ── Hardcoded skill list (same as original) ── */
+/* ── Hardcoded skill list ── */
 interface Skill3D {
   id: string;
   label: string;
@@ -33,15 +33,19 @@ const SKILLS_3D: Skill3D[] = [
   { id: 'global--nexo-board-ops',       label: 'Nexo Board Ops',          district: 'global' },
 ];
 
-/* ── District positioning & colors ── */
-const DISTRICT_CONFIG: Record<string, { cx: number; cz: number; color: string; folderColor: string }> = {
-  inv:    { cx: -6, cz: -8,  color: '#3b82f6', folderColor: '#c4a35a' },
-  dev:    { cx: 0,  cz: -10, color: '#22c55e', folderColor: '#b0926a' },
-  global: { cx: 6,  cz: -8,  color: '#e0e0ff', folderColor: '#c9a96e' },
+/* ── District config: bookshelf positions in Biblioteca ── */
+const DISTRICT_SHELF: Record<string, {
+  cx: number; cz: number;
+  color: string; folderColor: string;
+  label: string;
+}> = {
+  inv:    { cx: -12, cz: -13.5, color: '#3b82f6', folderColor: '#c4a35a', label: 'Investment' },
+  dev:    { cx: 0,   cz: -13.5, color: '#22c55e', folderColor: '#b0926a', label: 'Development' },
+  global: { cx: 12,  cz: -13.5, color: '#e0e0ff', folderColor: '#c9a96e', label: 'Global' },
 };
 
-/* ── Single floating folder ── */
-function Folder({ position, color, folderColor, label, seed }: {
+/* ── Single folder on shelf ── */
+function ShelfFolder({ position, color, folderColor, label, seed }: {
   position: [number, number, number];
   color: string;
   folderColor: string;
@@ -53,59 +57,48 @@ function Folder({ position, color, folderColor, label, seed }: {
   useFrame(({ clock }) => {
     if (!meshRef.current) return;
     const t = clock.getElapsedTime();
-    // Gentle slow rotation (slower than crystals)
-    meshRef.current.rotation.y = t * 0.2 + seed;
-    meshRef.current.rotation.x = Math.sin(t * 0.15 + seed) * 0.05;
-    meshRef.current.position.y = position[1] + Math.sin(t * 0.5 + seed * 2) * 0.06;
+    // Very subtle breathing motion (folders sit on shelves)
+    meshRef.current.position.y = position[1] + Math.sin(t * 0.3 + seed * 2) * 0.01;
   });
 
   return (
     <group position={position}>
       <group ref={meshRef}>
-        {/* Back cover */}
-        <mesh position={[0, 0, -0.02]}>
-          <boxGeometry args={[0.3, 0.4, 0.012]} />
+        {/* Back cover — standing upright */}
+        <mesh position={[0, 0, -0.01]}>
+          <boxGeometry args={[0.25, 0.35, 0.01]} />
           <meshStandardMaterial color={folderColor} roughness={0.8} />
         </mesh>
-        {/* Front cover — slightly open */}
-        <mesh position={[0, -0.01, 0.025]} rotation={[0.15, 0, 0]}>
-          <boxGeometry args={[0.3, 0.38, 0.012]} />
+        {/* Front cover — slightly tilted */}
+        <mesh position={[0, -0.005, 0.018]} rotation={[0.08, 0, 0]}>
+          <boxGeometry args={[0.25, 0.34, 0.01]} />
           <meshStandardMaterial color={folderColor} roughness={0.8} />
         </mesh>
         {/* Tab at top */}
-        <mesh position={[-0.06, 0.22, -0.02]}>
-          <boxGeometry args={[0.12, 0.06, 0.014]} />
+        <mesh position={[-0.04, 0.19, -0.01]}>
+          <boxGeometry args={[0.1, 0.04, 0.012]} />
           <meshStandardMaterial color={folderColor} roughness={0.7} />
         </mesh>
-        {/* Inner "paper" pages visible in the gap */}
-        <mesh position={[0, -0.02, 0]}>
-          <boxGeometry args={[0.26, 0.34, 0.02]} />
+        {/* Inner pages */}
+        <mesh position={[0, -0.01, 0.003]}>
+          <boxGeometry args={[0.22, 0.3, 0.015]} />
           <meshStandardMaterial color="#e8e0d0" roughness={0.9} />
         </mesh>
-        {/* Subtle district color accent strip */}
-        <mesh position={[0, -0.19, 0.032]} rotation={[0.15, 0, 0]}>
-          <boxGeometry args={[0.28, 0.03, 0.002]} />
-          <meshStandardMaterial
-            color={color}
-            emissive={color}
-            emissiveIntensity={0.6}
-          />
+        {/* District color accent strip */}
+        <mesh position={[0, -0.16, 0.024]} rotation={[0.08, 0, 0]}>
+          <boxGeometry args={[0.23, 0.025, 0.002]} />
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.6} />
         </mesh>
       </group>
 
       {/* Label */}
-      <Html
-        position={[0, -0.45, 0]}
-        center
-        distanceFactor={14}
-        style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}
-      >
+      <Html position={[0, -0.3, 0]} center distanceFactor={14} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
         <div style={{
           background: 'rgba(20,18,15,0.85)',
           color,
-          padding: '1px 6px',
+          padding: '1px 5px',
           borderRadius: '3px',
-          fontSize: '9px',
+          fontSize: '8px',
           fontFamily: 'monospace',
           fontWeight: 500,
           border: `1px solid ${color}30`,
@@ -117,48 +110,6 @@ function Folder({ position, color, folderColor, label, seed }: {
   );
 }
 
-/* ── Bookshelf for a district ── */
-function Bookshelf({ position, slots, color }: {
-  position: [number, number, number];
-  slots: number;
-  color: string;
-}) {
-  const shelfW = Math.max(slots * 0.55, 2);
-  const dividers = [];
-  for (let i = 0; i <= slots; i++) {
-    dividers.push(
-      <mesh key={i} position={[-shelfW / 2 + (i * shelfW) / slots, 0.2, 0]}>
-        <boxGeometry args={[0.03, 0.4, 0.35]} />
-        <meshStandardMaterial color="#3a302a" roughness={0.8} />
-      </mesh>
-    );
-  }
-
-  return (
-    <group position={position}>
-      {/* Bottom shelf */}
-      <mesh position={[0, 0.0, 0]}>
-        <boxGeometry args={[shelfW + 0.1, 0.04, 0.38]} />
-        <meshStandardMaterial color="#4a3a2e" roughness={0.7} />
-      </mesh>
-      {/* Top shelf */}
-      <mesh position={[0, 0.4, 0]}>
-        <boxGeometry args={[shelfW + 0.1, 0.04, 0.38]} />
-        <meshStandardMaterial color="#4a3a2e" roughness={0.7} />
-      </mesh>
-      {/* Back panel */}
-      <mesh position={[0, 0.2, -0.17]}>
-        <boxGeometry args={[shelfW + 0.1, 0.4, 0.02]} />
-        <meshStandardMaterial color="#3a302a" roughness={0.8} />
-      </mesh>
-      {/* Dividers */}
-      {dividers}
-      {/* Subtle accent light */}
-      <pointLight position={[0, 0.5, 0.3]} intensity={0.3} color={color} distance={2} />
-    </group>
-  );
-}
-
 /* ── District label ── */
 function DistrictLabel({ position, label, color }: {
   position: [number, number, number];
@@ -166,18 +117,13 @@ function DistrictLabel({ position, label, color }: {
   color: string;
 }) {
   return (
-    <Html
-      position={position}
-      center
-      distanceFactor={16}
-      style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}
-    >
+    <Html position={position} center distanceFactor={18} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
       <div style={{
         background: 'rgba(20,18,15,0.75)',
         color,
-        padding: '3px 12px',
+        padding: '3px 10px',
         borderRadius: '4px',
-        fontSize: '12px',
+        fontSize: '11px',
         fontFamily: 'monospace',
         fontWeight: 700,
         letterSpacing: '2px',
@@ -190,7 +136,7 @@ function DistrictLabel({ position, label, color }: {
   );
 }
 
-/* ── All skill folders grouped by district ── */
+/* ── All skill folders on Biblioteca shelves ── */
 export function SkillFolders3D() {
   const grouped = {
     inv: SKILLS_3D.filter(s => s.district === 'inv'),
@@ -201,54 +147,50 @@ export function SkillFolders3D() {
   return (
     <group>
       {Object.entries(grouped).map(([district, skills]) => {
-        const config = DISTRICT_CONFIG[district];
-        const cols = Math.min(skills.length, district === 'dev' ? 4 : 3);
+        const shelf = DISTRICT_SHELF[district];
+
+        // Place folders along the shelf, evenly spaced
+        const shelfWidth = district === 'dev' ? 4.5 : 3.5;
 
         return (
           <group key={district}>
+            {/* District label above bookshelf */}
             <DistrictLabel
-              position={[config.cx, 1.5, config.cz - 1.8]}
-              label={district === 'inv' ? 'Investment' : district === 'dev' ? 'Development' : 'Global'}
-              color={config.color}
+              position={[shelf.cx, 2.8, shelf.cz]}
+              label={shelf.label}
+              color={shelf.color}
             />
 
-            {/* Bookshelf on the ground */}
-            <Bookshelf
-              position={[config.cx, 0, config.cz + 0.5]}
-              slots={Math.min(skills.length, cols)}
-              color={config.color}
-            />
-
-            {/* Subtle floor area marker */}
-            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[config.cx, 0.01, config.cz]}>
-              <planeGeometry args={[cols * 1.8 + 1, Math.ceil(skills.length / cols) * 1.6 + 1]} />
-              <meshStandardMaterial
-                color={config.color}
-                emissive={config.color}
-                emissiveIntensity={0.1}
-                transparent
-                opacity={0.04}
-              />
-            </mesh>
-
-            {/* Floating folders */}
+            {/* Folders on shelves — distribute across shelf rows */}
             {skills.map((skill, i) => {
-              const col = i % cols;
-              const row = Math.floor(i / cols);
-              const x = config.cx - (cols - 1) * 0.8 + col * 1.6;
-              const z = config.cz + row * 1.4;
+              const shelfRow = i < Math.ceil(skills.length / 2) ? 0 : 1;
+              const idxInRow = shelfRow === 0 ? i : i - Math.ceil(skills.length / 2);
+              const rowCount = shelfRow === 0 ? Math.ceil(skills.length / 2) : skills.length - Math.ceil(skills.length / 2);
+              const rowSpacing = shelfWidth / Math.max(rowCount, 1);
+              const x = shelf.cx - shelfWidth / 2 + rowSpacing * 0.5 + idxInRow * rowSpacing;
+              // Bottom shelf row = y 0.2, second shelf row = y 0.75
+              const y = shelfRow === 0 ? 0.2 : 0.75;
+              const z = shelf.cz + 0.1;
 
               return (
-                <Folder
+                <ShelfFolder
                   key={skill.id}
-                  position={[x, 0.8, z]}
-                  color={config.color}
-                  folderColor={config.folderColor}
+                  position={[x, y, z]}
+                  color={shelf.color}
+                  folderColor={shelf.folderColor}
                   label={skill.label}
                   seed={i * 1.7 + district.charCodeAt(0)}
                 />
               );
             })}
+
+            {/* Subtle accent light per district */}
+            <pointLight
+              position={[shelf.cx, 1.5, shelf.cz + 0.5]}
+              intensity={0.4}
+              color={shelf.color}
+              distance={3}
+            />
           </group>
         );
       })}

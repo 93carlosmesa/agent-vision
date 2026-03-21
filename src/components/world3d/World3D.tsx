@@ -1,6 +1,8 @@
 /**
- * World3D — R3F Canvas with realistic office scene: warm wood floor, glass walls,
- * zone markers, agent avatars, portfolio folders, and interaction beams.
+ * World3D — R3F Canvas with multi-room office building.
+ *
+ * Rooms: Lobby, Sala de Descanso, Sala de Comunicación, Sala de Trabajo, Biblioteca
+ * Agents are placed based on their status AND context (dev vs investment).
  */
 
 import { useMemo } from 'react';
@@ -10,7 +12,14 @@ import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { Agent3D } from './Agent3D';
 import { SkillFolders3D } from './Folder3D';
 import { InteractionBeam3D } from './InteractionBeam3D';
-import { TrabajoFurniture, ComunicacionFurniture, RelaxFurniture, GlassPerimeter } from './OfficeFurniture3D';
+import { OfficeLayout3D } from './OfficeLayout3D';
+import {
+  LobbyFurniture,
+  DescansoFurniture,
+  ComunicacionFurniture,
+  TrabajoFurniture,
+  BibliotecaFurniture,
+} from './OfficeFurniture3D';
 import type { ISession, AgentNameMap, IInteraction, SessionStatus } from '../../types';
 
 export interface World3DProps {
@@ -19,51 +28,75 @@ export interface World3DProps {
   interactions?: IInteraction[];
 }
 
-/* ── Zone centers in 3D space ── */
-const ZONE_CENTERS: Record<SessionStatus, { cx: number; cz: number }> = {
-  running: { cx: -5, cz: 1 },
-  waiting: { cx: 5, cz: -3 },
-  idle:    { cx: 5, cz: 5 },
+/* ── Agent context mapping ── */
+const INVESTMENT_AGENTS = ['ginny', 'psych-market', 'us-open'];
+const DEV_AGENTS = [
+  'codereviewer', 'cybersec', 'git-guardian',
+  'senior-frontend-architect', 'linter', 'prettier',
+  'controlnaming', 'ui-usability-analyst',
+  'fullstack-smoke-tester', 'backend-socket-architect', 'emma',
+];
+const ORCHESTRATORS = ['main', 'samantha'];
+
+type WorkContext = 'development' | 'investment';
+type RoomKey = 'lobby' | 'descanso' | 'comunicacion' | 'trabajo' | 'biblioteca';
+
+/* ── Room centers for agent placement ── */
+const ROOM_CENTERS: Record<RoomKey, { cx: number; cz: number }> = {
+  lobby:        { cx: 0,   cz: 12 },
+  descanso:     { cx: -10, cz: 6.5 },
+  comunicacion: { cx: 10,  cz: 6.5 },
+  trabajo:      { cx: 0,   cz: -1 },
+  biblioteca:   { cx: 0,   cz: -10 },
 };
 
+function matchesContext(agentId: string, list: string[]): boolean {
+  const lower = agentId.toLowerCase();
+  return list.some(keyword => lower.includes(keyword));
+}
+
+function detectContext(sessions: ISession[]): WorkContext {
+  const running = sessions.filter(s => s.status === 'running');
+  const hasInvestment = running.some(s => matchesContext(s.agentId, INVESTMENT_AGENTS));
+  const hasDev = running.some(s => matchesContext(s.agentId, DEV_AGENTS));
+
+  if (hasInvestment && !hasDev) return 'investment';
+  return 'development';
+}
+
+function isOrchestrator(agentId: string): boolean {
+  return matchesContext(agentId, ORCHESTRATORS);
+}
+
+function isInContext(agentId: string, context: WorkContext): boolean {
+  if (isOrchestrator(agentId)) return true;
+  if (context === 'investment') return matchesContext(agentId, INVESTMENT_AGENTS);
+  return matchesContext(agentId, DEV_AGENTS);
+}
+
+function getRoomForAgent(agentId: string, status: SessionStatus, context: WorkContext): RoomKey {
+  // Out-of-context agents go to lobby
+  if (!isInContext(agentId, context)) return 'lobby';
+
+  switch (status) {
+    case 'running': return 'trabajo';
+    case 'waiting': return 'comunicacion';
+    case 'idle':    return 'descanso';
+  }
+}
+
 function gridPosition(
-  cx: number, cz: number, index: number, cols: number,
+  cx: number, cz: number, index: number, cols: number, spacing = 1.6,
 ): [number, number, number] {
   const col = index % cols;
   const row = Math.floor(index / cols);
-  return [cx - (cols - 1) * 0.7 + col * 1.4, 0, cz - 1.5 + row * 1.6];
+  return [cx - (cols - 1) * (spacing / 2) + col * spacing, 0, cz - 1.5 + row * spacing];
 }
 
-/* ── Zone glow planes (toned down for realistic look) ── */
-function ZonePlane({ position, color, size, label }: {
-  position: [number, number, number];
-  color: string;
-  size: [number, number];
-  label: string;
-}) {
-  return (
-    <group position={position}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={size} />
-        <meshStandardMaterial color={color} transparent opacity={0.06} emissive={color} emissiveIntensity={0.15} />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-        <ringGeometry args={[Math.min(size[0], size[1]) * 0.48, Math.min(size[0], size[1]) * 0.5, 64]} />
-        <meshStandardMaterial color={color} transparent opacity={0.15} emissive={color} emissiveIntensity={0.25} />
-      </mesh>
-      <group position={[0, 0.02, size[1] * 0.42]}>
-        <mesh rotation={[-Math.PI / 2, 0, 0]}>
-          <planeGeometry args={[label.length * 0.18, 0.3]} />
-          <meshStandardMaterial color={color} transparent opacity={0.12} emissive={color} emissiveIntensity={0.2} />
-        </mesh>
-      </group>
-    </group>
-  );
-}
-
-/* ── Scene internals (rendered inside Canvas) ── */
+/* ── Scene internals ── */
 function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps) {
   const { agents, positionMap } = useMemo(() => {
+    const context = detectContext(sessions);
     const sessionByAgent = new Map<string, ISession>();
     for (const s of sessions) {
       sessionByAgent.set(s.agentId, s);
@@ -71,8 +104,9 @@ function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps)
 
     const allIds = new Set([...Object.keys(agentNames), ...sessions.map(s => s.agentId)]);
 
-    const groups: Record<SessionStatus, { id: string; name: string }[]> = {
-      running: [], waiting: [], idle: [],
+    // Group agents by room
+    const roomGroups: Record<RoomKey, { id: string; name: string; status: SessionStatus }[]> = {
+      lobby: [], descanso: [], comunicacion: [], trabajo: [], biblioteca: [],
     };
 
     for (const id of allIds) {
@@ -80,30 +114,34 @@ function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps)
       const status: SessionStatus = session?.status ?? 'idle';
       const rawName = agentNames[id] ?? id;
       const name = rawName.replace(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F?)\s*/u, '').trim() || id;
-      groups[status].push({ id, name });
+      const room = getRoomForAgent(id, status, context);
+      roomGroups[room].push({ id, name, status });
     }
 
     const result: { id: string; name: string; pos: [number, number, number]; status: SessionStatus; isActive: boolean }[] = [];
     const posMap = new Map<string, [number, number, number]>();
 
-    for (const status of ['running', 'waiting', 'idle'] as SessionStatus[]) {
-      const zone = ZONE_CENTERS[status];
-      const list = groups[status];
-      const cols = Math.min(list.length, status === 'running' ? 4 : 3);
+    for (const room of Object.keys(roomGroups) as RoomKey[]) {
+      const center = ROOM_CENTERS[room];
+      const list = roomGroups[room];
+      const cols = Math.min(list.length, room === 'trabajo' ? 4 : 3);
+      const spacing = room === 'lobby' ? 2.0 : 1.6;
+
       for (let i = 0; i < list.length; i++) {
-        const pos = gridPosition(zone.cx, zone.cz, i, Math.max(cols, 1));
+        const pos = gridPosition(center.cx, center.cz, i, Math.max(cols, 1), spacing);
+        const agent = list[i];
         result.push({
-          id: list[i].id,
-          name: list[i].name,
+          id: agent.id,
+          name: agent.name,
           pos,
-          status,
-          isActive: status !== 'idle',
+          status: agent.status,
+          isActive: agent.status !== 'idle',
         });
-        posMap.set(list[i].id, pos);
+        posMap.set(agent.id, pos);
       }
     }
 
-    // Also map session keys to positions
+    // Map session keys to positions for beams
     const sessionKeyMap = new Map<string, [number, number, number]>();
     for (const s of sessions) {
       const agentPos = posMap.get(s.agentId);
@@ -131,48 +169,54 @@ function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps)
 
   return (
     <>
-      {/* Warm office lighting */}
-      <ambientLight intensity={0.25} color="#fff5e6" />
-      <pointLight position={[-6, 8, 0]} intensity={30} color="#ffd699" distance={25} />
-      <pointLight position={[6, 8, -3]} intensity={25} color="#ffe0b2" distance={25} />
-      <pointLight position={[6, 8, 5]} intensity={20} color="#ffcc80" distance={25} />
-      <pointLight position={[0, 12, 0]} intensity={25} color="#fff8f0" distance={30} />
+      {/* Warm office lighting — distributed across rooms */}
+      <ambientLight intensity={0.2} color="#fff5e6" />
+      {/* Trabajo (brightest) */}
+      <pointLight position={[-8, 8, -1]} intensity={30} color="#ffd699" distance={25} />
+      <pointLight position={[8, 8, -1]} intensity={30} color="#ffd699" distance={25} />
+      {/* Descanso (warm) */}
+      <pointLight position={[-10, 7, 6.5]} intensity={20} color="#ffcc80" distance={20} />
+      {/* Comunicación */}
+      <pointLight position={[10, 7, 6.5]} intensity={22} color="#ffe0b2" distance={20} />
+      {/* Lobby */}
+      <pointLight position={[0, 6, 12]} intensity={18} color="#ddeeff" distance={18} />
+      {/* Biblioteca (dimmer, calmer) */}
+      <pointLight position={[0, 6, -10]} intensity={15} color="#ffeedd" distance={22} />
+      {/* Overhead fill */}
+      <pointLight position={[0, 14, 0]} intensity={20} color="#fff8f0" distance={40} />
 
-      {/* Lighter warm fog */}
-      <fog attach="fog" args={['#1a1a24', 18, 50]} />
+      {/* Warm fog */}
+      <fog attach="fog" args={['#1a1a24', 25, 65]} />
 
-      {/* Warm office floor (dark wood tone) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-        <planeGeometry args={[50, 50]} />
-        <meshStandardMaterial color="#3a3530" roughness={0.85} />
+      {/* Base floor (covers gaps / extends under everything) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
+        <planeGeometry args={[60, 50]} />
+        <meshStandardMaterial color="#2a2520" roughness={0.9} />
       </mesh>
 
-      {/* Very subtle grid (toned down) */}
+      {/* Subtle grid */}
       <Grid
         position={[0, 0, 0]}
-        args={[50, 50]}
+        args={[60, 50]}
         cellSize={2}
         cellThickness={0.3}
         cellColor="#2a2520"
         sectionSize={5}
         sectionThickness={0.5}
         sectionColor="#302a25"
-        fadeDistance={30}
+        fadeDistance={40}
         infiniteGrid
       />
 
-      {/* Zone planes (subtle) */}
-      <ZonePlane position={[-5, 0.01, 1]} color="#7c9cff" size={[8, 10]} label="Trabajo" />
-      <ZonePlane position={[5, 0.01, -3]} color="#53e3c2" size={[7, 6]} label="Comunicación" />
-      <ZonePlane position={[5, 0.01, 5]} color="#ff9f43" size={[7, 6]} label="Relax" />
+      {/* Office layout — walls, floors, doorways, labels */}
+      <OfficeLayout3D />
 
-      {/* Office furniture */}
-      <TrabajoFurniture />
+      {/* Room furniture */}
+      <LobbyFurniture />
+      <DescansoFurniture />
       <ComunicacionFurniture />
-      <RelaxFurniture />
-
-      {/* Glass perimeter walls */}
-      <GlassPerimeter />
+      <TrabajoFurniture />
+      <BibliotecaFurniture />
 
       {/* Agents */}
       {agents.map((a) => (
@@ -191,19 +235,19 @@ function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps)
         <InteractionBeam3D key={b.id} from={b.from} to={b.to} type={b.type} />
       ))}
 
-      {/* Skill folders (replacing crystals) */}
+      {/* Skill folders in Biblioteca */}
       <SkillFolders3D />
 
       {/* Controls */}
       <OrbitControls
         makeDefault
         minDistance={5}
-        maxDistance={35}
+        maxDistance={50}
         maxPolarAngle={Math.PI / 2.1}
-        target={[0, 0, 1]}
+        target={[0, 0, 0]}
       />
 
-      {/* Postprocessing — reduced bloom */}
+      {/* Postprocessing */}
       <EffectComposer>
         <Bloom luminanceThreshold={0.4} luminanceSmoothing={0.9} intensity={0.3} />
       </EffectComposer>
@@ -215,7 +259,7 @@ export function World3D({ sessions, agentNames, interactions }: World3DProps) {
   return (
     <div style={{ width: '100%', height: '100%', background: '#1a1a24' }}>
       <Canvas
-        camera={{ position: [0, 14, 18], fov: 55 }}
+        camera={{ position: [0, 25, 30], fov: 50 }}
         gl={{ antialias: true, alpha: false }}
         style={{ width: '100%', height: '100%' }}
       >
