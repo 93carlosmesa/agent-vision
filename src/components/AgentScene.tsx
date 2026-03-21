@@ -5,9 +5,10 @@
 
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import type { CSSProperties } from 'react';
-import type { ISession, AgentNameMap, ISceneConfig, ISkill, ISkillVisit, SkillDistrict } from '../types';
+import type { ISession, AgentNameMap, ISceneConfig, ISkill, ISkillVisit, IInteraction, SkillDistrict } from '../types';
 import { SessionService } from '../services/SessionService';
 import { PixelAvatar } from './PixelAvatar';
+import { InteractionLines } from './InteractionLines';
 import { SKILLS_BY_DISTRICT, DISTRICT_META } from '../config/skills';
 
 interface AgentSceneProps {
@@ -21,6 +22,7 @@ interface AgentSceneProps {
     collaborationTag: string;
   }>;
   skillVisits?: ISkillVisit[];
+  interactions?: IInteraction[];
 }
 
 /** World is 180% tall to accommodate skill district below zones */
@@ -110,7 +112,7 @@ for (const [district, skills] of Object.entries(SKILLS_BY_DISTRICT)) {
   });
 }
 
-export function AgentScene({ sessions, agentNames, sceneConfig, memberMetaBySession, skillVisits = [] }: AgentSceneProps) {
+export function AgentScene({ sessions, agentNames, sceneConfig, memberMetaBySession, skillVisits = [], interactions = [] }: AgentSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const worldRef = useRef<HTMLDivElement>(null);
 
@@ -207,6 +209,15 @@ export function AgentScene({ sessions, agentNames, sceneConfig, memberMetaBySess
         return [...placeSquad(movement, 63), ...placeSquad(naming, 82)];
       })();
 
+  // Build position map for interaction lines
+  const positionMap = useMemo(() => {
+    const map: Record<string, { left: string; top: string }> = {};
+    for (const { session, position } of positioned) {
+      map[session.key] = { left: position.left, top: position.top };
+    }
+    return map;
+  }, [positioned]);
+
   return (
     <div
       ref={containerRef}
@@ -280,6 +291,9 @@ export function AgentScene({ sessions, agentNames, sceneConfig, memberMetaBySess
             );
           },
         )}
+
+        {/* ── Interaction Lines ── */}
+        <InteractionLines interactions={interactions} positionMap={positionMap} />
 
         {/* ── Avatar Layer ── */}
         <div className="scene-avatar-layer">
