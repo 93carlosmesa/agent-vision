@@ -883,11 +883,11 @@ function SamanthaAvatarDetailed({
   const hairColor = getMasterHair(agentId);
 
   // Palette
-  const skinColor  = '#f5d5b0';
-  const skinDark   = '#e8c49e';
-  const cheekColor = '#f9b8b8';
-  const lipColor   = '#d4798a';
-  const eyeWhite   = '#f8f8f8';
+  const skinColor  = '#fce0c5';        // warmer, brighter skin
+  const skinDark   = '#f0cba8';
+  const cheekColor = '#ffbdbd';
+  const lipColor   = '#c96b7e';        // more natural lip tone
+  const eyeWhite   = '#fafafa';
   const irisColor  = '#3d7a6e';       // teal-green eyes for Samantha
   const blazerColor = '#6b1d3a';      // burgundy blazer
   const blazerDark  = '#501428';      // darker burgundy for lapels/shadows
@@ -957,14 +957,17 @@ function SamanthaAvatarDetailed({
       }
     }
 
-    // Blink — lid drop only, no stretching
+    // Blink — párpado esfera baja posición Y y crece scaleY para cubrir ojo
     if (leftEyeRef.current && rightEyeRef.current) {
       const blinkCycle = (t + seed) % 3.5;
       const blink = blinkCycle < 0.12;
       const blinkPhase = blink ? blinkCycle / 0.12 : 0;
-      const lidDrop = blink ? Math.sin(blinkPhase * Math.PI) * 0.046 : 0;
-      leftEyeRef.current.position.y  = 0.028 - lidDrop;
-      rightEyeRef.current.position.y = 0.028 - lidDrop;
+      const blinkAmount = blink ? Math.sin(blinkPhase * Math.PI) : 0;
+      // Párpado baja de y=0.048 a y=0.01 y crece de scaleY 0.20 a 0.70
+      leftEyeRef.current.position.y  = 0.048 - blinkAmount * 0.038;
+      rightEyeRef.current.position.y = 0.048 - blinkAmount * 0.038;
+      leftEyeRef.current.scale.y  = 0.20 + blinkAmount * 0.50;
+      rightEyeRef.current.scale.y = 0.20 + blinkAmount * 0.50;
     }
 
     // Arm animation — left arm holds tablet so less swing
@@ -1125,51 +1128,55 @@ function SamanthaAvatarDetailed({
           {/* ── EYES ── */}
           {/* Left eye */}
           <group position={[-0.085, 0.04, 0.19]}>
+            {/* Blanco del ojo */}
             <mesh>
+              <sphereGeometry args={[0.050, 14, 14]} />
+              <meshStandardMaterial color={eyeWhite} roughness={0.25} />
+            </mesh>
+            {/* Iris */}
+            <mesh position={[0, 0, 0.032]}>
+              <sphereGeometry args={[0.028, 12, 12]} />
+              <meshStandardMaterial color={irisColor} roughness={0.35} />
+            </mesh>
+            {/* Pupila */}
+            <mesh position={[0, 0, 0.046]}>
+              <sphereGeometry args={[0.013, 8, 8]} />
+              <meshStandardMaterial color="#050505" />
+            </mesh>
+            {/* Reflejo */}
+            <mesh position={[0.010, 0.012, 0.050]}>
+              <sphereGeometry args={[0.005, 6, 6]} />
+              <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.6} />
+            </mesh>
+            {/* Párpado — esfera aplanada que cubre el ojo desde arriba, color piel */}
+            <mesh ref={leftEyeRef} position={[0, 0.048, 0.005]} scale={[1.15, 0.20, 1.05]}>
               <sphereGeometry args={[0.052, 12, 12]} />
-              <meshStandardMaterial color={eyeWhite} roughness={0.30} />
-            </mesh>
-            <mesh position={[0, 0, 0.033]}>
-              <sphereGeometry args={[0.030, 10, 10]} />
-              <meshStandardMaterial color={irisColor} roughness={0.40} />
-            </mesh>
-            <mesh position={[0, 0, 0.048]}>
-              <sphereGeometry args={[0.014, 8, 8]} />
-              <meshStandardMaterial color="#000000" />
-            </mesh>
-            <mesh position={[0.010, 0.014, 0.052]}>
-              <sphereGeometry args={[0.006, 6, 6]} />
-              <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.5} />
-            </mesh>
-            {/* Eyelid */}
-            <mesh ref={leftEyeRef} position={[0, 0.028, 0.045]} scale={[1, 1, 1]}>
-              <boxGeometry args={[0.110, 0.042, 0.012]} />
-              <meshStandardMaterial color={skinColor} roughness={0.55} />
+              <meshStandardMaterial color={skinColor} roughness={0.50} />
             </mesh>
           </group>
 
           {/* Right eye */}
           <group position={[0.085, 0.04, 0.19]}>
             <mesh>
+              <sphereGeometry args={[0.050, 14, 14]} />
+              <meshStandardMaterial color={eyeWhite} roughness={0.25} />
+            </mesh>
+            <mesh position={[0, 0, 0.032]}>
+              <sphereGeometry args={[0.028, 12, 12]} />
+              <meshStandardMaterial color={irisColor} roughness={0.35} />
+            </mesh>
+            <mesh position={[0, 0, 0.046]}>
+              <sphereGeometry args={[0.013, 8, 8]} />
+              <meshStandardMaterial color="#050505" />
+            </mesh>
+            <mesh position={[0.010, 0.012, 0.050]}>
+              <sphereGeometry args={[0.005, 6, 6]} />
+              <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.6} />
+            </mesh>
+            {/* Párpado */}
+            <mesh ref={rightEyeRef} position={[0, 0.048, 0.005]} scale={[1.15, 0.20, 1.05]}>
               <sphereGeometry args={[0.052, 12, 12]} />
-              <meshStandardMaterial color={eyeWhite} roughness={0.30} />
-            </mesh>
-            <mesh position={[0, 0, 0.033]}>
-              <sphereGeometry args={[0.030, 10, 10]} />
-              <meshStandardMaterial color={irisColor} roughness={0.40} />
-            </mesh>
-            <mesh position={[0, 0, 0.048]}>
-              <sphereGeometry args={[0.014, 8, 8]} />
-              <meshStandardMaterial color="#000000" />
-            </mesh>
-            <mesh position={[0.010, 0.014, 0.052]}>
-              <sphereGeometry args={[0.006, 6, 6]} />
-              <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.5} />
-            </mesh>
-            {/* Eyelid */}
-            <mesh ref={rightEyeRef} position={[0, 0.028, 0.045]} scale={[1, 1, 1]}>
-              <boxGeometry args={[0.110, 0.042, 0.012]} />
-              <meshStandardMaterial color={skinColor} roughness={0.55} />
+              <meshStandardMaterial color={skinColor} roughness={0.50} />
             </mesh>
           </group>
 
@@ -1211,19 +1218,21 @@ function SamanthaAvatarDetailed({
             <meshStandardMaterial color="#111111" />
           </mesh>
 
-          {/* ── NOSE ── */}
-          <mesh position={[0, -0.02, 0.22]} scale={[0.55, 0.65, 0.55]}>
-            <sphereGeometry args={[0.032, 8, 8]} />
-            <meshStandardMaterial color={skinDark} roughness={0.55} />
+          {/* ── NOSE — very small, delicate ── */}
+          <mesh position={[0, -0.02, 0.225]} scale={[0.40, 0.45, 0.30]}>
+            <sphereGeometry args={[0.022, 8, 8]} />
+            <meshStandardMaterial color={skinDark} roughness={0.50} />
           </mesh>
 
-          {/* ── LIPS ── */}
-          <mesh position={[0, -0.085, 0.20]} scale={[1.2, 0.45, 0.55]} rotation={[0.1, 0, 0]}>
-            <sphereGeometry args={[0.038, 10, 10]} />
+          {/* ── LIPS — subtle, close to face ── */}
+          {/* Upper lip (thinner) */}
+          <mesh position={[0, -0.085, 0.205]} scale={[1.0, 0.32, 0.30]}>
+            <sphereGeometry args={[0.032, 10, 10]} />
             <meshStandardMaterial color={lipColor} roughness={0.42} />
           </mesh>
-          <mesh position={[0, -0.10, 0.195]} scale={[1.1, 0.55, 0.55]} rotation={[-0.05, 0, 0]}>
-            <sphereGeometry args={[0.038, 10, 10]} />
+          {/* Lower lip (slightly fuller) */}
+          <mesh position={[0, -0.098, 0.200]} scale={[0.9, 0.38, 0.30]}>
+            <sphereGeometry args={[0.032, 10, 10]} />
             <meshStandardMaterial color={lipColor} roughness={0.38} />
           </mesh>
 
