@@ -72,24 +72,28 @@ interface IdleSpot {
 }
 
 const DESCANSO_SPOTS: IdleSpot[] = [
-  // Main sofa area (U-shape, center ~x=-12, z=6)
-  { id: 'sofa-1',     pos: [-14, 0, 7],     facing: Math.PI / 2,     label: '😌 Relaxing' },
-  { id: 'sofa-2',     pos: [-14, 0, 5],     facing: Math.PI / 2,     label: '😌 Relaxing' },
-  { id: 'sofa-3',     pos: [-11, 0, 8.5],   facing: 0,               label: '😌 Relaxing' },
-  // Coffee corner (upper-right ~x=-4, z=8)
-  { id: 'coffee-1',   pos: [-3.5, 0, 8.5],  facing: Math.PI,         label: '☕ Coffee' },
-  { id: 'coffee-2',   pos: [-5, 0, 8.5],    facing: Math.PI,         label: '☕ Coffee' },
-  // Lounge area (lower area ~x=-16, z=4.5)
-  { id: 'lounge-1',   pos: [-16, 0, 4.5],   facing: 0,               label: '😌 Lounging' },
-  { id: 'lounge-2',   pos: [-14, 0, 4.5],   facing: 0,               label: '😌 Lounging' },
-  // Standing / utility spots
-  { id: 'water',      pos: [-18, 0, 8],     facing: Math.PI / 2,     label: '💧 Water' },
-  { id: 'bookshelf',  pos: [-18, 0, 6],     facing: Math.PI / 2,     label: '📚 Browsing' },
-  // TV watcher
-  { id: 'tv',         pos: [-10, 0, 4.5],   facing: Math.PI,         label: '📺 Watching TV' },
-  // Extra standing spots for overflow
-  { id: 'standing-1', pos: [-8, 0, 6],      facing: Math.PI / 4,     label: '💭 Thinking' },
-  { id: 'standing-2', pos: [-6, 0, 5],      facing: 0,               label: '💭 Thinking' },
+  // Main sofa area (U-shape: sofas at [-14,6], [-12,8.5], [-10,6]; table at [-12,6])
+  // Agents sit on inner side of sofas, offset 0.8+ from sofa centers
+  { id: 'sofa-1',     pos: [-13.2, 0, 7],   facing: Math.PI / 2,     label: '😌 Relaxing' },
+  { id: 'sofa-2',     pos: [-13.2, 0, 5.2], facing: Math.PI / 2,     label: '😌 Relaxing' },
+  { id: 'sofa-3',     pos: [-12, 0, 7.7],   facing: 0,               label: '😌 Relaxing' },
+  // Coffee corner (counter at [-4, 8.5], stools at [-4.5, 7.8] and [-3.5, 7.8])
+  // Agents stand in front of stools, facing counter
+  { id: 'coffee-1',   pos: [-4.5, 0, 7.2],  facing: Math.PI,         label: '☕ Coffee' },
+  { id: 'coffee-2',   pos: [-3.5, 0, 7.2],  facing: Math.PI,         label: '☕ Coffee' },
+  // Lounge area (bean bags at [-16, 4.5] and [-14.5, 4.5])
+  // Agents sit in front of bean bags, offset +0.8 z
+  { id: 'lounge-1',   pos: [-16, 0, 5.3],   facing: Math.PI,         label: '😌 Lounging' },
+  { id: 'lounge-2',   pos: [-14.5, 0, 5.3], facing: Math.PI,         label: '😌 Lounging' },
+  // Standing / utility spots (cooler at [-18, 8], bookshelf at [-18, 6])
+  // Agents stand beside furniture, offset +0.8 x
+  { id: 'water',      pos: [-17.2, 0, 8],   facing: Math.PI / 2,     label: '💧 Water' },
+  { id: 'bookshelf',  pos: [-17.2, 0, 6],   facing: Math.PI / 2,     label: '📚 Browsing' },
+  // TV watcher (TV at [-10, 3.2]) — watching from safe distance
+  { id: 'tv',         pos: [-10, 0, 5],     facing: Math.PI,         label: '📺 Watching TV' },
+  // Extra standing spots for overflow — clear of all furniture
+  { id: 'standing-1', pos: [-8, 0, 6.5],    facing: Math.PI / 4,     label: '💭 Thinking' },
+  { id: 'standing-2', pos: [-6, 0, 5.5],    facing: 0,               label: '💭 Thinking' },
 ];
 
 /* ── Idle spots in Lobby — for out-of-context agents ── */
@@ -152,7 +156,17 @@ function getActivityLabel(status: SessionStatus, isMoving: boolean): string {
 }
 
 /* ── Status debounce — prevents flickering from server timestamp-based derivation ── */
-const STATUS_DEBOUNCE_MS = 5000; // 5 seconds stability required
+// Transition-specific debounce:
+//   idle → running/waiting: 0ms (immediate — agent started working)
+//   running → idle:         3000ms (prevent flicker back to idle)
+//   waiting → idle:         3000ms (prevent flicker back to idle)
+//   running ↔ waiting:      1000ms (quick but not instant)
+function getDebounceMs(from: SessionStatus, to: SessionStatus): number {
+  if (from === 'idle' && (to === 'running' || to === 'waiting')) return 0;
+  if ((from === 'running' || from === 'waiting') && to === 'idle') return 3000;
+  if ((from === 'running' && to === 'waiting') || (from === 'waiting' && to === 'running')) return 1000;
+  return 1500; // fallback
+}
 
 interface DebouncedStatus {
   confirmed: SessionStatus;
@@ -170,11 +184,14 @@ function useDebouncedStatuses(sessions: ISession[]): Map<string, SessionStatus> 
     const now = Date.now();
     let changed = false;
     for (const [, entry] of trackRef.current) {
-      if (entry.pending !== null && now - entry.pendingAt >= STATUS_DEBOUNCE_MS) {
-        entry.confirmed = entry.pending;
-        entry.confirmedAt = now;
-        entry.pending = null;
-        changed = true;
+      if (entry.pending !== null) {
+        const delay = getDebounceMs(entry.confirmed, entry.pending);
+        if (now - entry.pendingAt >= delay) {
+          entry.confirmed = entry.pending;
+          entry.confirmedAt = now;
+          entry.pending = null;
+          changed = true;
+        }
       }
     }
     if (changed) {
@@ -207,6 +224,14 @@ function useDebouncedStatuses(sessions: ISession[]): Map<string, SessionStatus> 
           // New pending status — start debounce timer
           existing.pending = s.status;
           existing.pendingAt = now;
+          // If zero debounce, confirm immediately
+          const delay = getDebounceMs(existing.confirmed, s.status);
+          if (delay === 0) {
+            existing.confirmed = s.status;
+            existing.confirmedAt = now;
+            existing.pending = null;
+            changed = true;
+          }
         }
         // else: same pending, keep waiting
       } else {
@@ -244,6 +269,8 @@ function useSpeechBubbles(
 ): { bubbles: SpeechBubbleEvent[]; bubbleMap: Map<string, string> } {
   const prevStatusRef = useRef<Map<string, SessionStatus>>(new Map());
   const [bubbles, setBubbles] = useState<SpeechBubbleEvent[]>([]);
+  // Track persistent "waiting-with" bubbles (not transition-based)
+  const waitingBubblesRef = useRef<Map<string, string>>(new Map());
 
   const cleanName = useCallback((agentId: string) => {
     const rawName = agentNames[agentId] ?? agentId;
@@ -298,6 +325,28 @@ function useSpeechBubbles(
       setBubbles(prev => [...prev, ...newBubbles]);
     }
 
+    // "Waiting-with-someone" persistent bubbles:
+    // If main agent is "waiting" and another agent is "running", show communication bubbles
+    const newWaiting = new Map<string, string>();
+    const mainStatus = debouncedStatuses.get(CEO_ID);
+    if (mainStatus === 'waiting') {
+      const runningAgents = sessions.filter(s => {
+        const st = debouncedStatuses.get(s.agentId) ?? s.status;
+        return st === 'running' && !isCEO(s.agentId);
+      });
+      if (runningAgents.length > 0) {
+        // Samantha is talking to the running agents
+        const names = runningAgents.map(s => cleanName(s.agentId));
+        const nameList = names.length <= 2 ? names.join(' & ') : `${names[0]} +${names.length - 1}`;
+        newWaiting.set(CEO_ID, `💬 Talking to ${nameList}`);
+        // Each running agent reports to Samantha
+        for (const s of runningAgents) {
+          newWaiting.set(s.agentId, '📨 Reporting to Samantha');
+        }
+      }
+    }
+    waitingBubblesRef.current = newWaiting;
+
     // Update previous statuses (use debounced)
     const newMap = new Map<string, SessionStatus>();
     for (const s of sessions) {
@@ -316,8 +365,14 @@ function useSpeechBubbles(
   }, []);
 
   // Build a map of agentId → latest message for easy lookup
+  // Transition bubbles take priority; persistent "waiting-with" bubbles fill in gaps
   const bubbleMap = useMemo(() => {
     const map = new Map<string, string>();
+    // First layer: persistent waiting-with-someone bubbles
+    for (const [id, msg] of waitingBubblesRef.current) {
+      map.set(id, msg);
+    }
+    // Second layer: transition bubbles override (they're more specific/timely)
     const now = Date.now();
     for (const b of bubbles) {
       if (now - b.startTime < BUBBLE_DURATION * 1000) {
