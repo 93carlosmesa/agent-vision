@@ -343,18 +343,214 @@ export function LobbyFurniture() {
   );
 }
 
-/** Sala de Descanso: sofas, coffee table, coffee machine */
+/** TV / flat screen on wall */
+function WallTV({ position, rotation = 0 }: { position: [number, number, number]; rotation?: number }) {
+  return (
+    <group position={position} rotation={[0, rotation, 0]}>
+      {/* Screen bezel */}
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={[1.6, 0.9, 0.05]} />
+        <meshStandardMaterial color="#1a1a1a" metalness={0.4} roughness={0.3} />
+      </mesh>
+      {/* Screen surface — emissive glow */}
+      <mesh position={[0, 0, 0.028]}>
+        <boxGeometry args={[1.45, 0.78, 0.005]} />
+        <meshStandardMaterial color="#112244" emissive="#4488cc" emissiveIntensity={1.2} roughness={0.1} />
+      </mesh>
+      {/* Wall mount bracket */}
+      <mesh position={[0, 0, -0.04]}>
+        <boxGeometry args={[0.3, 0.2, 0.06]} />
+        <meshStandardMaterial color="#333" metalness={0.6} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Water cooler / dispenser */
+function WaterCooler({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      {/* Base cabinet */}
+      <mesh position={[0, 0.25, 0]}>
+        <boxGeometry args={[0.3, 0.5, 0.3]} />
+        <meshStandardMaterial color="#e0e0e0" roughness={0.5} />
+      </mesh>
+      {/* Water bottle (inverted) */}
+      <mesh position={[0, 0.72, 0]}>
+        <cylinderGeometry args={[0.1, 0.1, 0.45, 12]} />
+        <meshStandardMaterial color="#aaddff" transparent opacity={0.5} roughness={0.1} />
+      </mesh>
+      {/* Bottle cap */}
+      <mesh position={[0, 0.95, 0]}>
+        <sphereGeometry args={[0.1, 10, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <meshStandardMaterial color="#aaddff" transparent opacity={0.4} roughness={0.1} />
+      </mesh>
+      {/* Tap area */}
+      <mesh position={[0, 0.48, 0.16]}>
+        <boxGeometry args={[0.08, 0.04, 0.02]} />
+        <meshStandardMaterial color="#888" metalness={0.6} />
+      </mesh>
+      {/* Drip tray */}
+      <mesh position={[0, 0.38, 0.12]}>
+        <boxGeometry args={[0.18, 0.02, 0.08]} />
+        <meshStandardMaterial color="#999" metalness={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Small decorative bookshelf */
+function SmallBookshelf({ position, rotation = 0 }: { position: [number, number, number]; rotation?: number }) {
+  const bookColors = ['#8b2500', '#1a4a6b', '#2d5a27', '#6b3a8a', '#8a6b3a'];
+  return (
+    <group position={position} rotation={[0, rotation, 0]}>
+      {/* Shelf frame */}
+      <mesh position={[0, 0.5, 0]}>
+        <boxGeometry args={[0.6, 1.0, 0.25]} />
+        <meshStandardMaterial color="#4a3a2e" roughness={0.8} />
+      </mesh>
+      {/* Shelves */}
+      {[0.15, 0.5, 0.85].map((y, i) => (
+        <mesh key={i} position={[0, y, 0]}>
+          <boxGeometry args={[0.56, 0.03, 0.23]} />
+          <meshStandardMaterial color="#5a4a3e" roughness={0.7} />
+        </mesh>
+      ))}
+      {/* Books on shelves */}
+      {bookColors.map((col, i) => {
+        const shelfY = i < 2 ? 0.28 : i < 4 ? 0.63 : 0.93;
+        const xOff = (i % 2 === 0 ? -0.12 : 0.12) + (i % 3) * 0.04;
+        const h = 0.18 + (i % 3) * 0.03;
+        return (
+          <mesh key={i} position={[xOff, shelfY, 0]}>
+            <boxGeometry args={[0.06, h, 0.16]} />
+            <meshStandardMaterial color={col} roughness={0.7} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
+/** Wall clock */
+function WallClock({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      {/* Clock face */}
+      <mesh>
+        <circleGeometry args={[0.25, 24]} />
+        <meshStandardMaterial color="#f5f0e8" roughness={0.5} />
+      </mesh>
+      {/* Rim */}
+      <mesh>
+        <ringGeometry args={[0.24, 0.27, 24]} />
+        <meshStandardMaterial color="#3a3a3a" metalness={0.5} />
+      </mesh>
+      {/* Hour marks */}
+      {Array.from({ length: 12 }).map((_, i) => {
+        const angle = (i * Math.PI * 2) / 12;
+        const r = 0.20;
+        return (
+          <mesh key={i} position={[Math.sin(angle) * r, Math.cos(angle) * r, 0.01]}>
+            <boxGeometry args={[0.015, 0.04, 0.005]} />
+            <meshStandardMaterial color="#333" />
+          </mesh>
+        );
+      })}
+      {/* Hour hand */}
+      <mesh position={[0, 0.06, 0.015]} rotation={[0, 0, -0.8]}>
+        <boxGeometry args={[0.015, 0.12, 0.005]} />
+        <meshStandardMaterial color="#222" />
+      </mesh>
+      {/* Minute hand */}
+      <mesh position={[0, 0.08, 0.02]} rotation={[0, 0, 0.4]}>
+        <boxGeometry args={[0.01, 0.16, 0.005]} />
+        <meshStandardMaterial color="#222" />
+      </mesh>
+      {/* Center dot */}
+      <mesh position={[0, 0, 0.025]}>
+        <sphereGeometry args={[0.015, 8, 8]} />
+        <meshStandardMaterial color="#333" metalness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Coffee cup (small) */
+function CoffeeCup({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 0.04, 0]}>
+        <cylinderGeometry args={[0.03, 0.025, 0.06, 8]} />
+        <meshStandardMaterial color="#f0f0f0" roughness={0.4} />
+      </mesh>
+      {/* Handle */}
+      <mesh position={[0.04, 0.04, 0]}>
+        <torusGeometry args={[0.015, 0.004, 6, 12, Math.PI]} />
+        <meshStandardMaterial color="#f0f0f0" roughness={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Coffee counter surface */
+function CoffeeCounter({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      {/* Counter base */}
+      <mesh position={[0, 0.4, 0]}>
+        <boxGeometry args={[1.2, 0.8, 0.5]} />
+        <meshStandardMaterial color="#4a3a2e" roughness={0.7} />
+      </mesh>
+      {/* Counter top */}
+      <mesh position={[0, 0.81, 0]}>
+        <boxGeometry args={[1.3, 0.04, 0.55]} />
+        <meshStandardMaterial color="#6b5a4a" roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Sala de Descanso: sofas, TV, water cooler, bookshelf, rug, clock, coffee area */
 export function DescansoFurniture() {
   return (
     <group>
-      {/* L-shaped sofa arrangement */}
-      <Sofa position={[-13, 0, 5.5]} rotation={Math.PI / 2} />
-      <Sofa position={[-13, 0, 7.5]} rotation={Math.PI / 2} />
-      <Sofa position={[-10.5, 0, 8.5]} rotation={0} />
-      <CoffeeTable position={[-10.5, 0, 6]} />
-      <CoffeeMachine position={[-5, 0, 8.5]} />
+      {/* ── L-shaped sofa arrangement (bigger, more prominent) ── */}
+      <Sofa position={[-13.5, 0, 5.5]} rotation={Math.PI / 2} />
+      <Sofa position={[-13.5, 0, 7.5]} rotation={Math.PI / 2} />
+      <Sofa position={[-11, 0, 8.8]} rotation={0} />
+      <Sofa position={[-9, 0, 8.8]} rotation={0} />
+      <CoffeeTable position={[-11, 0, 6.5]} />
+
+      {/* ── TV on the south wall ── */}
+      <WallTV position={[-10, 1.6, 3.2]} rotation={0} />
+
+      {/* ── Water cooler ── */}
+      <WaterCooler position={[-14, 0, 4.5]} />
+
+      {/* ── Small bookshelf ── */}
+      <SmallBookshelf position={[-14.5, 0, 6.5]} rotation={Math.PI / 2} />
+
+      {/* ── Rug / carpet (warm-colored flat plane) ── */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-10.5, 0.015, 6.5]}>
+        <planeGeometry args={[5, 4]} />
+        <meshStandardMaterial color="#8b4513" roughness={0.95} opacity={0.7} transparent />
+      </mesh>
+
+      {/* ── Wall clock ── */}
+      <WallClock position={[-7, 2.2, 3.25]} />
+
+      {/* ── Coffee area: counter + machine + cups ── */}
+      <CoffeeCounter position={[-5.5, 0, 8.5]} />
+      <CoffeeMachine position={[-5.5, 0.83, 8.5]} />
+      <CoffeeCup position={[-5.9, 0.83, 8.3]} />
+      <CoffeeCup position={[-5.1, 0.83, 8.3]} />
+      <CoffeeCup position={[-5.5, 0.83, 8.2]} />
+
+      {/* ── Plants ── */}
       <PottedPlant position={[-3, 0, 5]} seed={1} />
       <PottedPlant position={[-16, 0, 8.5]} seed={3} />
+      <PottedPlant position={[-7, 0, 4]} seed={5} />
     </group>
   );
 }

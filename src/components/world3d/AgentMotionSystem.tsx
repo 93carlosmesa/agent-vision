@@ -21,6 +21,7 @@ export interface AgentEntry {
   status: SessionStatus;
   isActive: boolean;
   activityLabel?: string;
+  speechBubble?: string;
 }
 
 interface AgentMotionSystemProps {
@@ -48,6 +49,7 @@ export function AgentMotionSystem({ agents }: AgentMotionSystemProps) {
           isActive={a.isActive}
           motionRef={motionRef}
           activityLabel={a.activityLabel}
+          speechBubble={a.speechBubble}
         />
       ))}
     </>

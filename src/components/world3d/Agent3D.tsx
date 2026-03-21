@@ -17,6 +17,7 @@ import * as THREE from 'three';
 import type { Group, Mesh } from 'three';
 import type { SessionStatus } from '../../types';
 import type { AgentMotionState } from '../../hooks/useAgentMotion';
+import { SpeechBubble3D } from './SpeechBubble3D';
 
 /* ── Masters — conjunto fijo de IDs ── */
 const MASTER_IDS = new Set(['main', 'samantha', 'ginny', 'emma']);
@@ -84,6 +85,8 @@ export interface Agent3DProps {
   motionRef: React.RefObject<Map<string, AgentMotionState>>;
   /** Optional activity label shown below name */
   activityLabel?: string;
+  /** Optional speech bubble message shown above the agent */
+  speechBubble?: string;
 }
 
 /* ── Hair color por master ── */
@@ -98,7 +101,7 @@ const MASTER_HAIR: Record<string, string> = {
    MASTER AVATAR — female humanoid Pixar-style
    ══════════════════════════════════════════ */
 function MasterAvatar({
-  agentId, name, position, status, isActive, motionRef, activityLabel,
+  agentId, name, position, status, isActive, motionRef, activityLabel, speechBubble,
 }: Agent3DProps) {
   const groupRef    = useRef<Group>(null);
   const bodyRef     = useRef<Group>(null);
@@ -558,6 +561,9 @@ function MasterAvatar({
           </mesh>
         )}
 
+        {/* Speech bubble */}
+        {speechBubble && <SpeechBubble3D message={speechBubble} />}
+
         {/* Label */}
         <Html position={[0, 2.15, 0]} center distanceFactor={12} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
           <div style={{
@@ -596,7 +602,7 @@ function MasterAvatar({
    ROBOT AVATAR — agente genérico mecánico
    ══════════════════════════════════════════ */
 function RobotAvatar({
-  agentId, name, position, status, isActive, motionRef, activityLabel,
+  agentId, name, position, status, isActive, motionRef, activityLabel, speechBubble,
 }: Agent3DProps) {
   const groupRef    = useRef<Group>(null);
   const bodyRef     = useRef<Group>(null);
@@ -860,6 +866,9 @@ function RobotAvatar({
             <meshStandardMaterial color={glow.color} emissive={glow.color} emissiveIntensity={1.2} transparent opacity={0.65} />
           </mesh>
         )}
+
+        {/* Speech bubble */}
+        {speechBubble && <SpeechBubble3D message={speechBubble} />}
 
         {/* Label */}
         <Html position={[0, 1.75, 0]} center distanceFactor={12} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
