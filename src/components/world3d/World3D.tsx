@@ -8,6 +8,7 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { Agent3D } from './Agent3D';
+import { SkillObjects3D } from './SkillObject3D';
 import type { ISession, AgentNameMap, SessionStatus } from '../../types';
 
 export interface World3DProps {
@@ -172,6 +173,9 @@ function SceneContent({ sessions, agentNames }: World3DProps) {
           isActive={a.isActive}
         />
       ))}
+
+      {/* Skill crystals */}
+      <SkillObjects3D />
 
       {/* Controls */}
       <OrbitControls
