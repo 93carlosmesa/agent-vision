@@ -3,6 +3,8 @@
  *
  * Rooms: Lobby, Sala de Descanso, Sala de Comunicación, Sala de Trabajo, Biblioteca
  * Agents are placed based on their status AND context (dev vs investment).
+ * Idle agents get autonomous activities via useOfficeLife.
+ * All agent movement goes through doors via officePathfinding.
  */
 
 import { useMemo, useRef } from 'react';
@@ -22,6 +24,9 @@ import {
   TrabajoFurniture,
   BibliotecaFurniture,
 } from './OfficeFurniture3D';
+import { useOfficeLife } from '../../hooks/useOfficeLife';
+import { findPath } from '../../utils/officePathfinding';
+import type { RoomKey } from '../../utils/officePathfinding';
 import type { ISession, AgentNameMap, IInteraction, SessionStatus } from '../../types';
 
 export interface World3DProps {
@@ -41,7 +46,6 @@ const DEV_AGENTS = [
 const ORCHESTRATORS = ['main', 'samantha'];
 
 type WorkContext = 'development' | 'investment';
-type RoomKey = 'lobby' | 'descanso' | 'comunicacion' | 'trabajo' | 'biblioteca';
 
 /* ── Room centers for agent placement ── */
 const ROOM_CENTERS: Record<RoomKey, { cx: number; cz: number }> = {
@@ -95,10 +99,22 @@ function gridPosition(
   return [cx - (cols - 1) * (spacing / 2) + col * spacing, 0, cz - 1.5 + row * spacing];
 }
 
+function getActivityLabel(status: SessionStatus): string | undefined {
+  switch (status) {
+    case 'running': return '🔧 Working';
+    case 'waiting': return '⏳ Waiting';
+    default: return undefined;
+  }
+}
+
 /* ── Scene internals ── */
 function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps) {
   const controlsRef = useRef<OrbitControlsImpl>(null);
-  const { agents, positionMap } = useMemo(() => {
+  // Track each agent's current room for pathfinding
+  const agentRoomsRef = useRef<Map<string, RoomKey>>(new Map());
+
+  // Compute room assignments and agent list
+  const { idleAgentIds, agentDataList, positionMap } = useMemo(() => {
     const context = detectContext(sessions);
     const sessionByAgent = new Map<string, ISession>();
     for (const s of sessions) {
@@ -106,11 +122,14 @@ function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps)
     }
 
     const allIds = new Set([...Object.keys(agentNames), ...sessions.map(s => s.agentId)]);
-
-    // Group agents by room
-    const roomGroups: Record<RoomKey, { id: string; name: string; status: SessionStatus }[]> = {
-      lobby: [], descanso: [], comunicacion: [], trabajo: [], biblioteca: [],
-    };
+    const idleIds: string[] = [];
+    const dataList: {
+      id: string;
+      name: string;
+      status: SessionStatus;
+      baseRoom: RoomKey;
+      isInCtx: boolean;
+    }[] = [];
 
     for (const id of allIds) {
       const session = sessionByAgent.get(id);
@@ -118,12 +137,29 @@ function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps)
       const rawName = agentNames[id] ?? id;
       const name = rawName.replace(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F?)\s*/u, '').trim() || id;
       const room = getRoomForAgent(id, status, context);
-      roomGroups[room].push({ id, name, status });
+      const inCtx = isInContext(id, context);
+
+      dataList.push({ id, name, status, baseRoom: room, isInCtx: inCtx });
+
+      if (status === 'idle' && inCtx) {
+        idleIds.push(id);
+      }
     }
 
-    const result: { id: string; name: string; pos: [number, number, number]; status: SessionStatus; isActive: boolean }[] = [];
+    // Build position map for beams
     const posMap = new Map<string, [number, number, number]>();
+    const roomGroups: Record<RoomKey, string[]> = {
+      lobby: [], descanso: [], comunicacion: [], trabajo: [], biblioteca: [],
+    };
 
+    // Group non-idle agents by their base room for grid positioning
+    for (const d of dataList) {
+      if (d.status !== 'idle') {
+        roomGroups[d.baseRoom].push(d.id);
+      }
+    }
+
+    // Calculate positions for non-idle agents
     for (const room of Object.keys(roomGroups) as RoomKey[]) {
       const center = ROOM_CENTERS[room];
       const list = roomGroups[room];
@@ -131,28 +167,141 @@ function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps)
       const spacing = room === 'lobby' ? 2.0 : 1.6;
 
       for (let i = 0; i < list.length; i++) {
-        const pos = gridPosition(center.cx, center.cz, i, Math.max(cols, 1), spacing);
-        const agent = list[i];
-        result.push({
-          id: agent.id,
-          name: agent.name,
-          pos,
-          status: agent.status,
-          isActive: agent.status !== 'idle',
-        });
-        posMap.set(agent.id, pos);
+        posMap.set(list[i], gridPosition(center.cx, center.cz, i, Math.max(cols, 1), spacing));
       }
     }
 
-    // Map session keys to positions for beams
+    // Session key to position map for beams
     const sessionKeyMap = new Map<string, [number, number, number]>();
     for (const s of sessions) {
       const agentPos = posMap.get(s.agentId);
       if (agentPos) sessionKeyMap.set(s.key, agentPos);
     }
 
-    return { agents: result, positionMap: sessionKeyMap };
+    return { idleAgentIds: idleIds, agentDataList: dataList, positionMap: sessionKeyMap };
   }, [sessions, agentNames]);
+
+  // Office life simulation for idle agents (runs in useFrame)
+  const officeLifeRef = useOfficeLife(idleAgentIds);
+
+  // Build final agent entries with waypoints
+  const agents = useMemo(() => {
+    const currentRooms = agentRoomsRef.current;
+
+    // First pass: determine target rooms and positions for idle agents
+    const idleRoomGroups: Record<RoomKey, { id: string; offset: [number, number, number] }[]> = {
+      lobby: [], descanso: [], comunicacion: [], trabajo: [], biblioteca: [],
+    };
+
+    for (const d of agentDataList) {
+      if (d.status === 'idle' && d.isInCtx) {
+        const lifeEntry = officeLifeRef.current.get(d.id);
+        const targetRoom = lifeEntry?.simulatedRoom ?? 'descanso';
+        const offset = lifeEntry?.positionOffset ?? [0, 0, 0];
+        idleRoomGroups[targetRoom].push({ id: d.id, offset });
+      } else if (d.status === 'idle') {
+        // Out-of-context idle → lobby
+        idleRoomGroups[d.baseRoom].push({ id: d.id, offset: [0, 0, 0] });
+      }
+    }
+
+    // Calculate positions for idle agents in their simulated rooms
+    const idlePosMap = new Map<string, { pos: [number, number, number]; room: RoomKey }>();
+    for (const room of Object.keys(idleRoomGroups) as RoomKey[]) {
+      const center = ROOM_CENTERS[room];
+      const list = idleRoomGroups[room];
+      const cols = Math.min(list.length, 3);
+
+      for (let i = 0; i < list.length; i++) {
+        const basePos = gridPosition(center.cx, center.cz, i, Math.max(cols, 1), 1.6);
+        const pos: [number, number, number] = [
+          basePos[0] + list[i].offset[0],
+          basePos[1] + list[i].offset[1],
+          basePos[2] + list[i].offset[2],
+        ];
+        idlePosMap.set(list[i].id, { pos, room });
+      }
+    }
+
+    // Build result with pathfinding waypoints
+    const result: {
+      id: string;
+      name: string;
+      waypoints: [number, number, number][];
+      status: SessionStatus;
+      isActive: boolean;
+      activityLabel: string | undefined;
+    }[] = [];
+
+    for (const d of agentDataList) {
+      let targetRoom: RoomKey;
+      let targetPos: [number, number, number];
+      let label: string | undefined;
+
+      if (d.status === 'idle') {
+        const idleData = idlePosMap.get(d.id);
+        if (idleData) {
+          targetRoom = idleData.room;
+          targetPos = idleData.pos;
+        } else {
+          targetRoom = d.baseRoom;
+          const center = ROOM_CENTERS[targetRoom];
+          targetPos = [center.cx, 0, center.cz];
+        }
+        const lifeEntry = officeLifeRef.current.get(d.id);
+        label = lifeEntry?.activityLabel;
+      } else {
+        targetRoom = d.baseRoom;
+        // Non-idle agents use pre-computed positions from the room groups
+        const roomCenter = ROOM_CENTERS[targetRoom];
+        // We need to find the position - check our earlier computation
+        // For non-idle, we computed positions in the first useMemo
+        // We need to reconstruct or use a simpler approach
+        targetPos = [roomCenter.cx, 0, roomCenter.cz]; // Will be overridden below
+        label = getActivityLabel(d.status);
+      }
+
+      // For non-idle agents, get their grid position from positionMap computation
+      // We handle this by recomputing positions for non-idle agents
+      if (d.status !== 'idle') {
+        // Recompute based on room grouping
+        const context = detectContext(sessions);
+        const roomAgents = agentDataList
+          .filter(a => a.status !== 'idle' && getRoomForAgent(a.id, a.status, context) === targetRoom)
+          .map(a => a.id);
+        const idx = roomAgents.indexOf(d.id);
+        if (idx >= 0) {
+          const center = ROOM_CENTERS[targetRoom];
+          const cols = Math.min(roomAgents.length, targetRoom === 'trabajo' ? 4 : 3);
+          const spacing = targetRoom === 'lobby' ? 2.0 : 1.6;
+          targetPos = gridPosition(center.cx, center.cz, idx, Math.max(cols, 1), spacing);
+        }
+      }
+
+      // Get current room for pathfinding
+      const prevRoom = currentRooms.get(d.id) ?? targetRoom;
+      const doorWaypoints = findPath(prevRoom, targetRoom);
+
+      // Build waypoint sequence: doors + final destination
+      const waypoints: [number, number, number][] = [...doorWaypoints, targetPos];
+
+      // Update current room tracking
+      currentRooms.set(d.id, targetRoom);
+
+      result.push({
+        id: d.id,
+        name: d.name,
+        waypoints,
+        status: d.status,
+        isActive: d.status !== 'idle',
+        activityLabel: label,
+      });
+    }
+
+    return result;
+  // officeLifeRef is a stable ref, but we read .current inside — this is intentional.
+  // The memo recomputes when sessions/agentNames change, and idle positions are read from the ref.
+  }, [sessions, agentNames, agentDataList, idleAgentIds, officeLifeRef]);
 
   const beams = useMemo(() => {
     return interactions

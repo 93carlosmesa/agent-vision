@@ -1,7 +1,7 @@
 /**
  * AgentMotionSystem — manages smooth agent transitions inside Canvas.
  *
- * Rendered as a child of R3F Canvas. Takes target positions and renders
+ * Rendered as a child of R3F Canvas. Takes waypoint-based targets and renders
  * Agent3D instances with interpolated positions, movement state, and facing.
  *
  * Uses a shared ref (no React re-renders) so each Agent3D reads its own
@@ -17,9 +17,10 @@ import type { SessionStatus } from '../../types';
 export interface AgentEntry {
   id: string;
   name: string;
-  pos: [number, number, number];
+  waypoints: [number, number, number][];
   status: SessionStatus;
   isActive: boolean;
+  activityLabel?: string;
 }
 
 interface AgentMotionSystemProps {
@@ -27,9 +28,9 @@ interface AgentMotionSystemProps {
 }
 
 export function AgentMotionSystem({ agents }: AgentMotionSystemProps) {
-  // Build stable target list
+  // Build stable target list with waypoints
   const targets: AgentTarget[] = useMemo(
-    () => agents.map(a => ({ id: a.id, targetPos: a.pos })),
+    () => agents.map(a => ({ id: a.id, waypoints: a.waypoints })),
     [agents],
   );
 
@@ -42,10 +43,11 @@ export function AgentMotionSystem({ agents }: AgentMotionSystemProps) {
           key={a.id}
           name={a.name}
           agentId={a.id}
-          position={a.pos}
+          position={a.waypoints.length > 0 ? a.waypoints[a.waypoints.length - 1] : [0, 0, 0]}
           status={a.status}
           isActive={a.isActive}
           motionRef={motionRef}
+          activityLabel={a.activityLabel}
         />
       ))}
     </>
