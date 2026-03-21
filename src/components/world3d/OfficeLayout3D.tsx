@@ -122,15 +122,14 @@ export function OfficeLayout3D() {
       <Wall position={[20, wy, -0.5]} size={[29, WALL_H]} rotation={Math.PI / 2} />
 
       {/* ── LOBBY / TOP ROOMS DIVIDER — z=10 ── */}
-      {/* Left section (x=-20 to -2), with door gap at center ~x=-10 */}
-      <Wall position={[-14.25, wy, 10]} size={[11.5, WALL_H]} />
-      <Wall position={[-5, wy, 10]} size={[6, WALL_H]} />
-      {/* Right section (x=2 to 20), with door gap at center ~x=10 */}
-      <Wall position={[5, wy, 10]} size={[6, WALL_H]} />
-      <Wall position={[14.25, wy, 10]} size={[11.5, WALL_H]} />
-      {/* Door gap at x=-8.5 (1.5 wide) for descanso */}
-      {/* Door gap at x=8.5 (1.5 wide) for comunicación */}
-      {/* Central pillar / wall between the two door areas */}
+      {/* x=-20 to -10.75 */}
+      <Wall position={[-15.375, wy, 10]} size={[9.25, WALL_H]} />
+      {/* Door gap at x=-10 (1.5 wide): x=-10.75 to -9.25 */}
+      {/* x=-9.25 to 9.25 */}
+      <Wall position={[0, wy, 10]} size={[18.5, WALL_H]} />
+      {/* Door gap at x=10 (1.5 wide): x=9.25 to 10.75 */}
+      {/* x=10.75 to 20 */}
+      <Wall position={[15.375, wy, 10]} size={[9.25, WALL_H]} />
 
       {/* ── MIDDLE VERTICAL DIVIDER (Descanso | Comunicación) — x=0, z=3..10 ── */}
       {/* Top segment (z=7.25 to 10) */}
@@ -140,16 +139,13 @@ export function OfficeLayout3D() {
       {/* Door gap at z=6.5 (1.5 wide) */}
 
       {/* ── TOP ROOMS / TRABAJO DIVIDER — z=3 ── */}
-      {/* Left section: x=-20 to -8.25 */}
+      {/* x=-20 to -8.25 */}
       <Wall position={[-14.125, wy, 3]} size={[11.75, WALL_H]} />
-      {/* Gap at x=-7.5 (1.5 wide) — door from descanso to trabajo */}
-      {/* Center-left section: x=-6.75 to -0.75 */}
-      <Wall position={[-3.75, wy, 3]} size={[6, WALL_H]} />
-      {/* Gap at x=0 (1.5 wide) — central corridor */}
-      {/* Center-right section: x=0.75 to 6.75 */}
-      <Wall position={[3.75, wy, 3]} size={[6, WALL_H]} />
-      {/* Gap at x=7.5 (1.5 wide) — door from comunicación to trabajo */}
-      {/* Right section: x=8.25 to 20 */}
+      {/* Door gap at x=-7.5 (1.5 wide): x=-8.25 to -6.75 */}
+      {/* x=-6.75 to 6.75 (continuous, no central corridor) */}
+      <Wall position={[0, wy, 3]} size={[13.5, WALL_H]} />
+      {/* Door gap at x=7.5 (1.5 wide): x=6.75 to 8.25 */}
+      {/* x=8.25 to 20 */}
       <Wall position={[14.125, wy, 3]} size={[11.75, WALL_H]} />
 
       {/* ── TRABAJO / BIBLIOTECA DIVIDER — z=-5 ── */}
