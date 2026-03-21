@@ -143,7 +143,7 @@ export function OrchestratorView({ sessions, agentNames, isOpen, onClose }: Orch
               <button className="creator-close" onClick={() => setChatTarget(null)}>&times;</button>
             </div>
             <div className="orchestrator-chat-messages">
-              {chatMessages.filter((m) => true).map((msg, i) => (
+              {chatMessages.filter(() => true).map((msg, i) => (
                 <div key={i} className={`orchestrator-chat-msg${msg.from === 'You' ? ' orchestrator-chat-msg--you' : ''}`}>
                   <span className="orchestrator-chat-from">{msg.from}:</span> {msg.text}
                 </div>

@@ -3,7 +3,7 @@
  * Avatars transition between zone slots and skill rooms.
  */
 
-import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
+import { useRef, useState, useCallback, useMemo } from 'react';
 import type { CSSProperties } from 'react';
 import type { ISession, AgentNameMap, ISceneConfig, ISkill, ISkillVisit, IInteraction, SkillDistrict } from '../types';
 import { SessionService } from '../services/SessionService';
@@ -106,7 +106,7 @@ function positionFor(status: ISession['status'], index: number): { left: string;
 
 /** Pre-compute skill room positions for visit targeting */
 const SKILL_POSITIONS: Record<string, { left: number; top: number }> = {};
-for (const [district, skills] of Object.entries(SKILLS_BY_DISTRICT)) {
+for (const [_district, skills] of Object.entries(SKILLS_BY_DISTRICT)) {
   skills.forEach((skill, i) => {
     SKILL_POSITIONS[skill.id] = skillRoomPosition(skill, i, skills.length);
   });
@@ -125,7 +125,6 @@ export function AgentScene({ sessions, agentNames, sceneConfig, memberMetaBySess
   const clampPan = useCallback((x: number, y: number) => {
     const container = containerRef.current;
     if (!container) return { x, y };
-    const cw = container.clientWidth;
     const ch = container.clientHeight;
     const worldH = ch * WORLD_HEIGHT_RATIO;
     return {
@@ -270,7 +269,6 @@ export function AgentScene({ sessions, agentNames, sceneConfig, memberMetaBySess
                   const roomPos = skillRoomPosition(skill, i, skills.length);
                   // Position relative to district container
                   const relLeft = ((roomPos.left - pos.x) / pos.width) * 100;
-                  const relTop = (roomPos.top - pos.y - 6) * 100 / 30; // approximate
                   return (
                     <div
                       key={skill.id}

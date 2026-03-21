@@ -8,7 +8,7 @@
  * simulated from agent sessions.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import type { ISession, IInteraction, InteractionType } from '../types';
 
 const INTERACTION_DURATION = 5000;
