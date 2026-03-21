@@ -24,14 +24,14 @@ export const ROLE_TAGS: Record<AgentRole, string> = {
 export const SQUAD_DEFINITIONS: SquadDefinition[] = [
   {
     id: 'squad-movement',
-    name: 'Squad 1 · Movimiento',
-    focus: 'Ruta y desplazamiento entre zonas',
+    name: 'Squad · Desarrollo',
+    focus: 'Apps, arquitectura, calidad y entrega técnica',
     roles: ['seniorFrontendArchitect', 'codeReviewer', 'slinter', 'formateur'],
   },
   {
     id: 'squad-naming',
-    name: 'Squad 2 · Naming/Collab',
-    focus: 'Nombres claros + colaboración visual por rol',
+    name: 'Squad · Inversión',
+    focus: 'Mercado, riesgo, oportunidades y ejecución financiera',
     roles: ['seniorFrontendArchitect', 'codeReviewer', 'slinter', 'formateur'],
   },
 ];

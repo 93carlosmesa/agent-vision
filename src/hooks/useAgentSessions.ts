@@ -26,15 +26,33 @@ function resolveDisplayName(session: ISession, agentNames: AgentNameMap): string
   return resolvedName.replace(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F?)\s*/u, '').trim();
 }
 
+function inferSquadLane(agentId: string, displayName: string): 'development' | 'investment' {
+  const text = `${agentId} ${displayName}`.toLowerCase();
+  const investmentHints = [
+    'ginny', 'inv', 'inversion', 'invest', 'market', 'trading', 'radar', 'predictor', 'sp500', 'nasdaq',
+  ];
+
+  if (investmentHints.some((hint) => text.includes(hint))) {
+    return 'investment';
+  }
+
+  return 'development';
+}
+
 function mapSquads(sessions: ISession[], agentNames: AgentNameMap, currentScene: ISceneConfig): ISquad[] {
   const enriched = sessions.map((session) => {
     const displayName = resolveDisplayName(session, agentNames);
     const roleFromName = resolveRoleFromText(`${session.agentId} ${displayName}`);
+    const lane = inferSquadLane(session.agentId, displayName);
     return {
       session,
       displayName,
       role: roleFromName,
+      lane,
     };
+  }).filter((item) => {
+    const name = item.displayName.toLowerCase();
+    return item.session.agentId !== 'main' && !name.includes('samantha');
   });
 
   const roleBuckets = new Map<AgentRole, typeof enriched>();
@@ -49,6 +67,13 @@ function mapSquads(sessions: ISession[], agentNames: AgentNameMap, currentScene:
       leftovers.push(item);
     }
   }
+
+  // Orden estable por lane: Desarrollo primero (squad 1), Inversión segundo (squad 2).
+  const laneRank = (lane: 'development' | 'investment') => (lane === 'development' ? 0 : 1);
+  for (const role of ROLE_ORDER) {
+    roleBuckets.get(role)?.sort((a, b) => laneRank(a.lane) - laneRank(b.lane));
+  }
+  leftovers.sort((a, b) => laneRank(a.lane) - laneRank(b.lane));
 
   // Fill missing role buckets with leftovers to keep both squads populated.
   for (const role of ROLE_ORDER) {
