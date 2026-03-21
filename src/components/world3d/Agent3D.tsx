@@ -1,15 +1,19 @@
 /**
- * Agent3D — Avatar 3D diferenciado:
+ * Agent3D — Avatar 3D diferenciado con animaciones de actividad:
  *   - Masters (Samantha, Ginny, Emma): humanoide premium con halo/corona flotante
  *   - Resto de agentes: robot metálico con visor, antena y cuerpo angular
  *
- * Status glow + bobbing idle animation se aplican a ambos tipos.
+ * Animations:
+ *   - Walking: leg pendulum, arm swing, body bounce + lean
+ *   - Running (working): forward lean, typing arms, head nod
+ *   - Waiting (meeting): upright, arm gestures, head turns
+ *   - Idle (relaxing): lean back, slow bob, slow halo/antenna
  */
 
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
-import type { Group } from 'three';
+import type { Group, Mesh } from 'three';
 import type { SessionStatus } from '../../types';
 
 /* ── Masters — conjunto fijo de IDs ── */
@@ -21,10 +25,10 @@ function isMaster(agentId: string): boolean {
 
 /* ── Colores por agente ── */
 const AGENT_COLORS: Record<string, string> = {
-  main:                       '#c084fc', // Samantha — violeta
+  main:                       '#c084fc',
   samantha:                   '#c084fc',
-  ginny:                      '#53e3c2', // Ginny — turquesa
-  emma:                       '#ff9f43', // Emma — naranja
+  ginny:                      '#53e3c2',
+  emma:                       '#ff9f43',
   codereviewer:               '#ef4444',
   cybersec:                   '#22d3ee',
   'git-guardian':             '#84cc16',
@@ -73,111 +77,461 @@ export interface Agent3DProps {
   position: [number, number, number];
   status: SessionStatus;
   isActive: boolean;
+  isMoving?: boolean;
+  facingAngle?: number;
 }
 
+/* ── Hair color por master ── */
+const MASTER_HAIR: Record<string, string> = {
+  main:     '#1a1a2e',
+  samantha: '#1a1a2e',
+  ginny:    '#d4a853',
+  emma:     '#8b5e3c',
+};
+
 /* ══════════════════════════════════════════
-   MASTER AVATAR — humanoide premium con halo
+   MASTER AVATAR — female humanoid Pixar-style
    ══════════════════════════════════════════ */
 function MasterAvatar({
-  agentId, name, position, status, isActive,
+  agentId, name, position, status, isActive, isMoving = false, facingAngle = 0,
 }: Agent3DProps) {
-  const groupRef = useRef<Group>(null);
-  const haloRef  = useRef<Group>(null);
+  const groupRef    = useRef<Group>(null);
+  const bodyRef     = useRef<Group>(null);
+  const haloRef     = useRef<Group>(null);
+  const headRef     = useRef<Group>(null);
+  const leftArmRef  = useRef<Mesh>(null);
+  const rightArmRef = useRef<Mesh>(null);
+  const leftLegRef  = useRef<Mesh>(null);
+  const rightLegRef = useRef<Mesh>(null);
+  const leftEyeRef  = useRef<Mesh>(null);
+  const rightEyeRef = useRef<Mesh>(null);
+
+  const id = agentId.toLowerCase();
   const color = getAgentColor(agentId);
   const glow  = STATUS_EMISSIVE[status];
-  const haloColor = MASTER_HALO[agentId.toLowerCase()] ?? color;
+  const haloColor = MASTER_HALO[id] ?? color;
+  const hairColor = MASTER_HAIR[id] ?? '#1a1a2e';
+  const skinColor = '#f5d5b0';
+  const skinDark  = '#e8c49e';
+  const cheekColor = '#f9b8b8';
+  const lipColor   = '#d4798a';
+  const eyeWhite   = '#f8f8f8';
+  const irisColor  = '#3d2b1f';
+  const blazerDark = color + 'cc';
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
-    if (groupRef.current) {
-      groupRef.current.position.y = position[1] + Math.sin(t * 1.3 + position[0] * 2) * 0.07;
+    const seed = position[0] * 2 + position[2] * 0.7;
+
+    if (!groupRef.current || !bodyRef.current) return;
+
+    // Bobbing
+    const bobSpeed = isMoving ? 6 : status === 'idle' ? 0.8 : 1.3;
+    const bobAmount = isMoving ? 0.08 : status === 'idle' ? 0.04 : 0.07;
+    groupRef.current.position.y = position[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
+
+    // Facing direction
+    bodyRef.current.rotation.y = facingAngle;
+
+    // Body lean
+    if (isMoving) {
+      bodyRef.current.rotation.x = 0.12;
+    } else if (status === 'running') {
+      bodyRef.current.rotation.x = 0.08;
+    } else if (status === 'idle') {
+      bodyRef.current.rotation.x = -0.05;
+    } else {
+      bodyRef.current.rotation.x = 0;
     }
-    // Halo rotates slowly
+
+    // Head animation
+    if (headRef.current) {
+      if (isMoving) {
+        headRef.current.rotation.y = 0;
+        headRef.current.rotation.x = 0;
+      } else if (status === 'running') {
+        headRef.current.rotation.x = Math.sin(t * 1.5 + seed) * 0.06;
+        headRef.current.rotation.y = 0;
+      } else if (status === 'waiting') {
+        headRef.current.rotation.y = Math.sin(t * 0.5 + seed) * 0.3;
+        headRef.current.rotation.x = 0;
+      } else {
+        headRef.current.rotation.x = 0;
+        headRef.current.rotation.y = Math.sin(t * 0.2 + seed) * 0.1;
+      }
+    }
+
+    // Blink animation (~every 3 seconds)
+    if (leftEyeRef.current && rightEyeRef.current) {
+      const blinkCycle = (t + seed) % 3.5;
+      const blinkScale = blinkCycle < 0.12 ? Math.max(0.05, 1 - blinkCycle / 0.06) : 1;
+      leftEyeRef.current.scale.y = blinkScale;
+      rightEyeRef.current.scale.y = blinkScale;
+    }
+
+    // Arm animation
+    if (leftArmRef.current && rightArmRef.current) {
+      if (isMoving) {
+        const walkCycle = Math.sin(t * 6 + seed);
+        leftArmRef.current.rotation.x = walkCycle * 0.4;
+        rightArmRef.current.rotation.x = -walkCycle * 0.4;
+        leftArmRef.current.rotation.z = 0;
+        rightArmRef.current.rotation.z = 0;
+      } else if (status === 'running') {
+        leftArmRef.current.rotation.x = -0.5 + Math.sin(t * 3 + seed) * 0.05;
+        rightArmRef.current.rotation.x = -0.5 + Math.sin(t * 3.2 + seed + 1) * 0.05;
+        leftArmRef.current.rotation.z = 0;
+        rightArmRef.current.rotation.z = 0;
+      } else if (status === 'waiting') {
+        const gesture = Math.sin(t * 0.7 + seed);
+        leftArmRef.current.rotation.x = 0;
+        rightArmRef.current.rotation.x = gesture > 0.5 ? -0.3 * (gesture - 0.5) * 2 : 0;
+        leftArmRef.current.rotation.z = 0;
+        rightArmRef.current.rotation.z = gesture > 0.5 ? -0.15 * (gesture - 0.5) * 2 : 0;
+      } else {
+        leftArmRef.current.rotation.x = 0;
+        rightArmRef.current.rotation.x = 0;
+        leftArmRef.current.rotation.z = 0;
+        rightArmRef.current.rotation.z = 0;
+      }
+    }
+
+    // Leg animation
+    if (leftLegRef.current && rightLegRef.current) {
+      if (isMoving) {
+        const walkCycle = Math.sin(t * 6 + seed);
+        leftLegRef.current.rotation.x = -walkCycle * 0.35;
+        rightLegRef.current.rotation.x = walkCycle * 0.35;
+      } else {
+        leftLegRef.current.rotation.x = 0;
+        rightLegRef.current.rotation.x = 0;
+      }
+    }
+
+    // Halo animation
     if (haloRef.current) {
-      haloRef.current.rotation.z = t * 0.6;
+      const haloSpeed = status === 'idle' ? 0.25 : 0.6;
+      haloRef.current.rotation.z = t * haloSpeed;
       haloRef.current.rotation.x = Math.PI / 2 + Math.sin(t * 0.4) * 0.15;
     }
   });
 
   return (
     <group ref={groupRef} position={position}>
-      {/* Torso */}
-      <mesh position={[0, 0.55, 0]}>
-        <cylinderGeometry args={[0.24, 0.30, 0.9, 14]} />
-        <meshStandardMaterial color={color} emissive={glow.color} emissiveIntensity={glow.intensity} metalness={0.15} roughness={0.6} />
-      </mesh>
+      <group ref={bodyRef}>
 
-      {/* Cuello */}
-      <mesh position={[0, 1.05, 0]}>
-        <cylinderGeometry args={[0.10, 0.14, 0.18, 10]} />
-        <meshStandardMaterial color={color} emissive={glow.color} emissiveIntensity={glow.intensity * 0.6} />
-      </mesh>
-
-      {/* Cabeza */}
-      <mesh position={[0, 1.32, 0]}>
-        <sphereGeometry args={[0.24, 18, 18]} />
-        <meshStandardMaterial color={color} emissive={glow.color} emissiveIntensity={glow.intensity * 0.7} roughness={0.5} />
-      </mesh>
-
-      {/* Brazos */}
-      <mesh position={[-0.38, 0.6, 0]}>
-        <cylinderGeometry args={[0.07, 0.09, 0.65, 8]} />
-        <meshStandardMaterial color={color} emissive={glow.color} emissiveIntensity={glow.intensity * 0.5} />
-      </mesh>
-      <mesh position={[0.38, 0.6, 0]}>
-        <cylinderGeometry args={[0.07, 0.09, 0.65, 8]} />
-        <meshStandardMaterial color={color} emissive={glow.color} emissiveIntensity={glow.intensity * 0.5} />
-      </mesh>
-
-      {/* Piernas */}
-      <mesh position={[-0.12, -0.2, 0]}>
-        <cylinderGeometry args={[0.09, 0.08, 0.55, 8]} />
-        <meshStandardMaterial color={color} emissive={glow.color} emissiveIntensity={glow.intensity * 0.4} />
-      </mesh>
-      <mesh position={[0.12, -0.2, 0]}>
-        <cylinderGeometry args={[0.09, 0.08, 0.55, 8]} />
-        <meshStandardMaterial color={color} emissive={glow.color} emissiveIntensity={glow.intensity * 0.4} />
-      </mesh>
-
-      {/* Halo / corona flotante */}
-      <group ref={haloRef} position={[0, 1.75, 0]}>
-        <mesh>
-          <torusGeometry args={[0.30, 0.025, 8, 36]} />
-          <meshStandardMaterial
-            color={haloColor}
-            emissive={haloColor}
-            emissiveIntensity={2.5}
-            transparent
-            opacity={0.85}
-          />
+        {/* ── BLAZER / JACKET ── */}
+        <mesh position={[0, 0.50, 0]}>
+          <cylinderGeometry args={[0.22, 0.30, 0.85, 16]} />
+          <meshStandardMaterial color={color} emissive={glow.color} emissiveIntensity={glow.intensity} metalness={0.15} roughness={0.55} />
         </mesh>
+
+        {/* Camisa interior (white V visible) */}
+        <mesh position={[0, 0.72, 0.14]}>
+          <boxGeometry args={[0.14, 0.28, 0.02]} />
+          <meshStandardMaterial color="#f0f0f0" roughness={0.7} />
+        </mesh>
+
+        {/* Solapa izquierda */}
+        <mesh position={[-0.09, 0.78, 0.145]} rotation={[0, 0, 0.25]}>
+          <boxGeometry args={[0.10, 0.22, 0.015]} />
+          <meshStandardMaterial color={blazerDark} metalness={0.1} roughness={0.5} />
+        </mesh>
+        {/* Solapa derecha */}
+        <mesh position={[0.09, 0.78, 0.145]} rotation={[0, 0, -0.25]}>
+          <boxGeometry args={[0.10, 0.22, 0.015]} />
+          <meshStandardMaterial color={blazerDark} metalness={0.1} roughness={0.5} />
+        </mesh>
+
+        {/* Hombro izquierdo */}
+        <mesh position={[-0.28, 0.90, 0]} scale={[1.2, 0.6, 0.9]}>
+          <sphereGeometry args={[0.12, 12, 12]} />
+          <meshStandardMaterial color={color} emissive={glow.color} emissiveIntensity={glow.intensity * 0.4} metalness={0.15} roughness={0.55} />
+        </mesh>
+        {/* Hombro derecho */}
+        <mesh position={[0.28, 0.90, 0]} scale={[1.2, 0.6, 0.9]}>
+          <sphereGeometry args={[0.12, 12, 12]} />
+          <meshStandardMaterial color={color} emissive={glow.color} emissiveIntensity={glow.intensity * 0.4} metalness={0.15} roughness={0.55} />
+        </mesh>
+
+        {/* ── CUELLO ── */}
+        <mesh position={[0, 1.00, 0]}>
+          <cylinderGeometry args={[0.08, 0.11, 0.15, 10]} />
+          <meshStandardMaterial color={skinColor} roughness={0.6} />
+        </mesh>
+
+        {/* ── CABEZA (group for head animation) ── */}
+        <group ref={headRef} position={[0, 1.30, 0]}>
+
+          {/* Cabeza base — slightly squished sphere */}
+          <mesh scale={[1, 0.95, 0.92]}>
+            <sphereGeometry args={[0.26, 20, 20]} />
+            <meshStandardMaterial color={skinColor} roughness={0.55} />
+          </mesh>
+
+          {/* Mejilla izquierda */}
+          <mesh position={[-0.14, -0.04, 0.12]} scale={[1, 0.6, 0.5]}>
+            <sphereGeometry args={[0.08, 10, 10]} />
+            <meshStandardMaterial color={cheekColor} transparent opacity={0.4} roughness={0.7} />
+          </mesh>
+          {/* Mejilla derecha */}
+          <mesh position={[0.14, -0.04, 0.12]} scale={[1, 0.6, 0.5]}>
+            <sphereGeometry args={[0.08, 10, 10]} />
+            <meshStandardMaterial color={cheekColor} transparent opacity={0.4} roughness={0.7} />
+          </mesh>
+
+          {/* ── OJOS ── */}
+          {/* Ojo izquierdo — white */}
+          <group ref={leftEyeRef} position={[-0.09, 0.04, 0.20]}>
+            <mesh>
+              <sphereGeometry args={[0.055, 12, 12]} />
+              <meshStandardMaterial color={eyeWhite} roughness={0.3} />
+            </mesh>
+            {/* Iris */}
+            <mesh position={[0, 0, 0.035]}>
+              <sphereGeometry args={[0.032, 10, 10]} />
+              <meshStandardMaterial color={irisColor} roughness={0.4} />
+            </mesh>
+            {/* Pupila */}
+            <mesh position={[0, 0, 0.05]}>
+              <sphereGeometry args={[0.016, 8, 8]} />
+              <meshStandardMaterial color="#000000" />
+            </mesh>
+            {/* Reflejo */}
+            <mesh position={[0.012, 0.015, 0.055]}>
+              <sphereGeometry args={[0.007, 6, 6]} />
+              <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.5} />
+            </mesh>
+          </group>
+
+          {/* Ojo derecho — white */}
+          <group ref={rightEyeRef} position={[0.09, 0.04, 0.20]}>
+            <mesh>
+              <sphereGeometry args={[0.055, 12, 12]} />
+              <meshStandardMaterial color={eyeWhite} roughness={0.3} />
+            </mesh>
+            {/* Iris */}
+            <mesh position={[0, 0, 0.035]}>
+              <sphereGeometry args={[0.032, 10, 10]} />
+              <meshStandardMaterial color={irisColor} roughness={0.4} />
+            </mesh>
+            {/* Pupila */}
+            <mesh position={[0, 0, 0.05]}>
+              <sphereGeometry args={[0.016, 8, 8]} />
+              <meshStandardMaterial color="#000000" />
+            </mesh>
+            {/* Reflejo */}
+            <mesh position={[0.012, 0.015, 0.055]}>
+              <sphereGeometry args={[0.007, 6, 6]} />
+              <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.5} />
+            </mesh>
+          </group>
+
+          {/* ── CEJAS ── */}
+          {/* Ceja izquierda */}
+          <mesh position={[-0.09, 0.11, 0.21]} rotation={[0, 0, 0.12]}>
+            <boxGeometry args={[0.08, 0.015, 0.01]} />
+            <meshStandardMaterial color={hairColor} />
+          </mesh>
+          {/* Ceja derecha */}
+          <mesh position={[0.09, 0.11, 0.21]} rotation={[0, 0, -0.12]}>
+            <boxGeometry args={[0.08, 0.015, 0.01]} />
+            <meshStandardMaterial color={hairColor} />
+          </mesh>
+
+          {/* ── PESTANAS (fan of thin lashes per eye) ── */}
+          {/* Pestanas ojo izquierdo */}
+          <mesh position={[-0.12, 0.075, 0.23]} rotation={[0.2, 0.15, 0.5]}>
+            <boxGeometry args={[0.025, 0.005, 0.002]} />
+            <meshStandardMaterial color="#111111" />
+          </mesh>
+          <mesh position={[-0.095, 0.08, 0.24]} rotation={[0.15, 0.05, 0.3]}>
+            <boxGeometry args={[0.025, 0.005, 0.002]} />
+            <meshStandardMaterial color="#111111" />
+          </mesh>
+          <mesh position={[-0.07, 0.078, 0.24]} rotation={[0.15, -0.05, 0.1]}>
+            <boxGeometry args={[0.025, 0.005, 0.002]} />
+            <meshStandardMaterial color="#111111" />
+          </mesh>
+          {/* Pestanas ojo derecho */}
+          <mesh position={[0.12, 0.075, 0.23]} rotation={[0.2, -0.15, -0.5]}>
+            <boxGeometry args={[0.025, 0.005, 0.002]} />
+            <meshStandardMaterial color="#111111" />
+          </mesh>
+          <mesh position={[0.095, 0.08, 0.24]} rotation={[0.15, -0.05, -0.3]}>
+            <boxGeometry args={[0.025, 0.005, 0.002]} />
+            <meshStandardMaterial color="#111111" />
+          </mesh>
+          <mesh position={[0.07, 0.078, 0.24]} rotation={[0.15, 0.05, -0.1]}>
+            <boxGeometry args={[0.025, 0.005, 0.002]} />
+            <meshStandardMaterial color="#111111" />
+          </mesh>
+
+          {/* ── NARIZ ── */}
+          <mesh position={[0, -0.02, 0.24]} scale={[0.6, 0.7, 0.6]}>
+            <sphereGeometry args={[0.035, 8, 8]} />
+            <meshStandardMaterial color={skinDark} roughness={0.6} />
+          </mesh>
+
+          {/* ── LABIOS ── */}
+          {/* Labio superior (thinner) */}
+          <mesh position={[0, -0.09, 0.22]} scale={[1.3, 0.5, 0.6]} rotation={[0.1, 0, 0]}>
+            <sphereGeometry args={[0.04, 10, 10]} />
+            <meshStandardMaterial color={lipColor} roughness={0.45} />
+          </mesh>
+          {/* Labio inferior (fuller) */}
+          <mesh position={[0, -0.105, 0.215]} scale={[1.2, 0.6, 0.6]} rotation={[-0.05, 0, 0]}>
+            <sphereGeometry args={[0.04, 10, 10]} />
+            <meshStandardMaterial color={lipColor} roughness={0.4} />
+          </mesh>
+
+          {/* ── PELO / HAIR ── */}
+          {/* Top/crown — large cap */}
+          <mesh position={[0, 0.12, -0.02]} scale={[1.08, 0.7, 1.05]}>
+            <sphereGeometry args={[0.27, 16, 16]} />
+            <meshStandardMaterial color={hairColor} roughness={0.7} />
+          </mesh>
+
+          {/* Flequillo / Bangs — fringe across forehead */}
+          <mesh position={[0, 0.14, 0.16]} scale={[1.15, 0.3, 0.4]}>
+            <sphereGeometry args={[0.2, 12, 12]} />
+            <meshStandardMaterial color={hairColor} roughness={0.65} />
+          </mesh>
+
+          {/* Pelo lateral izquierdo — flowing to shoulder */}
+          <mesh position={[-0.22, -0.08, -0.02]} scale={[0.55, 1.4, 0.6]}>
+            <sphereGeometry args={[0.2, 12, 12]} />
+            <meshStandardMaterial color={hairColor} roughness={0.65} />
+          </mesh>
+          {/* Mechon largo izquierdo — past shoulder */}
+          <mesh position={[-0.20, -0.35, 0.0]} scale={[0.45, 1.0, 0.5]}>
+            <sphereGeometry args={[0.18, 10, 10]} />
+            <meshStandardMaterial color={hairColor} roughness={0.7} />
+          </mesh>
+
+          {/* Pelo lateral derecho — flowing to shoulder */}
+          <mesh position={[0.22, -0.08, -0.02]} scale={[0.55, 1.4, 0.6]}>
+            <sphereGeometry args={[0.2, 12, 12]} />
+            <meshStandardMaterial color={hairColor} roughness={0.65} />
+          </mesh>
+          {/* Mechon largo derecho — past shoulder */}
+          <mesh position={[0.20, -0.35, 0.0]} scale={[0.45, 1.0, 0.5]}>
+            <sphereGeometry args={[0.18, 10, 10]} />
+            <meshStandardMaterial color={hairColor} roughness={0.7} />
+          </mesh>
+
+          {/* Pelo trasero — back volume */}
+          <mesh position={[0, -0.02, -0.15]} scale={[1.0, 1.1, 0.7]}>
+            <sphereGeometry args={[0.26, 14, 14]} />
+            <meshStandardMaterial color={hairColor} roughness={0.7} />
+          </mesh>
+          {/* Mechon trasero largo */}
+          <mesh position={[0, -0.30, -0.12]} scale={[0.8, 0.9, 0.55]}>
+            <sphereGeometry args={[0.22, 12, 12]} />
+            <meshStandardMaterial color={hairColor} roughness={0.7} />
+          </mesh>
+
+          {/* Ondas/wave accents */}
+          <mesh position={[-0.17, -0.18, 0.08]} scale={[0.4, 0.8, 0.35]}>
+            <sphereGeometry args={[0.12, 8, 8]} />
+            <meshStandardMaterial color={hairColor} roughness={0.65} />
+          </mesh>
+          <mesh position={[0.17, -0.18, 0.08]} scale={[0.4, 0.8, 0.35]}>
+            <sphereGeometry args={[0.12, 8, 8]} />
+            <meshStandardMaterial color={hairColor} roughness={0.65} />
+          </mesh>
+        </group>
+
+        {/* ── BRAZOS ── */}
+        {/* Brazo izquierdo */}
+        <group position={[-0.36, 0.88, 0]}>
+          <mesh ref={leftArmRef} position={[0, -0.30, 0]}>
+            <cylinderGeometry args={[0.06, 0.07, 0.58, 10]} />
+            <meshStandardMaterial color={color} emissive={glow.color} emissiveIntensity={glow.intensity * 0.4} metalness={0.15} roughness={0.55} />
+          </mesh>
+          {/* Mano izquierda */}
+          <mesh position={[0, -0.62, 0]}>
+            <sphereGeometry args={[0.05, 8, 8]} />
+            <meshStandardMaterial color={skinColor} roughness={0.5} />
+          </mesh>
+        </group>
+        {/* Brazo derecho */}
+        <group position={[0.36, 0.88, 0]}>
+          <mesh ref={rightArmRef} position={[0, -0.30, 0]}>
+            <cylinderGeometry args={[0.06, 0.07, 0.58, 10]} />
+            <meshStandardMaterial color={color} emissive={glow.color} emissiveIntensity={glow.intensity * 0.4} metalness={0.15} roughness={0.55} />
+          </mesh>
+          {/* Mano derecha */}
+          <mesh position={[0, -0.62, 0]}>
+            <sphereGeometry args={[0.05, 8, 8]} />
+            <meshStandardMaterial color={skinColor} roughness={0.5} />
+          </mesh>
+        </group>
+
+        {/* ── PIERNAS ── */}
+        <group position={[-0.11, 0.06, 0]}>
+          <mesh ref={leftLegRef} position={[0, -0.28, 0]}>
+            <cylinderGeometry args={[0.08, 0.065, 0.55, 10]} />
+            <meshStandardMaterial color={color} emissive={glow.color} emissiveIntensity={glow.intensity * 0.3} metalness={0.1} roughness={0.55} />
+          </mesh>
+          {/* Zapato izquierdo */}
+          <mesh position={[0, -0.58, 0.02]}>
+            <boxGeometry args={[0.1, 0.06, 0.14]} />
+            <meshStandardMaterial color="#2a2a2a" roughness={0.4} metalness={0.2} />
+          </mesh>
+        </group>
+        <group position={[0.11, 0.06, 0]}>
+          <mesh ref={rightLegRef} position={[0, -0.28, 0]}>
+            <cylinderGeometry args={[0.08, 0.065, 0.55, 10]} />
+            <meshStandardMaterial color={color} emissive={glow.color} emissiveIntensity={glow.intensity * 0.3} metalness={0.1} roughness={0.55} />
+          </mesh>
+          {/* Zapato derecho */}
+          <mesh position={[0, -0.58, 0.02]}>
+            <boxGeometry args={[0.1, 0.06, 0.14]} />
+            <meshStandardMaterial color="#2a2a2a" roughness={0.4} metalness={0.2} />
+          </mesh>
+        </group>
+
+        {/* ── HALO / CORONA FLOTANTE ── */}
+        <group ref={haloRef} position={[0, 1.80, 0]}>
+          <mesh>
+            <torusGeometry args={[0.30, 0.025, 8, 36]} />
+            <meshStandardMaterial
+              color={haloColor}
+              emissive={haloColor}
+              emissiveIntensity={2.5}
+              transparent
+              opacity={0.85}
+            />
+          </mesh>
+        </group>
+
+        {/* Status ring */}
+        {isActive && (
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+            <ringGeometry args={[0.36, 0.44, 28]} />
+            <meshStandardMaterial color={glow.color} emissive={glow.color} emissiveIntensity={1.4} transparent opacity={0.75} />
+          </mesh>
+        )}
+
+        {/* Label */}
+        <Html position={[0, 2.15, 0]} center distanceFactor={12} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
+          <div style={{
+            background: 'rgba(10,10,26,0.90)',
+            color,
+            padding: '2px 10px',
+            borderRadius: '4px',
+            fontSize: '11px',
+            fontFamily: 'monospace',
+            fontWeight: 700,
+            border: `1px solid ${haloColor}70`,
+            textShadow: `0 0 8px ${haloColor}`,
+            letterSpacing: '0.04em',
+          }}>
+            ★ {name}
+          </div>
+        </Html>
       </group>
-
-      {/* Status ring */}
-      {isActive && (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-          <ringGeometry args={[0.36, 0.44, 28]} />
-          <meshStandardMaterial color={glow.color} emissive={glow.color} emissiveIntensity={1.4} transparent opacity={0.75} />
-        </mesh>
-      )}
-
-      {/* Label */}
-      <Html position={[0, 2.1, 0]} center distanceFactor={12} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
-        <div style={{
-          background: 'rgba(10,10,26,0.90)',
-          color,
-          padding: '2px 10px',
-          borderRadius: '4px',
-          fontSize: '11px',
-          fontFamily: 'monospace',
-          fontWeight: 700,
-          border: `1px solid ${haloColor}70`,
-          textShadow: `0 0 8px ${haloColor}`,
-          letterSpacing: '0.04em',
-        }}>
-          ★ {name}
-        </div>
-      </Html>
     </group>
   );
 }
@@ -186,163 +540,253 @@ function MasterAvatar({
    ROBOT AVATAR — agente genérico mecánico
    ══════════════════════════════════════════ */
 function RobotAvatar({
-  agentId, name, position, status, isActive,
+  agentId, name, position, status, isActive, isMoving = false, facingAngle = 0,
 }: Agent3DProps) {
-  const groupRef  = useRef<Group>(null);
-  const antennaRef = useRef<Group>(null);
+  const groupRef    = useRef<Group>(null);
+  const bodyRef     = useRef<Group>(null);
+  const antennaRef  = useRef<Group>(null);
+  const headRef     = useRef<Mesh>(null);
+  const leftArmRef  = useRef<Mesh>(null);
+  const rightArmRef = useRef<Mesh>(null);
+  const leftLegRef  = useRef<Mesh>(null);
+  const rightLegRef = useRef<Mesh>(null);
   const color = getAgentColor(agentId);
   const glow  = STATUS_EMISSIVE[status];
-
-  useFrame(({ clock }) => {
-    const t = clock.getElapsedTime();
-    if (groupRef.current) {
-      groupRef.current.position.y = position[1] + Math.sin(t * 1.5 + position[0] * 2) * 0.05;
-    }
-    // Antena pulsa suavemente
-    if (antennaRef.current) {
-      antennaRef.current.scale.y = 1 + Math.sin(t * 3 + position[2]) * 0.12;
-    }
-  });
-
-  // Color metálico ligeramente más oscuro para el cuerpo
   const bodyColor = color;
   const metalColor = '#4a5568';
 
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
+    const seed = position[0] * 2 + position[2] * 0.7;
+
+    if (!groupRef.current || !bodyRef.current) return;
+
+    // Base Y (bobbing)
+    const bobSpeed = isMoving ? 7 : status === 'idle' ? 0.8 : 1.5;
+    const bobAmount = isMoving ? 0.06 : status === 'idle' ? 0.03 : 0.05;
+    groupRef.current.position.y = position[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
+
+    // Facing direction
+    bodyRef.current.rotation.y = facingAngle;
+
+    // Body lean
+    if (isMoving) {
+      bodyRef.current.rotation.x = 0.1;
+    } else if (status === 'running') {
+      bodyRef.current.rotation.x = 0.06;
+    } else if (status === 'idle') {
+      bodyRef.current.rotation.x = -0.04;
+    } else {
+      bodyRef.current.rotation.x = 0;
+    }
+
+    // Head animation
+    if (headRef.current) {
+      if (isMoving) {
+        headRef.current.rotation.y = 0;
+        headRef.current.rotation.x = 0;
+      } else if (status === 'running') {
+        headRef.current.rotation.x = Math.sin(t * 2 + seed) * 0.05;
+        headRef.current.rotation.y = 0;
+      } else if (status === 'waiting') {
+        headRef.current.rotation.y = Math.sin(t * 0.5 + seed) * 0.25;
+        headRef.current.rotation.x = 0;
+      } else {
+        headRef.current.rotation.x = 0;
+        headRef.current.rotation.y = Math.sin(t * 0.15 + seed) * 0.08;
+      }
+    }
+
+    // Antenna pulse speed varies by status
+    if (antennaRef.current) {
+      const pulseSpeed = isMoving ? 4 : status === 'running' ? 5 : status === 'idle' ? 1.2 : 3;
+      const pulseAmount = status === 'idle' ? 0.06 : 0.12;
+      antennaRef.current.scale.y = 1 + Math.sin(t * pulseSpeed + seed) * pulseAmount;
+    }
+
+    // Arm animation
+    if (leftArmRef.current && rightArmRef.current) {
+      if (isMoving) {
+        const walkCycle = Math.sin(t * 7 + seed);
+        leftArmRef.current.rotation.x = walkCycle * 0.35;
+        rightArmRef.current.rotation.x = -walkCycle * 0.35;
+        leftArmRef.current.rotation.z = 0.18;
+        rightArmRef.current.rotation.z = -0.18;
+      } else if (status === 'running') {
+        leftArmRef.current.rotation.x = -0.4 + Math.sin(t * 3 + seed) * 0.04;
+        rightArmRef.current.rotation.x = -0.4 + Math.sin(t * 3.3 + seed + 1) * 0.04;
+        leftArmRef.current.rotation.z = 0.18;
+        rightArmRef.current.rotation.z = -0.18;
+      } else if (status === 'waiting') {
+        const gesture = Math.sin(t * 0.6 + seed);
+        leftArmRef.current.rotation.x = 0;
+        rightArmRef.current.rotation.x = gesture > 0.4 ? -0.25 * (gesture - 0.4) / 0.6 : 0;
+        leftArmRef.current.rotation.z = 0.18;
+        rightArmRef.current.rotation.z = -0.18 + (gesture > 0.4 ? -0.1 * (gesture - 0.4) / 0.6 : 0);
+      } else {
+        leftArmRef.current.rotation.x = 0;
+        rightArmRef.current.rotation.x = 0;
+        leftArmRef.current.rotation.z = 0.18;
+        rightArmRef.current.rotation.z = -0.18;
+      }
+    }
+
+    // Leg animation
+    if (leftLegRef.current && rightLegRef.current) {
+      if (isMoving) {
+        const walkCycle = Math.sin(t * 7 + seed);
+        leftLegRef.current.rotation.x = -walkCycle * 0.3;
+        rightLegRef.current.rotation.x = walkCycle * 0.3;
+      } else {
+        leftLegRef.current.rotation.x = 0;
+        rightLegRef.current.rotation.x = 0;
+      }
+    }
+  });
+
   return (
     <group ref={groupRef} position={position}>
+      <group ref={bodyRef}>
 
-      {/* ── Cuerpo principal (caja) ── */}
-      <mesh position={[0, 0.55, 0]}>
-        <boxGeometry args={[0.52, 0.72, 0.32]} />
-        <meshStandardMaterial color={bodyColor} emissive={glow.color} emissiveIntensity={glow.intensity} metalness={0.7} roughness={0.3} />
-      </mesh>
-
-      {/* Panel frontal del torso (detalle) */}
-      <mesh position={[0, 0.55, 0.165]}>
-        <boxGeometry args={[0.30, 0.42, 0.01]} />
-        <meshStandardMaterial color={metalColor} emissive={glow.color} emissiveIntensity={glow.intensity * 0.8} metalness={0.9} roughness={0.1} />
-      </mesh>
-
-      {/* Indicador de status en pecho */}
-      <mesh position={[0, 0.65, 0.175]}>
-        <circleGeometry args={[0.055, 10]} />
-        <meshStandardMaterial color={glow.color} emissive={glow.color} emissiveIntensity={2.5} />
-      </mesh>
-
-      {/* ── Cintura (conector) ── */}
-      <mesh position={[0, 0.18, 0]}>
-        <boxGeometry args={[0.42, 0.12, 0.28]} />
-        <meshStandardMaterial color={metalColor} emissive={glow.color} emissiveIntensity={glow.intensity * 0.4} metalness={0.8} roughness={0.2} />
-      </mesh>
-
-      {/* ── Cabeza (caja angular) ── */}
-      <mesh position={[0, 1.08, 0]}>
-        <boxGeometry args={[0.40, 0.32, 0.30]} />
-        <meshStandardMaterial color={bodyColor} emissive={glow.color} emissiveIntensity={glow.intensity * 0.7} metalness={0.65} roughness={0.35} />
-      </mesh>
-
-      {/* Visor (pantalla frontal) */}
-      <mesh position={[0, 1.10, 0.155]}>
-        <boxGeometry args={[0.28, 0.14, 0.01]} />
-        <meshStandardMaterial
-          color="#001122"
-          emissive={glow.color}
-          emissiveIntensity={1.8}
-          metalness={0.2}
-          roughness={0.0}
-          transparent
-          opacity={0.92}
-        />
-      </mesh>
-
-      {/* Ojos (dos puntos luminosos) */}
-      <mesh position={[-0.07, 1.115, 0.162]}>
-        <circleGeometry args={[0.028, 8]} />
-        <meshStandardMaterial color={glow.color} emissive={glow.color} emissiveIntensity={3.0} />
-      </mesh>
-      <mesh position={[0.07, 1.115, 0.162]}>
-        <circleGeometry args={[0.028, 8]} />
-        <meshStandardMaterial color={glow.color} emissive={glow.color} emissiveIntensity={3.0} />
-      </mesh>
-
-      {/* ── Antena ── */}
-      <group ref={antennaRef} position={[0, 1.26, 0]}>
-        {/* Palo */}
-        <mesh position={[0, 0.10, 0]}>
-          <cylinderGeometry args={[0.018, 0.018, 0.22, 6]} />
-          <meshStandardMaterial color={metalColor} metalness={0.9} roughness={0.1} />
+        {/* ── Cuerpo principal (caja) ── */}
+        <mesh position={[0, 0.55, 0]}>
+          <boxGeometry args={[0.52, 0.72, 0.32]} />
+          <meshStandardMaterial color={bodyColor} emissive={glow.color} emissiveIntensity={glow.intensity} metalness={0.7} roughness={0.3} />
         </mesh>
-        {/* Bola */}
-        <mesh position={[0, 0.235, 0]}>
-          <sphereGeometry args={[0.042, 8, 8]} />
+
+        {/* Panel frontal del torso (detalle) */}
+        <mesh position={[0, 0.55, 0.165]}>
+          <boxGeometry args={[0.30, 0.42, 0.01]} />
+          <meshStandardMaterial color={metalColor} emissive={glow.color} emissiveIntensity={glow.intensity * 0.8} metalness={0.9} roughness={0.1} />
+        </mesh>
+
+        {/* Indicador de status en pecho */}
+        <mesh position={[0, 0.65, 0.175]}>
+          <circleGeometry args={[0.055, 10]} />
           <meshStandardMaterial color={glow.color} emissive={glow.color} emissiveIntensity={2.5} />
         </mesh>
-      </group>
 
-      {/* ── Brazos (cajas angulares) ── */}
-      <mesh position={[-0.36, 0.62, 0]} rotation={[0, 0, 0.18]}>
-        <boxGeometry args={[0.12, 0.55, 0.13]} />
-        <meshStandardMaterial color={bodyColor} emissive={glow.color} emissiveIntensity={glow.intensity * 0.4} metalness={0.7} roughness={0.3} />
-      </mesh>
-      <mesh position={[0.36, 0.62, 0]} rotation={[0, 0, -0.18]}>
-        <boxGeometry args={[0.12, 0.55, 0.13]} />
-        <meshStandardMaterial color={bodyColor} emissive={glow.color} emissiveIntensity={glow.intensity * 0.4} metalness={0.7} roughness={0.3} />
-      </mesh>
-
-      {/* Manos / pinzas */}
-      <mesh position={[-0.38, 0.33, 0]}>
-        <boxGeometry args={[0.14, 0.10, 0.12]} />
-        <meshStandardMaterial color={metalColor} metalness={0.85} roughness={0.15} />
-      </mesh>
-      <mesh position={[0.38, 0.33, 0]}>
-        <boxGeometry args={[0.14, 0.10, 0.12]} />
-        <meshStandardMaterial color={metalColor} metalness={0.85} roughness={0.15} />
-      </mesh>
-
-      {/* ── Piernas ── */}
-      <mesh position={[-0.13, -0.20, 0]}>
-        <boxGeometry args={[0.14, 0.50, 0.14]} />
-        <meshStandardMaterial color={bodyColor} emissive={glow.color} emissiveIntensity={glow.intensity * 0.3} metalness={0.7} roughness={0.3} />
-      </mesh>
-      <mesh position={[0.13, -0.20, 0]}>
-        <boxGeometry args={[0.14, 0.50, 0.14]} />
-        <meshStandardMaterial color={bodyColor} emissive={glow.color} emissiveIntensity={glow.intensity * 0.3} metalness={0.7} roughness={0.3} />
-      </mesh>
-
-      {/* Pies */}
-      <mesh position={[-0.13, -0.47, 0.03]}>
-        <boxGeometry args={[0.17, 0.08, 0.22]} />
-        <meshStandardMaterial color={metalColor} metalness={0.8} roughness={0.2} />
-      </mesh>
-      <mesh position={[0.13, -0.47, 0.03]}>
-        <boxGeometry args={[0.17, 0.08, 0.22]} />
-        <meshStandardMaterial color={metalColor} metalness={0.8} roughness={0.2} />
-      </mesh>
-
-      {/* Status ring */}
-      {isActive && (
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-          <ringGeometry args={[0.38, 0.46, 20]} />
-          <meshStandardMaterial color={glow.color} emissive={glow.color} emissiveIntensity={1.2} transparent opacity={0.65} />
+        {/* ── Cintura (conector) ── */}
+        <mesh position={[0, 0.18, 0]}>
+          <boxGeometry args={[0.42, 0.12, 0.28]} />
+          <meshStandardMaterial color={metalColor} emissive={glow.color} emissiveIntensity={glow.intensity * 0.4} metalness={0.8} roughness={0.2} />
         </mesh>
-      )}
 
-      {/* Label */}
-      <Html position={[0, 1.75, 0]} center distanceFactor={12} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
-        <div style={{
-          background: 'rgba(10,10,26,0.85)',
-          color,
-          padding: '2px 8px',
-          borderRadius: '3px',
-          fontSize: '10px',
-          fontFamily: 'monospace',
-          fontWeight: 600,
-          border: `1px solid ${color}40`,
-          textShadow: `0 0 5px ${color}`,
-        }}>
-          🤖 {name}
-        </div>
-      </Html>
+        {/* ── Cabeza (caja angular) ── */}
+        <mesh ref={headRef} position={[0, 1.08, 0]}>
+          <boxGeometry args={[0.40, 0.32, 0.30]} />
+          <meshStandardMaterial color={bodyColor} emissive={glow.color} emissiveIntensity={glow.intensity * 0.7} metalness={0.65} roughness={0.35} />
+        </mesh>
+
+        {/* Visor (pantalla frontal) */}
+        <mesh position={[0, 1.10, 0.155]}>
+          <boxGeometry args={[0.28, 0.14, 0.01]} />
+          <meshStandardMaterial
+            color="#001122"
+            emissive={glow.color}
+            emissiveIntensity={1.8}
+            metalness={0.2}
+            roughness={0.0}
+            transparent
+            opacity={0.92}
+          />
+        </mesh>
+
+        {/* Ojos (dos puntos luminosos) */}
+        <mesh position={[-0.07, 1.115, 0.162]}>
+          <circleGeometry args={[0.028, 8]} />
+          <meshStandardMaterial color={glow.color} emissive={glow.color} emissiveIntensity={3.0} />
+        </mesh>
+        <mesh position={[0.07, 1.115, 0.162]}>
+          <circleGeometry args={[0.028, 8]} />
+          <meshStandardMaterial color={glow.color} emissive={glow.color} emissiveIntensity={3.0} />
+        </mesh>
+
+        {/* ── Antena ── */}
+        <group ref={antennaRef} position={[0, 1.26, 0]}>
+          <mesh position={[0, 0.10, 0]}>
+            <cylinderGeometry args={[0.018, 0.018, 0.22, 6]} />
+            <meshStandardMaterial color={metalColor} metalness={0.9} roughness={0.1} />
+          </mesh>
+          <mesh position={[0, 0.235, 0]}>
+            <sphereGeometry args={[0.042, 8, 8]} />
+            <meshStandardMaterial color={glow.color} emissive={glow.color} emissiveIntensity={2.5} />
+          </mesh>
+        </group>
+
+        {/* ── Brazos (pivoting from shoulder) ── */}
+        <group position={[-0.36, 0.92, 0]}>
+          <mesh ref={leftArmRef} position={[0, -0.30, 0]} rotation={[0, 0, 0.18]}>
+            <boxGeometry args={[0.12, 0.55, 0.13]} />
+            <meshStandardMaterial color={bodyColor} emissive={glow.color} emissiveIntensity={glow.intensity * 0.4} metalness={0.7} roughness={0.3} />
+          </mesh>
+        </group>
+        <group position={[0.36, 0.92, 0]}>
+          <mesh ref={rightArmRef} position={[0, -0.30, 0]} rotation={[0, 0, -0.18]}>
+            <boxGeometry args={[0.12, 0.55, 0.13]} />
+            <meshStandardMaterial color={bodyColor} emissive={glow.color} emissiveIntensity={glow.intensity * 0.4} metalness={0.7} roughness={0.3} />
+          </mesh>
+        </group>
+
+        {/* Manos / pinzas */}
+        <mesh position={[-0.38, 0.33, 0]}>
+          <boxGeometry args={[0.14, 0.10, 0.12]} />
+          <meshStandardMaterial color={metalColor} metalness={0.85} roughness={0.15} />
+        </mesh>
+        <mesh position={[0.38, 0.33, 0]}>
+          <boxGeometry args={[0.14, 0.10, 0.12]} />
+          <meshStandardMaterial color={metalColor} metalness={0.85} roughness={0.15} />
+        </mesh>
+
+        {/* ── Piernas (pivoting from hip) ── */}
+        <group position={[-0.13, 0.08, 0]}>
+          <mesh ref={leftLegRef} position={[0, -0.28, 0]}>
+            <boxGeometry args={[0.14, 0.50, 0.14]} />
+            <meshStandardMaterial color={bodyColor} emissive={glow.color} emissiveIntensity={glow.intensity * 0.3} metalness={0.7} roughness={0.3} />
+          </mesh>
+        </group>
+        <group position={[0.13, 0.08, 0]}>
+          <mesh ref={rightLegRef} position={[0, -0.28, 0]}>
+            <boxGeometry args={[0.14, 0.50, 0.14]} />
+            <meshStandardMaterial color={bodyColor} emissive={glow.color} emissiveIntensity={glow.intensity * 0.3} metalness={0.7} roughness={0.3} />
+          </mesh>
+        </group>
+
+        {/* Pies */}
+        <mesh position={[-0.13, -0.47, 0.03]}>
+          <boxGeometry args={[0.17, 0.08, 0.22]} />
+          <meshStandardMaterial color={metalColor} metalness={0.8} roughness={0.2} />
+        </mesh>
+        <mesh position={[0.13, -0.47, 0.03]}>
+          <boxGeometry args={[0.17, 0.08, 0.22]} />
+          <meshStandardMaterial color={metalColor} metalness={0.8} roughness={0.2} />
+        </mesh>
+
+        {/* Status ring */}
+        {isActive && (
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+            <ringGeometry args={[0.38, 0.46, 20]} />
+            <meshStandardMaterial color={glow.color} emissive={glow.color} emissiveIntensity={1.2} transparent opacity={0.65} />
+          </mesh>
+        )}
+
+        {/* Label */}
+        <Html position={[0, 1.75, 0]} center distanceFactor={12} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
+          <div style={{
+            background: 'rgba(10,10,26,0.85)',
+            color,
+            padding: '2px 8px',
+            borderRadius: '3px',
+            fontSize: '10px',
+            fontFamily: 'monospace',
+            fontWeight: 600,
+            border: `1px solid ${color}40`,
+            textShadow: `0 0 5px ${color}`,
+          }}>
+            🤖 {name}
+          </div>
+        </Html>
+      </group>
     </group>
   );
 }
