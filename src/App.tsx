@@ -2,11 +2,12 @@
  * App — Composition root.
  */
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAgentSessions } from './hooks/useAgentSessions';
 import { useSkillVisits } from './hooks/useSkillVisits';
 import { useInteractions } from './hooks/useInteractions';
 import { AgentScene } from './components/AgentScene';
+import { CreatorPanel } from './components/CreatorPanel';
 import { SceneSelector } from './components/SceneSelector';
 import { StatusDot } from './components/StatusDot';
 import { TimelinePanel } from './components/TimelinePanel';
@@ -14,6 +15,7 @@ import { SquadPanel } from './components/SquadPanel';
 import { setIdleFavicon, startActiveFavicon } from './utils/favicon';
 
 export default function App() {
+  const [creatorOpen, setCreatorOpen] = useState(false);
   const { sessions, agentNames, isConnected, currentScene, setScene, squads } = useAgentSessions();
   const skillVisits = useSkillVisits(sessions);
   const interactions = useInteractions(sessions);
@@ -47,6 +49,7 @@ export default function App() {
       <header className="app-header">
         <div className="app-title">🧠 Agent Vision</div>
         <div className="app-header-controls">
+          <button className="header-btn" onClick={() => setCreatorOpen(true)}>+ Create</button>
           <SceneSelector currentScene={currentScene.id} onSceneChange={setScene} />
           <StatusDot isConnected={isConnected} />
         </div>
@@ -67,6 +70,7 @@ export default function App() {
         <SquadPanel squads={squads} />
         <TimelinePanel sessions={sessions} />
       </aside>
+      <CreatorPanel isOpen={creatorOpen} onClose={() => setCreatorOpen(false)} agentNames={agentNames} />
     </div>
   );
 }
