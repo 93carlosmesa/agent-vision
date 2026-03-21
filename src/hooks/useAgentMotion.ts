@@ -8,6 +8,8 @@
 
 import { useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { FURNITURE_OBSTACLES } from '../utils/officePathfinding';
+import type { Obstacle } from '../utils/officePathfinding';
 
 export interface AgentTarget {
   id: string;
@@ -35,6 +37,24 @@ const ROTATION_SPEED = 2.0;   // radians per second
 const ARRIVAL_THRESHOLD = 0.15;
 const COLLISION_DIST = 0.8;   // minimum distance between agents
 const PUSH_OFFSET = 0.4;     // perpendicular push when too close
+const FURNITURE_MARGIN = 0.4; // extra clearance around furniture
+
+/** Push position out of any overlapping furniture obstacle */
+function resolveObstacleCollision(pos: [number, number, number], obstacles: Obstacle[]): void {
+  for (const obs of obstacles) {
+    const overlapX = (obs.hw + FURNITURE_MARGIN) - Math.abs(pos[0] - obs.cx);
+    const overlapZ = (obs.hd + FURNITURE_MARGIN) - Math.abs(pos[2] - obs.cz);
+
+    if (overlapX > 0 && overlapZ > 0) {
+      // Inside obstacle — push out via shortest axis
+      if (overlapX < overlapZ) {
+        pos[0] += pos[0] >= obs.cx ? overlapX : -overlapX;
+      } else {
+        pos[2] += pos[2] >= obs.cz ? overlapZ : -overlapZ;
+      }
+    }
+  }
+}
 
 function getCurrentTarget(s: InternalState): [number, number, number] | null {
   if (s.waypointIndex < s.waypoints.length) {
@@ -185,6 +205,11 @@ export function useAgentMotion(
           b.currentPos[2] += perpZ * push;
         }
       }
+    }
+
+    // Third pass: furniture collision avoidance
+    for (const [, s] of state) {
+      resolveObstacleCollision(s.currentPos, FURNITURE_OBSTACLES);
     }
 
     // Write output

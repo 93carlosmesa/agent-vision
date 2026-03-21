@@ -9,8 +9,8 @@
  *   - Samantha (main) is the orchestrator — moves first, calls others via speech bubble
  */
 
-import { useMemo, useRef, useState, useEffect } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { useMemo, useRef, useState, useEffect, useCallback } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Grid } from '@react-three/drei';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { CameraControls3D, CameraHUD } from './CameraControls3D';
@@ -29,6 +29,14 @@ import {
 import { findPath } from '../../utils/officePathfinding';
 import type { RoomKey } from '../../utils/officePathfinding';
 import type { ISession, AgentNameMap, IInteraction, SessionStatus } from '../../types';
+import {
+  isOrchestrator,
+  isCEO,
+  isManager,
+  CEO_ID,
+  MANAGER_ID,
+  AGENT_REGISTRY,
+} from '../../config/agentConfig';
 
 export interface World3DProps {
   sessions: ISession[];
@@ -36,15 +44,13 @@ export interface World3DProps {
   interactions?: IInteraction[];
 }
 
-/* ── Agent context mapping ── */
-const INVESTMENT_AGENTS = ['ginny', 'psych-market', 'us-open'];
-const DEV_AGENTS = [
-  'codereviewer', 'cybersec', 'git-guardian',
-  'senior-frontend-architect', 'linter', 'prettier',
-  'controlnaming', 'ui-usability-analyst',
-  'fullstack-smoke-tester', 'backend-socket-architect', 'emma',
-];
-const ORCHESTRATORS = ['main', 'samantha'];
+/* ── Agent context mapping — derived from registry ── */
+const INVESTMENT_AGENTS = AGENT_REGISTRY
+  .filter(a => a.department === 'investment')
+  .map(a => a.id);
+const DEV_AGENTS = AGENT_REGISTRY
+  .filter(a => a.department === 'development')
+  .map(a => a.id);
 
 type WorkContext = 'development' | 'investment';
 
@@ -66,14 +72,24 @@ interface IdleSpot {
 }
 
 const DESCANSO_SPOTS: IdleSpot[] = [
-  { id: 'sofa-1',     pos: [-12, 0, 7],     facing: 0,               label: '😌 Relaxing' },
-  { id: 'sofa-2',     pos: [-11, 0, 7],     facing: 0,               label: '😌 Relaxing' },
-  { id: 'sofa-3',     pos: [-9, 0, 5.5],    facing: Math.PI / 2,     label: '😌 Relaxing' },
-  { id: 'coffee',     pos: [-7, 0, 8],      facing: Math.PI,         label: '☕ Coffee' },
-  { id: 'water',      pos: [-13, 0, 5],     facing: -Math.PI / 2,    label: '😌 Relaxing' },
-  { id: 'standing-1', pos: [-10, 0, 6],     facing: 0,               label: '💭 Thinking' },
-  { id: 'standing-2', pos: [-8, 0, 6.5],    facing: Math.PI / 4,     label: '💭 Thinking' },
-  { id: 'tv',         pos: [-11, 0, 4.5],   facing: Math.PI,         label: '😌 Relaxing' },
+  // Main sofa area (U-shape, center ~x=-12, z=6)
+  { id: 'sofa-1',     pos: [-14, 0, 7],     facing: Math.PI / 2,     label: '😌 Relaxing' },
+  { id: 'sofa-2',     pos: [-14, 0, 5],     facing: Math.PI / 2,     label: '😌 Relaxing' },
+  { id: 'sofa-3',     pos: [-11, 0, 8.5],   facing: 0,               label: '😌 Relaxing' },
+  // Coffee corner (upper-right ~x=-4, z=8)
+  { id: 'coffee-1',   pos: [-3.5, 0, 8.5],  facing: Math.PI,         label: '☕ Coffee' },
+  { id: 'coffee-2',   pos: [-5, 0, 8.5],    facing: Math.PI,         label: '☕ Coffee' },
+  // Lounge area (lower area ~x=-16, z=4.5)
+  { id: 'lounge-1',   pos: [-16, 0, 4.5],   facing: 0,               label: '😌 Lounging' },
+  { id: 'lounge-2',   pos: [-14, 0, 4.5],   facing: 0,               label: '😌 Lounging' },
+  // Standing / utility spots
+  { id: 'water',      pos: [-18, 0, 8],     facing: Math.PI / 2,     label: '💧 Water' },
+  { id: 'bookshelf',  pos: [-18, 0, 6],     facing: Math.PI / 2,     label: '📚 Browsing' },
+  // TV watcher
+  { id: 'tv',         pos: [-10, 0, 4.5],   facing: Math.PI,         label: '📺 Watching TV' },
+  // Extra standing spots for overflow
+  { id: 'standing-1', pos: [-8, 0, 6],      facing: Math.PI / 4,     label: '💭 Thinking' },
+  { id: 'standing-2', pos: [-6, 0, 5],      facing: 0,               label: '💭 Thinking' },
 ];
 
 /* ── Idle spots in Lobby — for out-of-context agents ── */
@@ -100,10 +116,6 @@ function detectContext(sessions: ISession[]): WorkContext {
   const hasDev = running.some(s => matchesContext(s.agentId, DEV_AGENTS));
   if (hasInvestment && !hasDev) return 'investment';
   return 'development';
-}
-
-function isOrchestrator(agentId: string): boolean {
-  return matchesContext(agentId, ORCHESTRATORS);
 }
 
 function isInContext(agentId: string, context: WorkContext): boolean {
@@ -139,6 +151,82 @@ function getActivityLabel(status: SessionStatus, isMoving: boolean): string {
   }
 }
 
+/* ── Status debounce — prevents flickering from server timestamp-based derivation ── */
+const STATUS_DEBOUNCE_MS = 5000; // 5 seconds stability required
+
+interface DebouncedStatus {
+  confirmed: SessionStatus;
+  confirmedAt: number;
+  pending: SessionStatus | null;
+  pendingAt: number;
+}
+
+function useDebouncedStatuses(sessions: ISession[]): Map<string, SessionStatus> {
+  const trackRef = useRef<Map<string, DebouncedStatus>>(new Map());
+  const [stable, setStable] = useState<Map<string, SessionStatus>>(new Map());
+
+  // Tick every frame to confirm pending statuses
+  useFrame(() => {
+    const now = Date.now();
+    let changed = false;
+    for (const [, entry] of trackRef.current) {
+      if (entry.pending !== null && now - entry.pendingAt >= STATUS_DEBOUNCE_MS) {
+        entry.confirmed = entry.pending;
+        entry.confirmedAt = now;
+        entry.pending = null;
+        changed = true;
+      }
+    }
+    if (changed) {
+      const map = new Map<string, SessionStatus>();
+      for (const [id, entry] of trackRef.current) {
+        map.set(id, entry.confirmed);
+      }
+      setStable(map);
+    }
+  });
+
+  useEffect(() => {
+    const now = Date.now();
+    const track = trackRef.current;
+    let changed = false;
+
+    for (const s of sessions) {
+      const existing = track.get(s.agentId);
+      if (!existing) {
+        // First time seeing this agent — accept immediately
+        track.set(s.agentId, {
+          confirmed: s.status,
+          confirmedAt: now,
+          pending: null,
+          pendingAt: 0,
+        });
+        changed = true;
+      } else if (s.status !== existing.confirmed) {
+        if (s.status !== existing.pending) {
+          // New pending status — start debounce timer
+          existing.pending = s.status;
+          existing.pendingAt = now;
+        }
+        // else: same pending, keep waiting
+      } else {
+        // Status matches confirmed — cancel any pending
+        existing.pending = null;
+      }
+    }
+
+    if (changed) {
+      const map = new Map<string, SessionStatus>();
+      for (const [id, entry] of track) {
+        map.set(id, entry.confirmed);
+      }
+      setStable(map);
+    }
+  }, [sessions]);
+
+  return stable;
+}
+
 /* ── Speech bubble types ── */
 interface SpeechBubbleEvent {
   agentId: string;
@@ -148,13 +236,19 @@ interface SpeechBubbleEvent {
 
 const BUBBLE_DURATION = 3.5; // seconds
 
-/* ── Speech bubble hook: detects new running agents, generates Samantha's call ── */
+/* ── Speech bubble hook: CEO delegates to Manager, Manager calls robots ── */
 function useSpeechBubbles(
   sessions: ISession[],
   agentNames: AgentNameMap,
+  debouncedStatuses: Map<string, SessionStatus>,
 ): { bubbles: SpeechBubbleEvent[]; bubbleMap: Map<string, string> } {
   const prevStatusRef = useRef<Map<string, SessionStatus>>(new Map());
   const [bubbles, setBubbles] = useState<SpeechBubbleEvent[]>([]);
+
+  const cleanName = useCallback((agentId: string) => {
+    const rawName = agentNames[agentId] ?? agentId;
+    return rawName.replace(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F?)\s*/u, '').trim() || agentId;
+  }, [agentNames]);
 
   useEffect(() => {
     const prev = prevStatusRef.current;
@@ -162,16 +256,37 @@ function useSpeechBubbles(
     const newBubbles: SpeechBubbleEvent[] = [];
 
     for (const s of sessions) {
+      const status = debouncedStatuses.get(s.agentId) ?? s.status;
       const prevStatus = prev.get(s.agentId);
-      // Detect idle/waiting → running transition (new work starting)
-      if (s.status === 'running' && prevStatus !== undefined && prevStatus !== 'running') {
-        // Skip if the agent IS Samantha/main — she doesn't call herself
-        if (!isOrchestrator(s.agentId)) {
-          const rawName = agentNames[s.agentId] ?? s.agentId;
-          const name = rawName.replace(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F?)\s*/u, '').trim() || s.agentId;
-          // Samantha announces
+
+      // Detect idle/waiting → running transition
+      if (status === 'running' && prevStatus !== undefined && prevStatus !== 'running') {
+        if (isCEO(s.agentId)) {
+          // Samantha herself starts running → she works directly
           newBubbles.push({
-            agentId: 'main',
+            agentId: s.agentId,
+            message: '🔧 On it',
+            startTime: now,
+          });
+        } else if (isManager(s.agentId)) {
+          // Emma starts running → Samantha delegates
+          newBubbles.push({
+            agentId: CEO_ID,
+            message: "📋 Emma, you're up",
+            startTime: now,
+          });
+        } else if (!isOrchestrator(s.agentId)) {
+          // Robot starts running → chain of command
+          const name = cleanName(s.agentId);
+          // Samantha delegates to Emma
+          newBubbles.push({
+            agentId: CEO_ID,
+            message: `📋 Emma, handle ${name}`,
+            startTime: now,
+          });
+          // Emma calls the robot (slightly delayed visually via separate bubble)
+          newBubbles.push({
+            agentId: MANAGER_ID,
             message: `📢 Calling ${name}...`,
             startTime: now,
           });
@@ -183,13 +298,13 @@ function useSpeechBubbles(
       setBubbles(prev => [...prev, ...newBubbles]);
     }
 
-    // Update previous statuses
+    // Update previous statuses (use debounced)
     const newMap = new Map<string, SessionStatus>();
     for (const s of sessions) {
-      newMap.set(s.agentId, s.status);
+      newMap.set(s.agentId, debouncedStatuses.get(s.agentId) ?? s.status);
     }
     prevStatusRef.current = newMap;
-  }, [sessions, agentNames]);
+  }, [sessions, debouncedStatuses, cleanName]);
 
   // Clean up expired bubbles periodically
   useEffect(() => {
@@ -220,8 +335,11 @@ function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps)
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const agentRoomsRef = useRef<Map<string, RoomKey>>(new Map());
 
-  // Speech bubbles — detects status transitions
-  const { bubbleMap } = useSpeechBubbles(sessions, agentNames);
+  // Status debounce — prevents flickering
+  const debouncedStatuses = useDebouncedStatuses(sessions);
+
+  // Speech bubbles — detects status transitions with hierarchy
+  const { bubbleMap } = useSpeechBubbles(sessions, agentNames, debouncedStatuses);
 
   // Compute room assignments and agent list
   const agents = useMemo(() => {
@@ -245,7 +363,8 @@ function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps)
 
     for (const id of allIds) {
       const session = sessionByAgent.get(id);
-      const status: SessionStatus = session?.status ?? 'idle';
+      // Use debounced status to prevent flickering
+      const status: SessionStatus = debouncedStatuses.get(id) ?? session?.status ?? 'idle';
       const rawName = agentNames[id] ?? id;
       const name = rawName.replace(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F?)\s*/u, '').trim() || id;
       const room = getRoomForAgent(id, status, context);
@@ -334,7 +453,7 @@ function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps)
     }
 
     return result;
-  }, [sessions, agentNames, bubbleMap]);
+  }, [sessions, agentNames, bubbleMap, debouncedStatuses]);
 
   // Position map for interaction beams
   const positionMap = useMemo(() => {

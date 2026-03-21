@@ -7,6 +7,55 @@
 
 export type RoomKey = 'lobby' | 'descanso' | 'comunicacion' | 'trabajo' | 'biblioteca';
 
+/* ── Furniture obstacles — bounding boxes agents must avoid ── */
+export interface Obstacle {
+  cx: number; cz: number; // center
+  hw: number; hd: number; // half-width (x), half-depth (z)
+}
+
+export const FURNITURE_OBSTACLES: Obstacle[] = [
+  // ── Lobby ──
+  { cx: 0,    cz: 12.5, hw: 1.5, hd: 0.6 },   // Reception desk
+
+  // ── Descanso — 3 seating areas ──
+  // Main sofa area (U-shape center)
+  { cx: -14,  cz: 6,    hw: 1.0, hd: 0.5 },    // Left sofa (vertical)
+  { cx: -12,  cz: 8.5,  hw: 1.5, hd: 0.5 },    // Back sofa (horizontal)
+  { cx: -10,  cz: 6,    hw: 0.5, hd: 0.5 },    // Right sofa (vertical)
+  { cx: -12,  cz: 6,    hw: 0.5, hd: 0.4 },    // Coffee table (center)
+  // Coffee corner
+  { cx: -4,   cz: 8.5,  hw: 0.8, hd: 0.4 },    // Coffee counter
+  // Lounge area
+  { cx: -16,  cz: 4.5,  hw: 0.6, hd: 0.6 },    // Bean bag / armchair
+  { cx: -14.5, cz: 4.5, hw: 0.6, hd: 0.6 },    // Armchair
+  // Water cooler
+  { cx: -18,  cz: 8,    hw: 0.3, hd: 0.3 },    // Water cooler
+
+  // ── Comunicación ──
+  { cx: 10,   cz: 6.5,  hw: 1.5, hd: 0.8 },    // Meeting table
+
+  // ── Trabajo — 4x3 desk grid ──
+  { cx: -12,  cz: -3.5, hw: 0.9, hd: 0.5 },    // Desk row1 col1
+  { cx: -5,   cz: -3.5, hw: 0.9, hd: 0.5 },    // Desk row1 col2
+  { cx: 2,    cz: -3.5, hw: 0.9, hd: 0.5 },    // Desk row1 col3
+  { cx: 9,    cz: -3.5, hw: 0.9, hd: 0.5 },    // Desk row1 col4
+  { cx: -12,  cz: -1.0, hw: 0.9, hd: 0.5 },    // Desk row2 col1
+  { cx: -5,   cz: -1.0, hw: 0.9, hd: 0.5 },    // Desk row2 col2
+  { cx: 2,    cz: -1.0, hw: 0.9, hd: 0.5 },    // Desk row2 col3
+  { cx: 9,    cz: -1.0, hw: 0.9, hd: 0.5 },    // Desk row2 col4
+  { cx: -12,  cz: 1.5,  hw: 0.9, hd: 0.5 },    // Desk row3 col1
+  { cx: -5,   cz: 1.5,  hw: 0.9, hd: 0.5 },    // Desk row3 col2
+  { cx: 2,    cz: 1.5,  hw: 0.9, hd: 0.5 },    // Desk row3 col3
+  { cx: 9,    cz: 1.5,  hw: 0.9, hd: 0.5 },    // Desk row3 col4
+
+  // ── Biblioteca ──
+  { cx: -12,  cz: -13.5, hw: 2.2, hd: 0.4 },   // Bookshelf left
+  { cx: 0,    cz: -13.5, hw: 2.7, hd: 0.4 },   // Bookshelf center
+  { cx: 12,   cz: -13.5, hw: 2.2, hd: 0.4 },   // Bookshelf right
+  { cx: -6,   cz: -8,    hw: 0.8, hd: 0.5 },   // Reading table left
+  { cx: 6,    cz: -8,    hw: 0.8, hd: 0.5 },   // Reading table right
+];
+
 interface DoorWaypoint {
   from: RoomKey;
   to: RoomKey;

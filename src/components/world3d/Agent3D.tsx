@@ -18,45 +18,7 @@ import type { Group, Mesh } from 'three';
 import type { SessionStatus } from '../../types';
 import type { AgentMotionState } from '../../hooks/useAgentMotion';
 import { SpeechBubble3D } from './SpeechBubble3D';
-
-/* ── Masters — conjunto fijo de IDs ── */
-const MASTER_IDS = new Set(['main', 'samantha', 'ginny', 'emma']);
-
-function isMaster(agentId: string): boolean {
-  return MASTER_IDS.has(agentId.toLowerCase());
-}
-
-/* ── Colores por agente ── */
-const AGENT_COLORS: Record<string, string> = {
-  main:                       '#c084fc',
-  samantha:                   '#c084fc',
-  ginny:                      '#53e3c2',
-  emma:                       '#ff9f43',
-  codereviewer:               '#ef4444',
-  cybersec:                   '#22d3ee',
-  'git-guardian':             '#84cc16',
-  'senior-frontend-architect':'#f472b6',
-  linter:                     '#a3e635',
-  prettier:                   '#f59e0b',
-  controlnaming:              '#38bdf8',
-  'ui-usability-analyst':     '#e879f9',
-  'fullstack-smoke-tester':   '#34d399',
-  'backend-socket-architect': '#fb923c',
-  'psych-market':             '#a855f7',
-};
-
-function hashColor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  const h = Math.abs(hash) % 360;
-  return `hsl(${h}, 70%, 60%)`;
-}
-
-function getAgentColor(agentId: string): string {
-  return AGENT_COLORS[agentId] ?? hashColor(agentId);
-}
+import { isMaster, getAgentColor, getAgentConfig } from '../../config/agentConfig';
 
 /* ── Status emissive ── */
 const STATUS_EMISSIVE: Record<SessionStatus, { color: string; intensity: number }> = {
@@ -65,13 +27,16 @@ const STATUS_EMISSIVE: Record<SessionStatus, { color: string; intensity: number 
   idle:    { color: '#6b7280', intensity: 0.15 },
 };
 
-/* ── Halo color por master ── */
-const MASTER_HALO: Record<string, string> = {
-  main:     '#c084fc',
-  samantha: '#c084fc',
-  ginny:    '#53e3c2',
-  emma:     '#ff9f43',
-};
+/* ── Halo/Hair helpers — read from registry ── */
+function getMasterHalo(agentId: string): string {
+  const cfg = getAgentConfig(agentId);
+  return cfg?.haloColor ?? cfg?.color ?? '#c084fc';
+}
+
+function getMasterHair(agentId: string): string {
+  const cfg = getAgentConfig(agentId);
+  return cfg?.hairColor ?? '#1a1a2e';
+}
 
 /* ── Props ── */
 export interface Agent3DProps {
@@ -88,14 +53,6 @@ export interface Agent3DProps {
   /** Optional speech bubble message shown above the agent */
   speechBubble?: string;
 }
-
-/* ── Hair color por master ── */
-const MASTER_HAIR: Record<string, string> = {
-  main:     '#d4a853', // Samantha — rubia dorada
-  samantha: '#d4a853',
-  ginny:    '#b7410e', // Ginny — pelirroja
-  emma:     '#8b5e3c', // Emma — castaña
-};
 
 /* ══════════════════════════════════════════
    MASTER AVATAR — female humanoid Pixar-style
@@ -115,11 +72,10 @@ function MasterAvatar({
   const leftEyeRef  = useRef<Mesh>(null);  // párpado izquierdo (solo este mesh escala en Y)
   const rightEyeRef = useRef<Mesh>(null); // párpado derecho
 
-  const id = agentId.toLowerCase();
   const color = getAgentColor(agentId);
   const glow  = STATUS_EMISSIVE[status];
-  const haloColor = MASTER_HALO[id] ?? color;
-  const hairColor = MASTER_HAIR[id] ?? '#1a1a2e';
+  const haloColor = getMasterHalo(agentId);
+  const hairColor = getMasterHair(agentId);
   const skinColor = '#f5d5b0';
   const skinDark  = '#e8c49e';
   const cheekColor = '#f9b8b8';
