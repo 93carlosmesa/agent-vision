@@ -82,21 +82,23 @@ export interface Agent3DProps {
   isActive: boolean;
   /** Shared ref from useAgentMotion — read in useFrame for zero-overhead updates */
   motionRef: React.RefObject<Map<string, AgentMotionState>>;
+  /** Optional activity label shown below name */
+  activityLabel?: string;
 }
 
 /* ── Hair color por master ── */
 const MASTER_HAIR: Record<string, string> = {
-  main:     '#1a1a2e',
-  samantha: '#1a1a2e',
-  ginny:    '#d4a853',
-  emma:     '#8b5e3c',
+  main:     '#d4a853', // Samantha — rubia dorada
+  samantha: '#d4a853',
+  ginny:    '#b7410e', // Ginny — pelirroja
+  emma:     '#8b5e3c', // Emma — castaña
 };
 
 /* ══════════════════════════════════════════
    MASTER AVATAR — female humanoid Pixar-style
    ══════════════════════════════════════════ */
 function MasterAvatar({
-  agentId, name, position, status, isActive, motionRef,
+  agentId, name, position, status, isActive, motionRef, activityLabel,
 }: Agent3DProps) {
   const groupRef    = useRef<Group>(null);
   const bodyRef     = useRef<Group>(null);
@@ -107,8 +109,8 @@ function MasterAvatar({
   const rightArmRef = useRef<Mesh>(null);
   const leftLegRef  = useRef<Mesh>(null);
   const rightLegRef = useRef<Mesh>(null);
-  const leftEyeRef  = useRef<Mesh>(null);
-  const rightEyeRef = useRef<Mesh>(null);
+  const leftEyeRef  = useRef<Mesh>(null);  // párpado izquierdo (solo este mesh escala en Y)
+  const rightEyeRef = useRef<Mesh>(null); // párpado derecho
 
   const id = agentId.toLowerCase();
   const color = getAgentColor(agentId);
@@ -184,12 +186,16 @@ function MasterAvatar({
       }
     }
 
-    // Blink animation (~every 3 seconds)
+    // Blink animation — solo mueve el párpado (mesh separado) en posY hacia abajo
+    // Evita distorsión de perspectiva al no escalar grupos completos de ojo
     if (leftEyeRef.current && rightEyeRef.current) {
       const blinkCycle = (t + seed) % 3.5;
-      const blinkScale = blinkCycle < 0.12 ? Math.max(0.05, 1 - blinkCycle / 0.06) : 1;
-      leftEyeRef.current.scale.y = blinkScale;
-      rightEyeRef.current.scale.y = blinkScale;
+      // Durante blink (0.12s): párpado baja de y=0.028 a y=-0.018, luego vuelve
+      const blink = blinkCycle < 0.12;
+      const blinkPhase = blink ? blinkCycle / 0.12 : 0; // 0→1→0
+      const lidDrop = blink ? Math.sin(blinkPhase * Math.PI) * 0.046 : 0;
+      leftEyeRef.current.position.y  = 0.028 - lidDrop;
+      rightEyeRef.current.position.y = 0.028 - lidDrop;
     }
 
     // Arm animation
@@ -307,8 +313,9 @@ function MasterAvatar({
           </mesh>
 
           {/* ── OJOS ── */}
-          {/* Ojo izquierdo — white */}
-          <group ref={leftEyeRef} position={[-0.09, 0.04, 0.20]}>
+          {/* Ojo izquierdo */}
+          <group position={[-0.09, 0.04, 0.20]}>
+            {/* Blanco del ojo */}
             <mesh>
               <sphereGeometry args={[0.055, 12, 12]} />
               <meshStandardMaterial color={eyeWhite} roughness={0.3} />
@@ -327,11 +334,17 @@ function MasterAvatar({
             <mesh position={[0.012, 0.015, 0.055]}>
               <sphereGeometry args={[0.007, 6, 6]} />
               <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.5} />
+            </mesh>
+            {/* Párpado superior — este mesh se escala en Y para el parpadeo */}
+            <mesh ref={leftEyeRef} position={[0, 0.028, 0.048]} scale={[1, 1, 1]}>
+              <boxGeometry args={[0.115, 0.045, 0.012]} />
+              <meshStandardMaterial color={skinColor} roughness={0.6} />
             </mesh>
           </group>
 
-          {/* Ojo derecho — white */}
-          <group ref={rightEyeRef} position={[0.09, 0.04, 0.20]}>
+          {/* Ojo derecho */}
+          <group position={[0.09, 0.04, 0.20]}>
+            {/* Blanco del ojo */}
             <mesh>
               <sphereGeometry args={[0.055, 12, 12]} />
               <meshStandardMaterial color={eyeWhite} roughness={0.3} />
@@ -350,6 +363,11 @@ function MasterAvatar({
             <mesh position={[0.012, 0.015, 0.055]}>
               <sphereGeometry args={[0.007, 6, 6]} />
               <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.5} />
+            </mesh>
+            {/* Párpado superior — este mesh se escala en Y para el parpadeo */}
+            <mesh ref={rightEyeRef} position={[0, 0.028, 0.048]} scale={[1, 1, 1]}>
+              <boxGeometry args={[0.115, 0.045, 0.012]} />
+              <meshStandardMaterial color={skinColor} roughness={0.6} />
             </mesh>
           </group>
 
@@ -556,6 +574,18 @@ function MasterAvatar({
           }}>
             ★ {name}
           </div>
+          {activityLabel && (
+            <div style={{
+              color: `${haloColor}99`,
+              fontSize: '8px',
+              fontFamily: 'monospace',
+              textAlign: 'center',
+              marginTop: '2px',
+              whiteSpace: 'nowrap',
+            }}>
+              {activityLabel}
+            </div>
+          )}
         </Html>
       </group>
     </group>
@@ -566,7 +596,7 @@ function MasterAvatar({
    ROBOT AVATAR — agente genérico mecánico
    ══════════════════════════════════════════ */
 function RobotAvatar({
-  agentId, name, position, status, isActive, motionRef,
+  agentId, name, position, status, isActive, motionRef, activityLabel,
 }: Agent3DProps) {
   const groupRef    = useRef<Group>(null);
   const bodyRef     = useRef<Group>(null);
@@ -846,6 +876,18 @@ function RobotAvatar({
           }}>
             🤖 {name}
           </div>
+          {activityLabel && (
+            <div style={{
+              color: `${color}99`,
+              fontSize: '8px',
+              fontFamily: 'monospace',
+              textAlign: 'center',
+              marginTop: '2px',
+              whiteSpace: 'nowrap',
+            }}>
+              {activityLabel}
+            </div>
+          )}
         </Html>
       </group>
     </group>
