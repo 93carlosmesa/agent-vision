@@ -2,12 +2,11 @@
  * App — Composition root.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { useAgentSessions } from './hooks/useAgentSessions';
 import { useSkillVisits } from './hooks/useSkillVisits';
 import { useInteractions } from './hooks/useInteractions';
 import { AgentScene } from './components/AgentScene';
-import { World3D } from './components/world3d/World3D';
 import { CreatorPanel } from './components/CreatorPanel';
 import { OrchestratorView } from './components/OrchestratorView';
 import { SceneSelector } from './components/SceneSelector';
@@ -16,6 +15,9 @@ import { DEFAULT_WORLD_ENVIRONMENT } from './components/world3d/officeTheme';
 import { TimelinePanel } from './components/TimelinePanel';
 import { SquadPanel } from './components/SquadPanel';
 import { setIdleFavicon, startActiveFavicon } from './utils/favicon';
+
+/** Lazy-load 3D world (Three.js) — only downloaded when user selects 3D scene */
+const World3D = lazy(() => import('./components/world3d/World3D').then(m => ({ default: m.World3D })));
 
 export default function App() {
   const [creatorOpen, setCreatorOpen] = useState(false);
@@ -68,12 +70,14 @@ export default function App() {
 
       <main className="app-main">
         {currentScene.id === '3d' ? (
-          <World3D
-            sessions={sessions}
-            agentNames={agentNames}
-            interactions={interactions}
-            environmentId={worldEnvironment}
-          />
+          <Suspense fallback={<div className="scene-loading">Loading 3D…</div>}>
+            <World3D
+              sessions={sessions}
+              agentNames={agentNames}
+              interactions={interactions}
+              environmentId={worldEnvironment}
+            />
+          </Suspense>
         ) : (
           <AgentScene
             sessions={sessions}

@@ -12,7 +12,7 @@ import type { ISceneConfig, SceneRegistry } from '../types';
 export const oficina: ISceneConfig = {
   id: 'oficina',
   title: 'Oficina',
-  backgroundImage: '/assets/bg-office.png',
+  backgroundImage: '/assets/bg-office.jpg',
   zoneLabels: {
     running: 'Zona de trabajo',
     waiting: 'Zona de comunicación',
@@ -28,7 +28,7 @@ export const oficina: ISceneConfig = {
 export const playa: ISceneConfig = {
   id: 'playa',
   title: 'Playa',
-  backgroundImage: '/assets/bg-beach.png',
+  backgroundImage: '/assets/bg-beach.jpg',
   zoneLabels: {
     running: 'Zona de trabajo',
     waiting: 'Zona de comunicación',
