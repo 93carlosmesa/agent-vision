@@ -131,35 +131,6 @@ function ParquetFloor({ position, size }: {
   return <group>{tiles}</group>;
 }
 
-/* ── Skylight casting warm light pools ── */
-function Skylight({ position, size }: {
-  position: [number, number, number];
-  size: [number, number];
-}) {
-  return (
-    <group position={position}>
-      {/* Skylight glass panel on ceiling */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={size} />
-        <meshStandardMaterial
-          color="#D4E8F8"
-          transparent
-          opacity={0.35}
-          emissive="#FFF8E0"
-          emissiveIntensity={0.4}
-        />
-      </mesh>
-      {/* Warm light pool on floor */}
-      <pointLight
-        position={[0, -1, 0]}
-        intensity={1.2}
-        color="#FFF0D0"
-        distance={12}
-        castShadow
-      />
-    </group>
-  );
-}
 
 /* ── Tiki hut structure for beach ── */
 function TikiHut({ position }: { position: [number, number, number] }) {
@@ -398,13 +369,6 @@ export function OfficeLayout3D({ environment }: { environment: WorldEnvironment 
       <Baseboard position={[-16, 0.075, 2]} width={13} color={theme.walls.baseboard} />
       <Baseboard position={[0, 0.075, 2]} width={15} color={theme.walls.baseboard} />
       <Baseboard position={[16, 0.075, 2]} width={13} color={theme.walls.baseboard} />
-
-      {/* Skylights — casting warm light pools */}
-      <Skylight position={[0, WALL_H - 0.01, 14]} size={[6, 3]} />
-      <Skylight position={[-14, WALL_H - 0.01, 6.5]} size={[5, 4]} />
-      <Skylight position={[10, WALL_H - 0.01, 6.5]} size={[6, 4]} />
-      <Skylight position={[0, WALL_H - 0.01, -3]} size={[8, 5]} />
-      <Skylight position={[-7, WALL_H - 0.01, -14]} size={[6, 4]} />
 
       {/* LED strip lights on every wall */}
       <LEDStrips walls={[
