@@ -16,6 +16,7 @@ export type {
   IWsTimelineUpdate,
   IWsAgentNamesUpdate,
   IWsSessionDetail,
+  IWsInteractionsUpdate,
   IWsError,
   IWsRequestDetail,
   IWsUnsubscribeDetail,

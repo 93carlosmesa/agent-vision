@@ -39,6 +39,7 @@ import {
   CEO_ID,
   MANAGER_ID,
   AGENT_REGISTRY,
+  getAgentSoul,
 } from '../../config/agentConfig';
 
 export interface World3DProps {
@@ -141,13 +142,14 @@ function gridPosition(
   return [cx - (cols - 1) * (spacing / 2) + col * spacing, 0, cz - 1.5 + row * spacing];
 }
 
-/* ── Activity labels — REAL status only ── */
-function getActivityLabel(status: SessionStatus, isMoving: boolean): string {
+/* ── Activity labels — uses AgentSoul phrases when available ── */
+function getActivityLabel(status: SessionStatus, isMoving: boolean, agentId?: string): string {
   if (isMoving) return '🚶 Moving';
+  const soul = agentId ? getAgentSoul(agentId) : undefined;
   switch (status) {
-    case 'running': return '🔧 Working';
+    case 'running': return soul?.workingPhrase ?? '🔧 Working';
     case 'waiting': return '⏳ In meeting';
-    default: return '';
+    default: return soul?.idlePhrase ?? '';
   }
 }
 
@@ -284,33 +286,43 @@ function useSpeechBubbles(
 
       // Detect idle/waiting → running transition
       if (status === 'running' && prevStatus !== undefined && prevStatus !== 'running') {
+        const ceoSoul = getAgentSoul(CEO_ID);
+        const mgrSoul = getAgentSoul(MANAGER_ID);
+        const agentSoul = getAgentSoul(s.agentId);
+
         if (isCEO(s.agentId)) {
           // Samantha herself starts running → she works directly
           newBubbles.push({
             agentId: s.agentId,
-            message: '🔧 On it',
+            message: agentSoul?.workingPhrase ?? '🔧 On it',
             startTime: now,
           });
         } else if (isManager(s.agentId)) {
           // Emma starts running → Samantha delegates
+          const phrase = ceoSoul?.delegatingPhrase?.replace('{target}', cleanName(s.agentId))
+            ?? `📋 ${cleanName(s.agentId)}, you're up`;
           newBubbles.push({
             agentId: CEO_ID,
-            message: "📋 Emma, you're up",
+            message: phrase,
             startTime: now,
           });
         } else if (!isOrchestrator(s.agentId)) {
           // Robot starts running → chain of command
           const name = cleanName(s.agentId);
           // Samantha delegates to Emma
+          const ceoPhrase = ceoSoul?.delegatingPhrase?.replace('{target}', 'Emma')
+            ?? `📋 Emma, handle ${name}`;
           newBubbles.push({
             agentId: CEO_ID,
-            message: `📋 Emma, handle ${name}`,
+            message: ceoPhrase,
             startTime: now,
           });
-          // Emma calls the robot (slightly delayed visually via separate bubble)
+          // Emma calls the robot
+          const mgrPhrase = mgrSoul?.delegatingPhrase?.replace('{target}', name)
+            ?? `📢 ${name}, you're up`;
           newBubbles.push({
             agentId: MANAGER_ID,
-            message: `📢 Calling ${name}...`,
+            message: mgrPhrase,
             startTime: now,
           });
         }
@@ -492,7 +504,7 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
         targetPos = idx >= 0
           ? gridPosition(center.cx, center.cz, idx, Math.max(cols, 1), spacing)
           : [center.cx, 0, center.cz];
-        label = getActivityLabel(d.status, false);
+        label = getActivityLabel(d.status, false, d.id);
       }
 
       // Pathfinding through doors

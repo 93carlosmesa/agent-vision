@@ -6,6 +6,7 @@
 import type {
   ISession,
   ISessionEvent,
+  IInteraction,
   AgentNameMap,
   ServerMessage,
 } from '../types';
@@ -19,6 +20,7 @@ export interface ISessionServiceState {
   sessions: ISession[];
   agentNames: AgentNameMap;
   timeline: Array<ISessionEvent & { sessionKey: string }>;
+  interactions: IInteraction[];
 }
 
 type StateChangeCallback = (state: ISessionServiceState) => void;
@@ -29,6 +31,7 @@ export class SessionService {
   private sessions: ISession[] = [];
   private agentNames: AgentNameMap = {};
   private timeline: Array<ISessionEvent & { sessionKey: string }> = [];
+  private interactions: IInteraction[] = [];
   private callbacks: StateChangeCallback[] = [];
 
   /**
@@ -53,6 +56,7 @@ export class SessionService {
       sessions: this.sessions,
       agentNames: this.agentNames,
       timeline: this.timeline,
+      interactions: this.interactions,
     };
   }
 
@@ -91,6 +95,11 @@ export class SessionService {
         this.sessions = this.sessions.map((s) =>
           s.key === msg.sessionKey ? msg.session : s
         );
+        this._notify();
+        break;
+
+      case 'interactions:update':
+        this.interactions = msg.interactions;
         this._notify();
         break;
 

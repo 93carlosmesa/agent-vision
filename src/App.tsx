@@ -23,9 +23,9 @@ export default function App() {
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [orchestratorOpen, setOrchestratorOpen] = useState(false);
   const [worldEnvironment, setWorldEnvironment] = useState(DEFAULT_WORLD_ENVIRONMENT);
-  const { sessions, agentNames, isConnected, currentScene, setScene, squads } = useAgentSessions();
+  const { sessions, agentNames, interactions: serverInteractions, isConnected, currentScene, setScene, squads } = useAgentSessions();
   const skillVisits = useSkillVisits(sessions);
-  const interactions = useInteractions(sessions);
+  const interactions = useInteractions(serverInteractions);
 
   const memberMetaBySession = useMemo(
     () => Object.fromEntries(

@@ -113,7 +113,12 @@ export function useAgentMotion(
         existing.desiredFacingAngle = facingAngle ?? existing.desiredFacingAngle;
 
         if (changed) {
-          existing.waypoints = waypoints.map(w => [...w] as [number, number, number]);
+          const newWaypoints = waypoints.map(w => [...w] as [number, number, number]);
+          // If agent is mid-movement, prepend current position to avoid teleporting
+          if (existing.isMoving && existing.waypointIndex > 0 && existing.waypointIndex < existing.waypoints.length) {
+            newWaypoints.unshift([...existing.currentPos] as [number, number, number]);
+          }
+          existing.waypoints = newWaypoints;
           existing.waypointIndex = 0;
         }
       }
