@@ -1,48 +1,55 @@
-/**
- * OfficeLayout3D — Procedural multi-room office building: walls, floors, doorways, room labels.
- *
- * Layout (top-down, Z+ = front/south, Z- = back/north):
- *   Lobby:         z = 10..14,  x = -20..20
- *   Descanso:      z = 3..10,   x = -20..0
- *   Comunicación:  z = 3..10,   x = 0..20
- *   Trabajo:       z = -5..3,   x = -20..20
- *   Biblioteca:    z = -15..-5, x = -20..20
- */
-
+import React, { useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
+import type { Mesh } from 'three';
+import type { WorldEnvironment } from './officeTheme';
 
-const WALL_H = 2.8;
-const WALL_T = 0.1;
-const WALL_COLOR = '#4a4440';
-const WALL_ROUGHNESS = 0.85;
+const WALL_H = 3;
+const WALL_T = 0.12;
 
-/* ── Wall segment helper ── */
-function Wall({ position, size, rotation = 0 }: {
+/* ── Shared primitives ── */
+
+function Wall({ position, size, rotation = 0, color }: {
   position: [number, number, number];
-  size: [number, number]; // [width, height]
+  size: [number, number];
   rotation?: number;
+  color: string;
 }) {
   return (
-    <mesh position={position} rotation={[0, rotation, 0]}>
+    <mesh position={position} rotation={[0, rotation, 0]} castShadow receiveShadow>
       <boxGeometry args={[size[0], size[1], WALL_T]} />
-      <meshStandardMaterial color={WALL_COLOR} roughness={WALL_ROUGHNESS} />
+      <meshStandardMaterial color={color} roughness={0.7} metalness={0.05} />
     </mesh>
   );
 }
 
-/* ── Glass wall (translucent) ── */
-function GlassWall({ position, size, rotation = 0 }: {
+function Baseboard({ position, width, rotation = 0, color }: {
+  position: [number, number, number];
+  width: number;
+  rotation?: number;
+  color: string;
+}) {
+  return (
+    <mesh position={position} rotation={[0, rotation, 0]}>
+      <boxGeometry args={[width, 0.15, WALL_T + 0.02]} />
+      <meshStandardMaterial color={color} roughness={0.4} />
+    </mesh>
+  );
+}
+
+function GlassWall({ position, size, rotation = 0, color }: {
   position: [number, number, number];
   size: [number, number];
   rotation?: number;
+  color: string;
 }) {
   return (
     <mesh position={position} rotation={[0, rotation, 0]}>
       <boxGeometry args={[size[0], size[1], 0.06]} />
       <meshStandardMaterial
-        color="#88aacc"
+        color={color}
         transparent
-        opacity={0.15}
+        opacity={0.22}
         metalness={0.3}
         roughness={0.1}
       />
@@ -50,7 +57,6 @@ function GlassWall({ position, size, rotation = 0 }: {
   );
 }
 
-/* ── Floor plane for a room ── */
 function RoomFloor({ position, size, color }: {
   position: [number, number, number];
   size: [number, number];
@@ -59,30 +65,30 @@ function RoomFloor({ position, size, color }: {
   return (
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={position} receiveShadow>
       <planeGeometry args={size} />
-      <meshStandardMaterial color={color} roughness={0.85} />
+      <meshStandardMaterial color={color} roughness={0.85} metalness={0.02} />
     </mesh>
   );
 }
 
-/* ── Floating room label ── */
 function RoomLabel({ position, label, color }: {
   position: [number, number, number];
   label: string;
   color: string;
 }) {
   return (
-    <Html position={position} center distanceFactor={22} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
+    <Html position={position} center distanceFactor={24} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
       <div style={{
-        background: 'rgba(20,18,15,0.75)',
+        background: 'rgba(30,36,48,0.82)',
         color,
-        padding: '4px 14px',
-        borderRadius: '4px',
-        fontSize: '13px',
+        padding: '5px 14px',
+        borderRadius: '6px',
+        fontSize: '12px',
         fontFamily: 'monospace',
         fontWeight: 700,
         letterSpacing: '2px',
         textTransform: 'uppercase',
-        border: `1px solid ${color}40`,
+        border: `1px solid ${color}66`,
+        boxShadow: `0 0 8px ${color}33`,
       }}>
         {label}
       </div>
@@ -90,77 +96,267 @@ function RoomLabel({ position, label, color }: {
   );
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   OFFICE LAYOUT — All walls, floors, and labels
-   ═══════════════════════════════════════════════════════════════════ */
+/* ── Parquet basketweave pattern for office ── */
+function ParquetFloor({ position, size }: {
+  position: [number, number, number];
+  size: [number, number];
+}) {
+  const tiles: React.JSX.Element[] = [];
+  const tileW = 2;
+  const tileD = 2;
+  const colorA = '#A07850';
+  const colorB = '#8B6538';
 
-export function OfficeLayout3D() {
-  const wy = WALL_H / 2; // wall center y
+  const cols = Math.ceil(size[0] / tileW);
+  const rows = Math.ceil(size[1] / tileD);
+  const ox = position[0] - size[0] / 2 + tileW / 2;
+  const oz = position[2] - size[1] / 2 + tileD / 2;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const isAlt = (r + c) % 2 === 0;
+      tiles.push(
+        <mesh
+          key={`pq-${r}-${c}`}
+          rotation={[-Math.PI / 2, 0, 0]}
+          position={[ox + c * tileW, position[1], oz + r * tileD]}
+          receiveShadow
+        >
+          <planeGeometry args={[tileW - 0.04, tileD - 0.04]} />
+          <meshStandardMaterial color={isAlt ? colorA : colorB} roughness={0.75} metalness={0.02} />
+        </mesh>
+      );
+    }
+  }
+  return <group>{tiles}</group>;
+}
+
+/* ── Skylight casting warm light pools ── */
+function Skylight({ position, size }: {
+  position: [number, number, number];
+  size: [number, number];
+}) {
+  return (
+    <group position={position}>
+      {/* Skylight glass panel on ceiling */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={size} />
+        <meshStandardMaterial
+          color="#D4E8F8"
+          transparent
+          opacity={0.35}
+          emissive="#FFF8E0"
+          emissiveIntensity={0.4}
+        />
+      </mesh>
+      {/* Warm light pool on floor */}
+      <pointLight
+        position={[0, -1, 0]}
+        intensity={1.2}
+        color="#FFF0D0"
+        distance={12}
+        castShadow
+      />
+    </group>
+  );
+}
+
+/* ── Tiki hut structure for beach ── */
+function TikiHut({ position }: { position: [number, number, number] }) {
+  const postColor = '#5A3A20';
+  const roofColor = '#B89050';
+  const hw = 5;
+  const hd = 4;
+  const h = 3.2;
 
   return (
+    <group position={position}>
+      {/* 4 corner posts */}
+      {[[-hw / 2, -hd / 2], [hw / 2, -hd / 2], [-hw / 2, hd / 2], [hw / 2, hd / 2]].map(([x, z], i) => (
+        <mesh key={i} position={[x, h / 2, z]} castShadow>
+          <cylinderGeometry args={[0.1, 0.12, h, 8]} />
+          <meshStandardMaterial color={postColor} roughness={0.9} />
+        </mesh>
+      ))}
+      {/* Thatched roof — layered cones */}
+      <mesh position={[0, h + 0.4, 0]}>
+        <coneGeometry args={[hw * 0.75, 1.2, 6]} />
+        <meshStandardMaterial color={roofColor} roughness={0.95} />
+      </mesh>
+      <mesh position={[0, h + 0.15, 0]}>
+        <boxGeometry args={[hw + 0.6, 0.15, hd + 0.6]} />
+        <meshStandardMaterial color={roofColor} roughness={0.95} />
+      </mesh>
+    </group>
+  );
+}
+
+/* ── Ocean plane with gentle wave animation ── */
+function OceanPlane() {
+  const ref = useRef<Mesh>(null);
+  useFrame(({ clock }) => {
+    if (ref.current) {
+      ref.current.position.y = -0.15 + Math.sin(clock.elapsedTime * 0.5) * 0.08;
+    }
+  });
+  return (
+    <mesh ref={ref} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.15, -40]} receiveShadow>
+      <planeGeometry args={[200, 80]} />
+      <meshStandardMaterial
+        color="#40C8C8"
+        transparent
+        opacity={0.85}
+        roughness={0.15}
+        metalness={0.3}
+      />
+    </mesh>
+  );
+}
+
+/* ── Sand plane for beach ── */
+function SandPlane() {
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]} receiveShadow>
+      <planeGeometry args={[120, 100]} />
+      <meshStandardMaterial color="#F0E8D8" roughness={0.95} />
+    </mesh>
+  );
+}
+
+/* ── Main layout component ── */
+
+export function OfficeLayout3D({ environment }: { environment: WorldEnvironment }) {
+  const wy = WALL_H / 2;
+  const theme = environment.theme;
+  const isBeach = !!environment.beachMode;
+
+  if (isBeach) {
+    return (
+      <group>
+        {/* Sand ground */}
+        <SandPlane />
+
+        {/* Ocean in background */}
+        <OceanPlane />
+
+        {/* Wooden deck platform */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
+          <planeGeometry args={[52, 44]} />
+          <meshStandardMaterial color="#A09080" roughness={0.8} metalness={0.02} />
+        </mesh>
+
+        {/* Deck plank lines */}
+        {Array.from({ length: 13 }).map((_, i) => (
+          <mesh key={`plank-${i}`} rotation={[-Math.PI / 2, 0, 0]} position={[-24 + i * 4, 0.03, 0]}>
+            <planeGeometry args={[0.05, 44]} />
+            <meshStandardMaterial color="#8A7868" roughness={0.9} />
+          </mesh>
+        ))}
+
+        {/* Room floor tints on deck */}
+        <RoomFloor position={[0, 0.04, 14.5]} size={[48, 7]} color={theme.roomFloors.lobby} />
+        <RoomFloor position={[-14, 0.04, 6.5]} size={[20, 9]} color={theme.roomFloors.descanso} />
+        <RoomFloor position={[10, 0.04, 6.5]} size={[28, 9]} color={theme.roomFloors.comunicacion} />
+        <RoomFloor position={[0, 0.04, -3]} size={[48, 10]} color={theme.roomFloors.trabajo} />
+        <RoomFloor position={[-7, 0.04, -14]} size={[34, 12]} color={theme.roomFloors.biblioteca} />
+        <RoomFloor position={[17, 0.04, -14]} size={[14, 12]} color={theme.roomFloors.exterior} />
+
+        {/* Tiki hut over break/relax area */}
+        <TikiHut position={[-14, 0, 6.5]} />
+
+        {/* Second smaller tiki hut for exterior */}
+        <TikiHut position={[17, 0, -14]} />
+
+        {/* Low rope boundary markers (instead of walls) */}
+        {[[-24, 0.4, 0], [24, 0.4, 0]].map(([x, y, z], i) => (
+          <mesh key={`rope-${i}`} position={[x, y, z]}>
+            <cylinderGeometry args={[0.03, 0.03, 40, 8]} />
+            <meshStandardMaterial color="#C0A070" roughness={0.9} />
+          </mesh>
+        ))}
+
+        {/* Labels */}
+        <RoomLabel position={[0, 3.7, 15]} label="Welcome Deck" color={theme.accent.cyan} />
+        <RoomLabel position={[-14, 3.7, 6.5]} label="Beach Lounge" color={theme.accent.amber} />
+        <RoomLabel position={[10, 3.7, 6.5]} label="Meeting Palapa" color={theme.accent.mint} />
+        <RoomLabel position={[0, 3.7, -3]} label="Beach Work Hub" color={theme.accent.violet} />
+        <RoomLabel position={[-7, 3.7, -14]} label="Quiet Cove" color="#E8D8B0" />
+        <RoomLabel position={[17, 3.7, -14]} label="Tiki Terrace" color="#80D8A0" />
+      </group>
+    );
+  }
+
+  /* ── OFFICE layout ── */
+  return (
     <group>
-      {/* ── FLOORS ── */}
-      {/* Lobby floor (lighter) */}
-      <RoomFloor position={[0, -0.01, 12]} size={[40, 4]} color="#4a4540" />
-      {/* Descanso floor */}
-      <RoomFloor position={[-10, -0.01, 6.5]} size={[20, 7]} color="#3a3530" />
-      {/* Comunicación floor */}
-      <RoomFloor position={[10, -0.01, 6.5]} size={[20, 7]} color="#3a3530" />
-      {/* Trabajo floor (slightly brighter) */}
-      <RoomFloor position={[0, -0.01, -1]} size={[40, 8]} color="#3d3832" />
-      {/* Biblioteca floor (slightly darker) */}
-      <RoomFloor position={[0, -0.01, -10]} size={[40, 10]} color="#352f2a" />
+      {/* Parquet basketweave floor */}
+      <ParquetFloor position={[0, -0.01, 0]} size={[52, 44]} />
 
-      {/* ── OUTER WALLS ── */}
-      {/* Front wall — glass (lobby front), z=14 */}
-      <GlassWall position={[0, wy, 14]} size={[40, WALL_H]} />
-      {/* Back wall, z=-15 */}
-      <Wall position={[0, wy, -15]} size={[40, WALL_H]} />
-      {/* Left wall, x=-20 */}
-      <Wall position={[-20, wy, -0.5]} size={[29, WALL_H]} rotation={Math.PI / 2} />
-      {/* Right wall, x=20 */}
-      <Wall position={[20, wy, -0.5]} size={[29, WALL_H]} rotation={Math.PI / 2} />
+      {/* Room floor tints on top of parquet */}
+      <RoomFloor position={[0, 0.005, 14.5]} size={[48, 7]} color={theme.roomFloors.lobby} />
+      <RoomFloor position={[-14, 0.005, 6.5]} size={[20, 9]} color={theme.roomFloors.descanso} />
+      <RoomFloor position={[10, 0.005, 6.5]} size={[28, 9]} color={theme.roomFloors.comunicacion} />
+      <RoomFloor position={[0, 0.005, -3]} size={[48, 10]} color={theme.roomFloors.trabajo} />
+      <RoomFloor position={[-7, 0.005, -14]} size={[34, 12]} color={theme.roomFloors.biblioteca} />
+      <RoomFloor position={[17, 0.005, -14]} size={[14, 12]} color={theme.roomFloors.exterior} />
 
-      {/* ── LOBBY / TOP ROOMS DIVIDER — z=10 ── */}
-      {/* x=-20 to -10.75 */}
-      <Wall position={[-15.375, wy, 10]} size={[9.25, WALL_H]} />
-      {/* Door gap at x=-10 (1.5 wide): x=-10.75 to -9.25 */}
-      {/* x=-9.25 to 9.25 */}
-      <Wall position={[0, wy, 10]} size={[18.5, WALL_H]} />
-      {/* Door gap at x=10 (1.5 wide): x=9.25 to 10.75 */}
-      {/* x=10.75 to 20 */}
-      <Wall position={[15.375, wy, 10]} size={[9.25, WALL_H]} />
+      {/* Outer walls — navy blue */}
+      <GlassWall position={[0, wy, 18]} size={[48, WALL_H]} color={theme.walls.glass} />
+      <Wall position={[-7, wy, -20]} size={[34, WALL_H]} color={theme.walls.solid} />
+      <GlassWall position={[17, 1.1, -20]} size={[14, 1.2]} color={theme.walls.glass} />
+      <Wall position={[-24, wy, -1]} size={[38, WALL_H]} rotation={Math.PI / 2} color={theme.walls.solid} />
+      <Wall position={[24, wy, 4.5]} size={[27, WALL_H]} rotation={Math.PI / 2} color={theme.walls.solid} />
+      <GlassWall position={[24, 1.2, -13]} size={[12, 1.4]} rotation={Math.PI / 2} color={theme.walls.glass} />
 
-      {/* ── MIDDLE VERTICAL DIVIDER (Descanso | Comunicación) — x=0, z=3..10 ── */}
-      {/* Top segment (z=7.25 to 10) */}
-      <Wall position={[0, wy, 8.625]} size={[2.75, WALL_H]} rotation={Math.PI / 2} />
-      {/* Bottom segment (z=3 to 5.75) */}
-      <Wall position={[0, wy, 4.375]} size={[2.75, WALL_H]} rotation={Math.PI / 2} />
-      {/* Door gap at z=6.5 (1.5 wide) */}
+      {/* White baseboards along outer walls */}
+      <Baseboard position={[-7, 0.075, -20]} width={34} color={theme.walls.baseboard} />
+      <Baseboard position={[-24, 0.075, -1]} width={38} rotation={Math.PI / 2} color={theme.walls.baseboard} />
+      <Baseboard position={[24, 0.075, 4.5]} width={27} rotation={Math.PI / 2} color={theme.walls.baseboard} />
 
-      {/* ── TOP ROOMS / TRABAJO DIVIDER — z=3 ── */}
-      {/* x=-20 to -8.25 */}
-      <Wall position={[-14.125, wy, 3]} size={[11.75, WALL_H]} />
-      {/* Door gap at x=-7.5 (1.5 wide): x=-8.25 to -6.75 */}
-      {/* x=-6.75 to 6.75 (continuous, no central corridor) */}
-      <Wall position={[0, wy, 3]} size={[13.5, WALL_H]} />
-      {/* Door gap at x=7.5 (1.5 wide): x=6.75 to 8.25 */}
-      {/* x=8.25 to 20 */}
-      <Wall position={[14.125, wy, 3]} size={[11.75, WALL_H]} />
+      {/* Inner walls — navy */}
+      <Wall position={[-17, wy, 11]} size={[14, WALL_H]} color={theme.walls.inner} />
+      <Wall position={[0, wy, 11]} size={[16, WALL_H]} color={theme.walls.inner} />
+      <Wall position={[17, wy, 11]} size={[14, WALL_H]} color={theme.walls.inner} />
 
-      {/* ── TRABAJO / BIBLIOTECA DIVIDER — z=-5 ── */}
-      {/* Left section: x=-20 to -0.75 */}
-      <Wall position={[-10.375, wy, -5]} size={[19.25, WALL_H]} />
-      {/* Door gap at x=0 (1.5 wide) */}
-      {/* Right section: x=0.75 to 20 */}
-      <Wall position={[10.375, wy, -5]} size={[19.25, WALL_H]} />
+      <Wall position={[-4, wy, 9]} size={[3.6, WALL_H]} rotation={Math.PI / 2} color={theme.walls.inner} />
+      <Wall position={[-4, wy, 4]} size={[3.6, WALL_H]} rotation={Math.PI / 2} color={theme.walls.inner} />
 
-      {/* ── ROOM LABELS ── */}
-      <RoomLabel position={[0, 3.5, 12.5]} label="Entrada" color="#88bbdd" />
-      <RoomLabel position={[-10, 3.5, 6.5]} label="Sala de Descanso" color="#ff9f43" />
-      <RoomLabel position={[10, 3.5, 6.5]} label="Sala de Comunicación" color="#53e3c2" />
-      <RoomLabel position={[0, 3.5, -1]} label="Sala de Trabajo" color="#7c9cff" />
-      <RoomLabel position={[0, 3.5, -10]} label="Biblioteca" color="#c4a35a" />
+      <Wall position={[-16, wy, 2]} size={[13, WALL_H]} color={theme.walls.inner} />
+      <Wall position={[0, wy, 2]} size={[15, WALL_H]} color={theme.walls.inner} />
+      <Wall position={[16, wy, 2]} size={[13, WALL_H]} color={theme.walls.inner} />
+
+      <Wall position={[-14, wy, -8]} size={[18, WALL_H]} color={theme.walls.inner} />
+      <Wall position={[1, wy, -8]} size={[8, WALL_H]} color={theme.walls.inner} />
+      <GlassWall position={[12, 1.2, -8]} size={[10, 1.4]} color={theme.walls.glass} />
+
+      {/* White baseboards along inner walls */}
+      <Baseboard position={[-17, 0.075, 11]} width={14} color={theme.walls.baseboard} />
+      <Baseboard position={[0, 0.075, 11]} width={16} color={theme.walls.baseboard} />
+      <Baseboard position={[17, 0.075, 11]} width={14} color={theme.walls.baseboard} />
+      <Baseboard position={[-16, 0.075, 2]} width={13} color={theme.walls.baseboard} />
+      <Baseboard position={[0, 0.075, 2]} width={15} color={theme.walls.baseboard} />
+      <Baseboard position={[16, 0.075, 2]} width={13} color={theme.walls.baseboard} />
+
+      {/* Ceiling plane for skylight contrast */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, WALL_H, 0]}>
+        <planeGeometry args={[52, 44]} />
+        <meshStandardMaterial color="#E8E0D8" roughness={0.9} />
+      </mesh>
+
+      {/* Skylights — casting warm light pools */}
+      <Skylight position={[0, WALL_H - 0.01, 14]} size={[6, 3]} />
+      <Skylight position={[-14, WALL_H - 0.01, 6.5]} size={[5, 4]} />
+      <Skylight position={[10, WALL_H - 0.01, 6.5]} size={[6, 4]} />
+      <Skylight position={[0, WALL_H - 0.01, -3]} size={[8, 5]} />
+      <Skylight position={[-7, WALL_H - 0.01, -14]} size={[6, 4]} />
+
+      {/* Room labels */}
+      <RoomLabel position={[0, 3.7, 15]} label="Lobby / Recepcion" color={theme.accent.cyan} />
+      <RoomLabel position={[-14, 3.7, 6.5]} label="Sala de Descanso" color={theme.accent.amber} />
+      <RoomLabel position={[10, 3.7, 6.5]} label="Comunicacion & Reuniones" color={theme.accent.mint} />
+      <RoomLabel position={[0, 3.7, -3]} label="Work Hub" color={theme.accent.violet} />
+      <RoomLabel position={[-7, 3.7, -14]} label="Biblioteca / Quiet Room" color="#E0D2A8" />
+      <RoomLabel position={[17, 3.7, -14]} label="Terraza Exterior" color="#9EF3BE" />
     </group>
   );
 }

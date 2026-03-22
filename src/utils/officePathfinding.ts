@@ -1,59 +1,54 @@
 /**
- * officePathfinding — BFS-based room graph traversal through door waypoints.
- *
- * Agents must walk THROUGH DOORS between rooms, never through walls.
- * Uses a pre-defined graph of room connections with door positions.
+ * officePathfinding — BFS room graph traversal through explicit doors.
+ * Layout supports the expanded office footprint and keeps motion compatibility.
  */
 
 export type RoomKey = 'lobby' | 'descanso' | 'comunicacion' | 'trabajo' | 'biblioteca';
 
-/* ── Furniture obstacles — bounding boxes agents must avoid ── */
 export interface Obstacle {
-  cx: number; cz: number; // center
-  hw: number; hd: number; // half-width (x), half-depth (z)
+  cx: number;
+  cz: number;
+  hw: number;
+  hd: number;
 }
 
 export const FURNITURE_OBSTACLES: Obstacle[] = [
-  // ── Lobby ──
-  { cx: 0,    cz: 12.5, hw: 1.5, hd: 0.6 },   // Reception desk
+  // Lobby
+  { cx: 0, cz: 15, hw: 1.9, hd: 0.7 },
+  { cx: -8, cz: 13.5, hw: 1.1, hd: 0.4 },
+  { cx: 8, cz: 13.5, hw: 1.1, hd: 0.4 },
 
-  // ── Descanso — 3 seating areas ──
-  // Main sofa area (U-shape center)
-  { cx: -14,  cz: 6,    hw: 1.0, hd: 0.5 },    // Left sofa (vertical)
-  { cx: -12,  cz: 8.5,  hw: 1.5, hd: 0.5 },    // Back sofa (horizontal)
-  { cx: -10,  cz: 6,    hw: 0.5, hd: 0.5 },    // Right sofa (vertical)
-  { cx: -12,  cz: 6,    hw: 0.5, hd: 0.4 },    // Coffee table (center)
-  // Coffee corner
-  { cx: -4,   cz: 8.5,  hw: 0.8, hd: 0.4 },    // Coffee counter
-  // Lounge area
-  { cx: -16,  cz: 4.5,  hw: 0.6, hd: 0.6 },    // Bean bag / armchair
-  { cx: -14.5, cz: 4.5, hw: 0.6, hd: 0.6 },    // Armchair
-  // Water cooler
-  { cx: -18,  cz: 8,    hw: 0.3, hd: 0.3 },    // Water cooler
+  // Descanso
+  { cx: -19, cz: 7, hw: 0.8, hd: 0.9 },
+  { cx: -16.8, cz: 9, hw: 0.9, hd: 0.45 },
+  { cx: -14.6, cz: 7, hw: 0.8, hd: 0.9 },
+  { cx: -10.5, cz: 5.1, hw: 0.8, hd: 0.45 },
+  { cx: -8.8, cz: 8.7, hw: 0.8, hd: 0.45 },
+  { cx: -6, cz: 9.5, hw: 0.9, hd: 0.35 },
 
-  // ── Comunicación ──
-  { cx: 10,   cz: 6.5,  hw: 1.5, hd: 0.8 },    // Meeting table
+  // Comunicación
+  { cx: 10, cz: 6.3, hw: 1.8, hd: 0.9 },
+  { cx: 19, cz: 9.8, hw: 1.8, hd: 0.8 },
+  { cx: 4.8, cz: 4.5, hw: 0.8, hd: 0.3 },
 
-  // ── Trabajo — 4x3 desk grid ──
-  { cx: -12,  cz: -3.5, hw: 0.9, hd: 0.5 },    // Desk row1 col1
-  { cx: -5,   cz: -3.5, hw: 0.9, hd: 0.5 },    // Desk row1 col2
-  { cx: 2,    cz: -3.5, hw: 0.9, hd: 0.5 },    // Desk row1 col3
-  { cx: 9,    cz: -3.5, hw: 0.9, hd: 0.5 },    // Desk row1 col4
-  { cx: -12,  cz: -1.0, hw: 0.9, hd: 0.5 },    // Desk row2 col1
-  { cx: -5,   cz: -1.0, hw: 0.9, hd: 0.5 },    // Desk row2 col2
-  { cx: 2,    cz: -1.0, hw: 0.9, hd: 0.5 },    // Desk row2 col3
-  { cx: 9,    cz: -1.0, hw: 0.9, hd: 0.5 },    // Desk row2 col4
-  { cx: -12,  cz: 1.5,  hw: 0.9, hd: 0.5 },    // Desk row3 col1
-  { cx: -5,   cz: 1.5,  hw: 0.9, hd: 0.5 },    // Desk row3 col2
-  { cx: 2,    cz: 1.5,  hw: 0.9, hd: 0.5 },    // Desk row3 col3
-  { cx: 9,    cz: 1.5,  hw: 0.9, hd: 0.5 },    // Desk row3 col4
+  // Trabajo (20 desks grid)
+  ...Array.from({ length: 4 * 5 }).map((_, i) => {
+    const col = i % 5;
+    const row = Math.floor(i / 5);
+    const x = -16 + col * 8;
+    const z = -6 + row * 2.2;
+    return { cx: x, cz: z, hw: 0.85, hd: 0.45 };
+  }),
 
-  // ── Biblioteca ──
-  { cx: -12,  cz: -13.5, hw: 2.2, hd: 0.4 },   // Bookshelf left
-  { cx: 0,    cz: -13.5, hw: 2.7, hd: 0.4 },   // Bookshelf center
-  { cx: 12,   cz: -13.5, hw: 2.2, hd: 0.4 },   // Bookshelf right
-  { cx: -6,   cz: -8,    hw: 0.8, hd: 0.5 },   // Reading table left
-  { cx: 6,    cz: -8,    hw: 0.8, hd: 0.5 },   // Reading table right
+  // Biblioteca
+  { cx: -20, cz: -18, hw: 2.8, hd: 0.45 },
+  { cx: -12.5, cz: -18, hw: 2.8, hd: 0.45 },
+  { cx: -5, cz: -18, hw: 2.8, hd: 0.45 },
+  { cx: 2.5, cz: -18, hw: 2.8, hd: 0.45 },
+  { cx: -17, cz: -12, hw: 0.95, hd: 0.45 },
+  { cx: -12, cz: -12, hw: 0.95, hd: 0.45 },
+  { cx: -7, cz: -12, hw: 0.95, hd: 0.45 },
+  { cx: -2, cz: -12, hw: 0.95, hd: 0.45 },
 ];
 
 interface DoorWaypoint {
@@ -63,17 +58,15 @@ interface DoorWaypoint {
 }
 
 const DOORS: DoorWaypoint[] = [
-  { from: 'lobby',        to: 'descanso',      point: [-10, 0, 10] },
-  { from: 'lobby',        to: 'comunicacion',   point: [10, 0, 10] },
-  { from: 'descanso',     to: 'comunicacion',   point: [0, 0, 6.5] },
-  { from: 'descanso',     to: 'trabajo',        point: [-7.5, 0, 3] },
-  { from: 'comunicacion', to: 'trabajo',        point: [7.5, 0, 3] },
-  { from: 'trabajo',      to: 'biblioteca',     point: [0, 0, -5] },
+  { from: 'lobby', to: 'descanso', point: [-10, 0, 11] },
+  { from: 'lobby', to: 'comunicacion', point: [10, 0, 11] },
+  { from: 'descanso', to: 'comunicacion', point: [-4, 0, 6.5] },
+  { from: 'descanso', to: 'trabajo', point: [-9.5, 0, 2] },
+  { from: 'comunicacion', to: 'trabajo', point: [7.5, 0, 2] },
+  { from: 'trabajo', to: 'biblioteca', point: [-5, 0, -8] },
 ];
 
-// Build adjacency list (bidirectional)
 const ADJ = new Map<RoomKey, { neighbor: RoomKey; door: [number, number, number] }[]>();
-
 for (const d of DOORS) {
   if (!ADJ.has(d.from)) ADJ.set(d.from, []);
   if (!ADJ.has(d.to)) ADJ.set(d.to, []);
@@ -81,14 +74,9 @@ for (const d of DOORS) {
   ADJ.get(d.to)!.push({ neighbor: d.from, door: d.point });
 }
 
-/**
- * Find the sequence of door waypoints an agent must visit to travel
- * from one room to another. Returns empty array if same room.
- */
 export function findPath(fromRoom: RoomKey, toRoom: RoomKey): [number, number, number][] {
   if (fromRoom === toRoom) return [];
 
-  // BFS to find shortest room path
   const visited = new Set<RoomKey>([fromRoom]);
   const parent = new Map<RoomKey, { room: RoomKey; door: [number, number, number] }>();
   const queue: RoomKey[] = [fromRoom];
@@ -104,7 +92,6 @@ export function findPath(fromRoom: RoomKey, toRoom: RoomKey): [number, number, n
       parent.set(neighbor, { room: current, door });
 
       if (neighbor === toRoom) {
-        // Reconstruct path of door waypoints
         const waypoints: [number, number, number][] = [];
         let node: RoomKey = toRoom;
         while (parent.has(node)) {
@@ -119,6 +106,5 @@ export function findPath(fromRoom: RoomKey, toRoom: RoomKey): [number, number, n
     }
   }
 
-  // No path found (shouldn't happen in our connected graph)
   return [];
 }

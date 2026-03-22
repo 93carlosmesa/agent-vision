@@ -311,6 +311,12 @@ body {
 }
 
 /* ── SceneSelector ── */
+.scene-selector-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .scene-selector {
   display: flex;
   align-items: center;

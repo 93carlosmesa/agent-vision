@@ -12,6 +12,7 @@ import { CreatorPanel } from './components/CreatorPanel';
 import { OrchestratorView } from './components/OrchestratorView';
 import { SceneSelector } from './components/SceneSelector';
 import { StatusDot } from './components/StatusDot';
+import { DEFAULT_WORLD_ENVIRONMENT } from './components/world3d/officeTheme';
 import { TimelinePanel } from './components/TimelinePanel';
 import { SquadPanel } from './components/SquadPanel';
 import { setIdleFavicon, startActiveFavicon } from './utils/favicon';
@@ -19,6 +20,7 @@ import { setIdleFavicon, startActiveFavicon } from './utils/favicon';
 export default function App() {
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [orchestratorOpen, setOrchestratorOpen] = useState(false);
+  const [worldEnvironment, setWorldEnvironment] = useState(DEFAULT_WORLD_ENVIRONMENT);
   const { sessions, agentNames, isConnected, currentScene, setScene, squads } = useAgentSessions();
   const skillVisits = useSkillVisits(sessions);
   const interactions = useInteractions(sessions);
@@ -54,14 +56,24 @@ export default function App() {
         <div className="app-header-controls">
           <button className="header-btn" onClick={() => setOrchestratorOpen(true)}>Orchestrator</button>
           <button className="header-btn" onClick={() => setCreatorOpen(true)}>+ Create</button>
-          <SceneSelector currentScene={currentScene.id} onSceneChange={setScene} />
+          <SceneSelector
+            currentScene={currentScene.id}
+            onSceneChange={setScene}
+            currentEnvironment={worldEnvironment}
+            onEnvironmentChange={setWorldEnvironment}
+          />
           <StatusDot isConnected={isConnected} />
         </div>
       </header>
 
       <main className="app-main">
         {currentScene.id === '3d' ? (
-          <World3D sessions={sessions} agentNames={agentNames} interactions={interactions} />
+          <World3D
+            sessions={sessions}
+            agentNames={agentNames}
+            interactions={interactions}
+            environmentId={worldEnvironment}
+          />
         ) : (
           <AgentScene
             sessions={sessions}

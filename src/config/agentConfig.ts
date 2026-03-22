@@ -27,20 +27,27 @@ export const AGENT_REGISTRY: AgentConfig[] = [
   { id: 'ginny',      role: 'orchestrator-investment', color: '#53e3c2', isFemale: true,  department: 'investment',    hairColor: '#b7410e', haloColor: '#53e3c2' },
 
   // Dev specialists
-  { id: 'codereviewer',               role: 'specialist', color: '#ef4444', isFemale: false, department: 'development' },
-  { id: 'cybersec',                   role: 'specialist', color: '#22d3ee', isFemale: false, department: 'development' },
-  { id: 'git-guardian',               role: 'specialist', color: '#84cc16', isFemale: false, department: 'development' },
-  { id: 'senior-frontend-architect',  role: 'specialist', color: '#f472b6', isFemale: false, department: 'development' },
-  { id: 'linter',                     role: 'specialist', color: '#a3e635', isFemale: false, department: 'development' },
-  { id: 'prettier',                   role: 'specialist', color: '#f59e0b', isFemale: false, department: 'development' },
-  { id: 'controlnaming',             role: 'specialist', color: '#38bdf8', isFemale: false, department: 'development' },
-  { id: 'ui-usability-analyst',       role: 'specialist', color: '#e879f9', isFemale: false, department: 'development' },
-  { id: 'fullstack-smoke-tester',     role: 'specialist', color: '#34d399', isFemale: false, department: 'development' },
-  { id: 'backend-socket-architect',   role: 'specialist', color: '#fb923c', isFemale: false, department: 'development' },
+  { id: 'dev-codereviewer',               role: 'specialist', color: '#ef4444', isFemale: false, department: 'development' },
+  { id: 'dev-cybersec',                   role: 'specialist', color: '#22d3ee', isFemale: false, department: 'development' },
+  { id: 'dev-git-guardian',               role: 'specialist', color: '#84cc16', isFemale: false, department: 'development' },
+  { id: 'dev-senior-frontend-architect',  role: 'specialist', color: '#f472b6', isFemale: false, department: 'development' },
+  { id: 'dev-linter',                     role: 'specialist', color: '#a3e635', isFemale: false, department: 'development' },
+  { id: 'dev-prettier',                   role: 'specialist', color: '#f59e0b', isFemale: false, department: 'development' },
+  { id: 'dev-controlnaming',             role: 'specialist', color: '#38bdf8', isFemale: false, department: 'development' },
+  { id: 'dev-ui-usability-analyst',       role: 'specialist', color: '#e879f9', isFemale: false, department: 'development' },
+  { id: 'dev-tester',                     role: 'specialist', color: '#34d399', isFemale: false, department: 'development' },
+  { id: 'dev-backend-socket-architect',   role: 'specialist', color: '#fb923c', isFemale: false, department: 'development' },
 
   // Investment specialists
-  { id: 'psych-market', role: 'specialist', color: '#a855f7', isFemale: false, department: 'investment' },
-  { id: 'us-open',      role: 'specialist', color: '#06b6d4', isFemale: false, department: 'investment' },
+  { id: 'inv-psych-market', role: 'specialist', color: '#a855f7', isFemale: false, department: 'investment' },
+  { id: 'inv-us-open',      role: 'specialist', color: '#06b6d4', isFemale: false, department: 'investment' },
+
+  // Vision specialists
+  { id: 'dev-vision-3d-architect',      role: 'specialist', color: '#7c3aed', isFemale: false, department: 'development' },
+  { id: 'dev-vision-world-designer',    role: 'specialist', color: '#2563eb', isFemale: false, department: 'development' },
+  { id: 'dev-vision-avatar-creator',    role: 'specialist', color: '#ec4899', isFemale: false, department: 'development' },
+  { id: 'dev-vision-fx-animator',       role: 'specialist', color: '#06b6d4', isFemale: false, department: 'development' },
+  { id: 'dev-vision-office-decorator',  role: 'specialist', color: '#10b981', isFemale: false, department: 'development' },
 ];
 
 /* ── Derived lookup helpers ── */

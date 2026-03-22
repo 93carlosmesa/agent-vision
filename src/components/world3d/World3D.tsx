@@ -11,7 +11,8 @@
 
 import { useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Grid } from '@react-three/drei';
+import { OrbitControls, Grid, Environment } from '@react-three/drei';
+import * as THREE from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { CameraControls3D, CameraHUD } from './CameraControls3D';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
@@ -25,7 +26,9 @@ import {
   ComunicacionFurniture,
   TrabajoFurniture,
   BibliotecaFurniture,
+  ExteriorFurniture,
 } from './OfficeFurniture3D';
+import { getWorldEnvironment, ROOM_CENTERS } from './officeTheme';
 import { findPath } from '../../utils/officePathfinding';
 import type { RoomKey } from '../../utils/officePathfinding';
 import type { ISession, AgentNameMap, IInteraction, SessionStatus } from '../../types';
@@ -42,6 +45,7 @@ export interface World3DProps {
   sessions: ISession[];
   agentNames: AgentNameMap;
   interactions?: IInteraction[];
+  environmentId?: string;
 }
 
 /* ── Agent context mapping — derived from registry ── */
@@ -54,14 +58,7 @@ const DEV_AGENTS = AGENT_REGISTRY
 
 type WorkContext = 'development' | 'investment';
 
-/* ── Room centers for grid positioning (non-idle agents) ── */
-const ROOM_CENTERS: Record<RoomKey, { cx: number; cz: number }> = {
-  lobby:        { cx: 0,   cz: 12 },
-  descanso:     { cx: -10, cz: 6.5 },
-  comunicacion: { cx: 10,  cz: 6.5 },
-  trabajo:      { cx: 0,   cz: -1 },
-  biblioteca:   { cx: 0,   cz: -10 },
-};
+/* Room centers moved to officeTheme.ts */
 
 /* ── Idle spots in Descanso — near furniture ── */
 interface IdleSpot {
@@ -72,40 +69,32 @@ interface IdleSpot {
 }
 
 const DESCANSO_SPOTS: IdleSpot[] = [
-  // Main sofa area (U-shape: sofas at [-14,6], [-12,8.5], [-10,6]; table at [-12,6])
-  // Agents sit on inner side of sofas, offset 0.8+ from sofa centers
-  { id: 'sofa-1',     pos: [-13.2, 0, 7],   facing: Math.PI / 2,     label: '😌 Relaxing' },
-  { id: 'sofa-2',     pos: [-13.2, 0, 5.2], facing: Math.PI / 2,     label: '😌 Relaxing' },
-  { id: 'sofa-3',     pos: [-12, 0, 7.7],   facing: 0,               label: '😌 Relaxing' },
-  // Coffee corner (counter at [-4, 8.5], stools at [-4.5, 7.8] and [-3.5, 7.8])
-  // Agents stand in front of stools, facing counter
-  { id: 'coffee-1',   pos: [-4.5, 0, 7.2],  facing: Math.PI,         label: '☕ Coffee' },
-  { id: 'coffee-2',   pos: [-3.5, 0, 7.2],  facing: Math.PI,         label: '☕ Coffee' },
-  // Lounge area (bean bags at [-16, 4.5] and [-14.5, 4.5])
-  // Agents sit in front of bean bags, offset +0.8 z
-  { id: 'lounge-1',   pos: [-16, 0, 5.3],   facing: Math.PI,         label: '😌 Lounging' },
-  { id: 'lounge-2',   pos: [-14.5, 0, 5.3], facing: Math.PI,         label: '😌 Lounging' },
-  // Standing / utility spots (cooler at [-18, 8], bookshelf at [-18, 6])
-  // Agents stand beside furniture, offset +0.8 x
-  { id: 'water',      pos: [-17.2, 0, 8],   facing: Math.PI / 2,     label: '💧 Water' },
-  { id: 'bookshelf',  pos: [-17.2, 0, 6],   facing: Math.PI / 2,     label: '📚 Browsing' },
-  // TV watcher (TV at [-10, 3.2]) — watching from safe distance
-  { id: 'tv',         pos: [-10, 0, 5],     facing: Math.PI,         label: '📺 Watching TV' },
-  // Extra standing spots for overflow — clear of all furniture
-  { id: 'standing-1', pos: [-8, 0, 6.5],    facing: Math.PI / 4,     label: '💭 Thinking' },
-  { id: 'standing-2', pos: [-6, 0, 5.5],    facing: 0,               label: '💭 Thinking' },
+  { id: 'sofa-a1', pos: [-18.8, 0, 7.6], facing: Math.PI / 2, label: '😌 Relaxing' },
+  { id: 'sofa-a2', pos: [-18.8, 0, 6.2], facing: Math.PI / 2, label: '😌 Relaxing' },
+  { id: 'sofa-a3', pos: [-17.0, 0, 8.2], facing: 0, label: '😌 Relaxing' },
+  { id: 'sofa-a4', pos: [-15.0, 0, 7.4], facing: -Math.PI / 2, label: '😌 Relaxing' },
+  { id: 'sofa-b1', pos: [-10.5, 0, 6.2], facing: Math.PI, label: '☕ Chat' },
+  { id: 'sofa-b2', pos: [-8.9, 0, 7.8], facing: 0, label: '☕ Chat' },
+  { id: 'coffee-1', pos: [-6.8, 0, 8.1], facing: 0, label: '☕ Coffee' },
+  { id: 'coffee-2', pos: [-5.2, 0, 8.1], facing: 0, label: '☕ Coffee' },
+  { id: 'plant-side', pos: [-22, 0, 7], facing: Math.PI / 2, label: '🌿 Break' },
+  { id: 'stand-1', pos: [-12.2, 0, 4.5], facing: Math.PI / 3, label: '💭 Thinking' },
+  { id: 'stand-2', pos: [-8.4, 0, 4.2], facing: 0, label: '💭 Thinking' },
+  { id: 'stand-3', pos: [-14.8, 0, 10], facing: -Math.PI / 2, label: '💭 Thinking' },
 ];
 
 /* ── Idle spots in Lobby — for out-of-context agents ── */
 const LOBBY_SPOTS: IdleSpot[] = [
-  { id: 'bench-l1',   pos: [-6, 0, 12],     facing: 0,               label: '💭 Thinking' },
-  { id: 'bench-l2',   pos: [-5, 0, 12],     facing: 0,               label: '💭 Thinking' },
-  { id: 'bench-r1',   pos: [6, 0, 12],      facing: 0,               label: '💭 Thinking' },
-  { id: 'bench-r2',   pos: [7, 0, 12],      facing: 0,               label: '💭 Thinking' },
-  { id: 'stand-1',    pos: [-3, 0, 13],     facing: Math.PI / 4,     label: '💭 Thinking' },
-  { id: 'stand-2',    pos: [3, 0, 13],      facing: -Math.PI / 4,    label: '💭 Thinking' },
-  { id: 'stand-3',    pos: [0, 0, 13.5],    facing: 0,               label: '💭 Thinking' },
-  { id: 'far-l',      pos: [-12, 0, 12.5],  facing: Math.PI / 6,     label: '💭 Thinking' },
+  { id: 'bench-l1', pos: [-8.5, 0, 13.4], facing: 0, label: '💭 Waiting' },
+  { id: 'bench-l2', pos: [-7.2, 0, 13.4], facing: 0, label: '💭 Waiting' },
+  { id: 'bench-r1', pos: [8.5, 0, 13.4], facing: 0, label: '💭 Waiting' },
+  { id: 'bench-r2', pos: [7.2, 0, 13.4], facing: 0, label: '💭 Waiting' },
+  { id: 'stand-1', pos: [-3, 0, 14.5], facing: Math.PI / 3, label: '💭 Thinking' },
+  { id: 'stand-2', pos: [3, 0, 14.5], facing: -Math.PI / 3, label: '💭 Thinking' },
+  { id: 'stand-3', pos: [0, 0, 16.2], facing: Math.PI, label: '💭 Thinking' },
+  { id: 'far-l', pos: [-14, 0, 15.6], facing: Math.PI / 6, label: '💭 Thinking' },
+  { id: 'far-r', pos: [14, 0, 15.6], facing: -Math.PI / 6, label: '💭 Thinking' },
+  { id: 'reception', pos: [0, 0, 13], facing: 0, label: '🧭 Waiting' },
 ];
 
 /* ── Context helpers ── */
@@ -386,7 +375,9 @@ function useSpeechBubbles(
 }
 
 /* ── Scene internals ── */
-function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps) {
+function SceneContent({ sessions, agentNames, interactions = [], environmentId = 'office' }: World3DProps) {
+  const environment = getWorldEnvironment(environmentId);
+  const theme = environment.theme;
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const agentRoomsRef = useRef<Map<string, RoomKey>>(new Map());
 
@@ -540,56 +531,96 @@ function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps)
       .filter((b): b is NonNullable<typeof b> => b !== null);
   }, [interactions, positionMap]);
 
+  const isBeach = !!environment.beachMode;
+
   return (
     <>
-      {/* Warm office lighting — distributed across rooms */}
-      <ambientLight intensity={0.2} color="#fff5e6" />
-      {/* Trabajo (brightest) */}
-      <pointLight position={[-8, 8, -1]} intensity={30} color="#ffd699" distance={25} />
-      <pointLight position={[8, 8, -1]} intensity={30} color="#ffd699" distance={25} />
-      {/* Descanso (warm) */}
-      <pointLight position={[-10, 7, 6.5]} intensity={20} color="#ffcc80" distance={20} />
-      {/* Comunicación */}
-      <pointLight position={[10, 7, 6.5]} intensity={22} color="#ffe0b2" distance={20} />
-      {/* Lobby */}
-      <pointLight position={[0, 6, 12]} intensity={18} color="#ddeeff" distance={18} />
-      {/* Biblioteca (dimmer, calmer) */}
-      <pointLight position={[0, 6, -10]} intensity={15} color="#ffeedd" distance={22} />
-      {/* Overhead fill */}
-      <pointLight position={[0, 14, 0]} intensity={20} color="#fff8f0" distance={40} />
+      {/* ── Lighting — BRIGHT ── */}
+      {isBeach ? (
+        <>
+          {/* Tropical sun — very bright */}
+          <ambientLight intensity={0.8} color="#FFF8E8" />
+          <directionalLight
+            position={[15, 25, 10]}
+            intensity={2.5}
+            color="#FFF0D0"
+            castShadow
+            shadow-mapSize-width={2048}
+            shadow-mapSize-height={2048}
+          />
+          <hemisphereLight color="#87CEEB" groundColor="#F0E8D8" intensity={1.0} />
+          {/* Warm fill lights */}
+          <pointLight position={[0, 8, 14]} intensity={1.2} color="#FFF0D0" distance={30} />
+          <pointLight position={[-14, 6, 6.5]} intensity={1.0} color="#FFE8C0" distance={20} />
+          <pointLight position={[10, 6, 6.5]} intensity={1.0} color="#FFE8C0" distance={20} />
+          <pointLight position={[0, 6, -3]} intensity={1.0} color="#FFF0D0" distance={25} />
+          <pointLight position={[17, 6, -14]} intensity={1.0} color="#FFE8C0" distance={20} />
 
-      {/* Warm fog */}
-      <fog attach="fog" args={['#1a1a24', 25, 65]} />
+          {/* Very light fog — barely visible */}
+          <fog attach="fog" args={['#B8D8F0', 60, 150]} />
 
-      {/* Base floor */}
+          {/* Environment map for reflections */}
+          <Environment preset="sunset" />
+        </>
+      ) : (
+        <>
+          {/* Office — warm 4500K with skylights */}
+          <ambientLight intensity={0.6} color="#FFF0D8" />
+          <directionalLight
+            position={[5, 20, 10]}
+            intensity={1.5}
+            color="#FFF0D0"
+            castShadow
+            shadow-mapSize-width={2048}
+            shadow-mapSize-height={2048}
+          />
+          <hemisphereLight color="#E8D8C8" groundColor="#A07850" intensity={0.5} />
+          {/* Room-specific warm point lights */}
+          <pointLight position={[0, 8, 14]} intensity={1.0} color="#FFF0D0" distance={22} />
+          <pointLight position={[-14, 7, 6.5]} intensity={1.0} color="#FFE0B0" distance={18} />
+          <pointLight position={[10, 7, 6.5]} intensity={1.0} color="#FFE0B0" distance={20} />
+          <pointLight position={[0, 7, -3]} intensity={1.2} color="#FFF0D0" distance={25} />
+          <pointLight position={[-8, 6, -14]} intensity={0.8} color="#FFE8C0" distance={16} />
+          <pointLight position={[17, 6, -14]} intensity={0.8} color="#FFE0B0" distance={18} />
+
+          {/* Warm fog matching navy walls */}
+          <fog attach="fog" args={['#2D3A4A', 40, 85]} />
+
+          {/* Environment map for reflections */}
+          <Environment preset="city" />
+        </>
+      )}
+
+      {/* ── Ground plane ── */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
-        <planeGeometry args={[60, 50]} />
-        <meshStandardMaterial color="#2a2520" roughness={0.9} />
+        <planeGeometry args={[76, 70]} />
+        <meshStandardMaterial color={theme.floorBase} roughness={0.85} />
       </mesh>
 
-      {/* Subtle grid */}
+      {/* Grid overlay — subtle in office, very subtle on beach */}
       <Grid
         position={[0, 0, 0]}
-        args={[60, 50]}
+        args={[76, 70]}
         cellSize={2}
-        cellThickness={0.3}
-        cellColor="#2a2520"
-        sectionSize={5}
-        sectionThickness={0.5}
-        sectionColor="#302a25"
-        fadeDistance={40}
+        cellThickness={isBeach ? 0.12 : 0.2}
+        cellColor={theme.gridCell}
+        sectionSize={6}
+        sectionThickness={isBeach ? 0.2 : 0.4}
+        sectionColor={theme.gridSection}
+        fadeDistance={isBeach ? 35 : 45}
         infiniteGrid
       />
 
       {/* Office layout — walls, floors, doorways, labels */}
-      <OfficeLayout3D />
+      <OfficeLayout3D environment={environment} />
 
       {/* Room furniture */}
-      <LobbyFurniture />
-      <DescansoFurniture />
-      <ComunicacionFurniture />
-      <TrabajoFurniture />
-      <BibliotecaFurniture />
+      <LobbyFurniture environment={environment} />
+      <DescansoFurniture environment={environment} />
+      <ComunicacionFurniture environment={environment} />
+      <TrabajoFurniture environment={environment} />
+      <BibliotecaFurniture environment={environment} />
+      <ExteriorFurniture environment={environment} />
 
       {/* Agents with smooth motion system */}
       <AgentMotionSystem agents={agents} />
@@ -615,21 +646,24 @@ function SceneContent({ sessions, agentNames, interactions = [] }: World3DProps)
 
       {/* Postprocessing */}
       <EffectComposer>
-        <Bloom luminanceThreshold={0.4} luminanceSmoothing={0.9} intensity={0.3} />
+        <Bloom luminanceThreshold={0.5} luminanceSmoothing={0.9} intensity={isBeach ? 0.15 : 0.2} />
       </EffectComposer>
     </>
   );
 }
 
-export function World3D({ sessions, agentNames, interactions }: World3DProps) {
+export function World3D({ sessions, agentNames, interactions, environmentId = 'office' }: World3DProps) {
+  const environment = getWorldEnvironment(environmentId);
+
   return (
-    <div style={{ width: '100%', height: '100%', background: '#1a1a24', position: 'relative' }}>
+    <div style={{ width: '100%', height: '100%', background: environment.theme.background, position: 'relative' }}>
       <Canvas
         camera={{ position: [0, 25, 30], fov: 50 }}
         gl={{ antialias: true, alpha: false }}
+        scene={{ background: environment.beachMode ? new THREE.Color('#87CEEB') : undefined }}
         style={{ width: '100%', height: '100%' }}
       >
-        <SceneContent sessions={sessions} agentNames={agentNames} interactions={interactions} />
+        <SceneContent sessions={sessions} agentNames={agentNames} interactions={interactions} environmentId={environmentId} />
       </Canvas>
       <CameraHUD />
     </div>

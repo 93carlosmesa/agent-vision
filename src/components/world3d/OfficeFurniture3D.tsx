@@ -1,682 +1,839 @@
-/**
- * OfficeFurniture3D — Realistic office furniture organized by room.
- *
- * Rooms: Lobby, Sala de Descanso, Sala de Comunicación, Sala de Trabajo, Biblioteca
- */
-
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import type { Group } from 'three';
+import type { WorldEnvironment } from './officeTheme';
 
 /* ═══════════════════════════════════════════════════════════════════
-   SHARED PRIMITIVES
+   SHARED FURNITURE PRIMITIVES
    ═══════════════════════════════════════════════════════════════════ */
 
-function Desk({ position }: { position: [number, number, number] }) {
-  const legR = 0.03;
-  const legH = 0.7;
-  const topW = 1.4;
-  const topD = 0.7;
-  const topH = 0.05;
-  const topY = legH + topH / 2;
-  const lx = topW / 2 - 0.06;
-  const lz = topD / 2 - 0.06;
-
-  return (
-    <group position={position}>
-      <mesh position={[0, topY, 0]}>
-        <boxGeometry args={[topW, topH, topD]} />
-        <meshStandardMaterial color="#5c4a3a" roughness={0.7} />
-      </mesh>
-      {[[-lx, -lz], [lx, -lz], [-lx, lz], [lx, lz]].map(([x, z], i) => (
-        <mesh key={i} position={[x, legH / 2, z]}>
-          <cylinderGeometry args={[legR, legR, legH, 8]} />
-          <meshStandardMaterial color="#3a3a3a" metalness={0.6} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-function Laptop({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={position}>
-      <mesh position={[0, 0.01, 0]}>
-        <boxGeometry args={[0.35, 0.02, 0.25]} />
-        <meshStandardMaterial color="#2a2a2a" metalness={0.4} />
-      </mesh>
-      <mesh position={[0, 0.135, -0.115]} rotation={[-1.22, 0, 0]}>
-        <boxGeometry args={[0.35, 0.25, 0.01]} />
-        <meshStandardMaterial color="#111122" emissive="#88bbff" emissiveIntensity={0.8} />
-      </mesh>
-    </group>
-  );
-}
-
-function OfficeChair({ position }: { position: [number, number, number] }) {
-  const wheelAngles = [0, 1, 2, 3, 4].map(i => (i * Math.PI * 2) / 5);
-  return (
-    <group position={position}>
-      <mesh position={[0, 0.45, 0]}>
-        <boxGeometry args={[0.4, 0.05, 0.4]} />
-        <meshStandardMaterial color="#2a2a3e" />
-      </mesh>
-      <mesh position={[0, 0.72, -0.175]}>
-        <boxGeometry args={[0.4, 0.5, 0.05]} />
-        <meshStandardMaterial color="#2a2a3e" />
-      </mesh>
-      <mesh position={[0, 0.22, 0]}>
-        <cylinderGeometry args={[0.03, 0.03, 0.44, 8]} />
-        <meshStandardMaterial color="#3a3a3a" metalness={0.7} />
-      </mesh>
-      {wheelAngles.map((angle, i) => (
-        <mesh key={i} position={[Math.cos(angle) * 0.18, 0.03, Math.sin(angle) * 0.18]}>
-          <sphereGeometry args={[0.03, 8, 8]} />
-          <meshStandardMaterial color="#222" metalness={0.5} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-function DeskLamp({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={position}>
-      <mesh position={[0, 0.02, 0]}>
-        <cylinderGeometry args={[0.06, 0.08, 0.04, 12]} />
-        <meshStandardMaterial color="#333" metalness={0.6} />
-      </mesh>
-      <mesh position={[0, 0.2, 0]}>
-        <cylinderGeometry args={[0.012, 0.012, 0.35, 6]} />
-        <meshStandardMaterial color="#555" metalness={0.5} />
-      </mesh>
-      <mesh position={[0, 0.38, 0]}>
-        <coneGeometry args={[0.08, 0.06, 12, 1, true]} />
-        <meshStandardMaterial color="#444" side={2} />
-      </mesh>
-      <pointLight position={[0, 0.35, 0]} intensity={2} color="#ffd699" distance={3} />
-    </group>
-  );
-}
-
-function Sofa({ position, rotation = 0 }: { position: [number, number, number]; rotation?: number }) {
-  return (
-    <group position={position} rotation={[0, rotation, 0]}>
-      <mesh position={[0, 0.175, 0]}>
-        <boxGeometry args={[1.2, 0.35, 0.6]} />
-        <meshStandardMaterial color="#2a2a3e" roughness={0.9} />
-      </mesh>
-      <mesh position={[0, 0.55, -0.275]}>
-        <boxGeometry args={[1.2, 0.4, 0.1]} />
-        <meshStandardMaterial color="#2a2a3e" roughness={0.9} />
-      </mesh>
-      <mesh position={[-0.55, 0.35, 0]}>
-        <boxGeometry args={[0.1, 0.25, 0.6]} />
-        <meshStandardMaterial color="#2a2a3e" roughness={0.9} />
-      </mesh>
-      <mesh position={[0.55, 0.35, 0]}>
-        <boxGeometry args={[0.1, 0.25, 0.6]} />
-        <meshStandardMaterial color="#2a2a3e" roughness={0.9} />
-      </mesh>
-    </group>
-  );
-}
-
-function CoffeeTable({ position }: { position: [number, number, number] }) {
-  const lx = 0.35;
-  const lz = 0.2;
-  return (
-    <group position={position}>
-      <mesh position={[0, 0.35, 0]}>
-        <boxGeometry args={[0.8, 0.03, 0.5]} />
-        <meshStandardMaterial color="#5c4a3a" roughness={0.6} />
-      </mesh>
-      {[[-lx, -lz], [lx, -lz], [-lx, lz], [lx, lz]].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.17, z]}>
-          <cylinderGeometry args={[0.025, 0.025, 0.33, 6]} />
-          <meshStandardMaterial color="#3a3a3a" metalness={0.4} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-function CoffeeMachine({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={position}>
-      <mesh position={[0, 0.3, 0]}>
-        <boxGeometry args={[0.3, 0.6, 0.25]} />
-        <meshStandardMaterial color="#222" metalness={0.3} roughness={0.6} />
-      </mesh>
-      <mesh position={[0, 0.62, 0]}>
-        <boxGeometry args={[0.28, 0.04, 0.23]} />
-        <meshStandardMaterial color="#333" metalness={0.4} />
-      </mesh>
-      <mesh position={[0.0, 0.08, 0.18]}>
-        <cylinderGeometry args={[0.04, 0.035, 0.08, 8]} />
-        <meshStandardMaterial color="#ddd" roughness={0.3} />
-      </mesh>
-      <mesh position={[0, 0.5, 0.13]}>
-        <sphereGeometry args={[0.02, 8, 8]} />
-        <meshStandardMaterial color="#ff6600" emissive="#ff6600" emissiveIntensity={2} />
-      </mesh>
-      <pointLight position={[0, 0.3, 0.2]} intensity={0.5} color="#ff9944" distance={1.5} />
-    </group>
-  );
-}
-
-function PottedPlant({ position, seed = 0 }: { position: [number, number, number]; seed?: number }) {
-  const groupRef = useRef<Group>(null);
+function Plant({ position, seed = 0, scale = 1, color = '#2D7E58' }: {
+  position: [number, number, number]; seed?: number; scale?: number; color?: string;
+}) {
+  const ref = useRef<Group>(null);
   useFrame(({ clock }) => {
-    if (!groupRef.current) return;
-    const t = clock.getElapsedTime();
-    groupRef.current.rotation.z = Math.sin(t * 0.5 + seed) * 0.02;
+    if (ref.current) ref.current.rotation.z = Math.sin(clock.elapsedTime * 0.55 + seed) * 0.02;
   });
-
   return (
-    <group position={position} ref={groupRef}>
+    <group position={position} scale={scale} ref={ref}>
       <mesh position={[0, 0.12, 0]}>
         <cylinderGeometry args={[0.12, 0.1, 0.24, 12]} />
-        <meshStandardMaterial color="#6b4423" roughness={0.8} />
-      </mesh>
-      <mesh position={[0, 0.25, 0]}>
-        <cylinderGeometry args={[0.11, 0.11, 0.02, 12]} />
-        <meshStandardMaterial color="#3a2a1a" />
+        <meshStandardMaterial color="#D2B48C" roughness={0.85} />
       </mesh>
       <mesh position={[0, 0.55, 0]}>
-        <sphereGeometry args={[0.2, 8, 8]} />
-        <meshStandardMaterial color="#2d6b30" roughness={0.8} />
+        <sphereGeometry args={[0.22, 10, 10]} />
+        <meshStandardMaterial color={color} roughness={0.85} />
       </mesh>
-      <mesh position={[0.08, 0.7, 0.05]}>
-        <sphereGeometry args={[0.14, 8, 8]} />
-        <meshStandardMaterial color="#3a8a3e" roughness={0.8} />
+      <mesh position={[0.12, 0.72, 0]}>
+        <sphereGeometry args={[0.15, 10, 10]} />
+        <meshStandardMaterial color="#39A06A" roughness={0.85} />
       </mesh>
-      <mesh position={[-0.06, 0.65, -0.04]}>
-        <coneGeometry args={[0.12, 0.25, 8]} />
-        <meshStandardMaterial color="#256b28" roughness={0.8} />
-      </mesh>
-    </group>
-  );
-}
-
-function Whiteboard({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={position}>
-      <mesh position={[0, 1.4, 0]}>
-        <boxGeometry args={[2, 1.2, 0.05]} />
-        <meshStandardMaterial color="#e8e8e8" roughness={0.3} />
-      </mesh>
-      <mesh position={[0, 2.01, 0]}><boxGeometry args={[2.06, 0.04, 0.07]} /><meshStandardMaterial color="#333" metalness={0.4} /></mesh>
-      <mesh position={[0, 0.79, 0]}><boxGeometry args={[2.06, 0.04, 0.07]} /><meshStandardMaterial color="#333" metalness={0.4} /></mesh>
-      <mesh position={[-1.01, 1.4, 0]}><boxGeometry args={[0.04, 1.24, 0.07]} /><meshStandardMaterial color="#333" metalness={0.4} /></mesh>
-      <mesh position={[1.01, 1.4, 0]}><boxGeometry args={[0.04, 1.24, 0.07]} /><meshStandardMaterial color="#333" metalness={0.4} /></mesh>
-      <mesh position={[-0.8, 0.4, 0]}><cylinderGeometry args={[0.025, 0.025, 0.78, 8]} /><meshStandardMaterial color="#333" metalness={0.5} /></mesh>
-      <mesh position={[0.8, 0.4, 0]}><cylinderGeometry args={[0.025, 0.025, 0.78, 8]} /><meshStandardMaterial color="#333" metalness={0.5} /></mesh>
-    </group>
-  );
-}
-
-function MeetingTable({ position }: { position: [number, number, number] }) {
-  const lx = 1.1;
-  const lz = 0.5;
-  return (
-    <group position={position}>
-      <mesh position={[0, 0.72, 0]}>
-        <boxGeometry args={[2.5, 0.05, 1.2]} />
-        <meshStandardMaterial color="#5c4a3a" roughness={0.6} />
-      </mesh>
-      {[[-lx, -lz], [lx, -lz], [-lx, lz], [lx, lz]].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.35, z]}>
-          <cylinderGeometry args={[0.035, 0.035, 0.7, 8]} />
-          <meshStandardMaterial color="#3a3a3a" metalness={0.5} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-/** Small reception desk */
-function ReceptionDesk({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={position}>
-      {/* Main counter — curved-front approximation with box */}
-      <mesh position={[0, 0.5, 0]}>
-        <boxGeometry args={[2.5, 1, 0.8]} />
-        <meshStandardMaterial color="#4a3a2e" roughness={0.7} />
-      </mesh>
-      {/* Top surface (lighter) */}
-      <mesh position={[0, 1.01, 0]}>
-        <boxGeometry args={[2.6, 0.04, 0.85]} />
-        <meshStandardMaterial color="#6b5a4a" roughness={0.5} />
-      </mesh>
-    </group>
-  );
-}
-
-/** Bench / waiting chair for lobby */
-function WaitingBench({ position, rotation = 0 }: { position: [number, number, number]; rotation?: number }) {
-  return (
-    <group position={position} rotation={[0, rotation, 0]}>
-      <mesh position={[0, 0.3, 0]}>
-        <boxGeometry args={[1.8, 0.06, 0.5]} />
-        <meshStandardMaterial color="#3a3a3a" metalness={0.3} />
-      </mesh>
-      {/* 4 legs */}
-      {[[-0.8, -0.2], [0.8, -0.2], [-0.8, 0.2], [0.8, 0.2]].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.14, z]}>
-          <cylinderGeometry args={[0.025, 0.025, 0.27, 8]} />
-          <meshStandardMaterial color="#333" metalness={0.5} />
-        </mesh>
-      ))}
-      {/* Backrest */}
-      <mesh position={[0, 0.55, -0.22]}>
-        <boxGeometry args={[1.8, 0.35, 0.04]} />
-        <meshStandardMaterial color="#3a3a3a" metalness={0.3} />
-      </mesh>
-    </group>
-  );
-}
-
-/** Tall bookshelf for Biblioteca */
-function TallBookshelf({ position, width = 3 }: { position: [number, number, number]; width?: number }) {
-  const shelves = 4;
-  const shelfH = 2.2;
-  return (
-    <group position={position}>
-      {/* Side panels */}
-      <mesh position={[-width / 2, shelfH / 2, 0]}>
-        <boxGeometry args={[0.04, shelfH, 0.4]} />
-        <meshStandardMaterial color="#4a3a2e" roughness={0.8} />
-      </mesh>
-      <mesh position={[width / 2, shelfH / 2, 0]}>
-        <boxGeometry args={[0.04, shelfH, 0.4]} />
-        <meshStandardMaterial color="#4a3a2e" roughness={0.8} />
-      </mesh>
-      {/* Back panel */}
-      <mesh position={[0, shelfH / 2, -0.18]}>
-        <boxGeometry args={[width, shelfH, 0.03]} />
-        <meshStandardMaterial color="#3a2a1e" roughness={0.9} />
-      </mesh>
-      {/* Shelf planks */}
-      {Array.from({ length: shelves + 1 }).map((_, i) => (
-        <mesh key={i} position={[0, (i * shelfH) / shelves, 0]}>
-          <boxGeometry args={[width, 0.04, 0.4]} />
-          <meshStandardMaterial color="#5a4a3e" roughness={0.7} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-/** Small reading/study table */
-function ReadingTable({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={position}>
-      <mesh position={[0, 0.65, 0]}>
-        <boxGeometry args={[1.2, 0.04, 0.8]} />
-        <meshStandardMaterial color="#5c4a3a" roughness={0.7} />
-      </mesh>
-      {[[-0.5, -0.3], [0.5, -0.3], [-0.5, 0.3], [0.5, 0.3]].map(([x, z], i) => (
-        <mesh key={i} position={[x, 0.32, z]}>
-          <cylinderGeometry args={[0.025, 0.025, 0.63, 8]} />
-          <meshStandardMaterial color="#3a3a3a" metalness={0.5} />
-        </mesh>
-      ))}
     </group>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   ROOM FURNITURE GROUPS
+   OFFICE-SPECIFIC FURNITURE
    ═══════════════════════════════════════════════════════════════════ */
 
-/** Lobby: reception desk + waiting benches */
-export function LobbyFurniture() {
-  return (
-    <group>
-      <ReceptionDesk position={[0, 0, 12.5]} />
-      <WaitingBench position={[-6, 0, 12]} rotation={0} />
-      <WaitingBench position={[6, 0, 12]} rotation={0} />
-      <WaitingBench position={[-12, 0, 12.5]} rotation={Math.PI / 6} />
-      <WaitingBench position={[12, 0, 12.5]} rotation={-Math.PI / 6} />
-    </group>
-  );
-}
-
-/** TV / flat screen on wall */
-function WallTV({ position, rotation = 0 }: { position: [number, number, number]; rotation?: number }) {
+/** Walnut wooden desk with metal legs */
+function WoodDesk({ position, rotation = 0, w = 1.4 }: {
+  position: [number, number, number]; rotation?: number; w?: number;
+}) {
   return (
     <group position={position} rotation={[0, rotation, 0]}>
-      {/* Screen bezel */}
-      <mesh position={[0, 0, 0]}>
-        <boxGeometry args={[1.6, 0.9, 0.05]} />
-        <meshStandardMaterial color="#1a1a1a" metalness={0.4} roughness={0.3} />
+      {/* Desk top — walnut */}
+      <mesh position={[0, 0.74, 0]} castShadow>
+        <boxGeometry args={[w, 0.05, 0.72]} />
+        <meshStandardMaterial color="#6B5040" roughness={0.6} />
       </mesh>
-      {/* Screen surface — emissive glow */}
-      <mesh position={[0, 0, 0.028]}>
-        <boxGeometry args={[1.45, 0.78, 0.005]} />
-        <meshStandardMaterial color="#112244" emissive="#4488cc" emissiveIntensity={1.2} roughness={0.1} />
+      {/* Metal legs */}
+      {[[-w / 2 + 0.08, -0.28], [w / 2 - 0.08, -0.28], [-w / 2 + 0.08, 0.28], [w / 2 - 0.08, 0.28]].map(([x, z], i) => (
+        <mesh key={i} position={[x, 0.35, z]}>
+          <boxGeometry args={[0.04, 0.7, 0.04]} />
+          <meshStandardMaterial color="#404040" metalness={0.5} roughness={0.3} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** iMac-style monitor: silver cylinder stand + thin screen */
+function IMac({ position, rotation = 0 }: {
+  position: [number, number, number]; rotation?: number;
+}) {
+  return (
+    <group position={position} rotation={[0, rotation, 0]}>
+      {/* Silver stand cylinder */}
+      <mesh position={[0, 0.08, 0]}>
+        <cylinderGeometry args={[0.08, 0.12, 0.16, 12]} />
+        <meshStandardMaterial color="#C0C0C0" metalness={0.7} roughness={0.2} />
       </mesh>
-      {/* Wall mount bracket */}
-      <mesh position={[0, 0, -0.04]}>
-        <boxGeometry args={[0.3, 0.2, 0.06]} />
-        <meshStandardMaterial color="#333" metalness={0.6} />
+      {/* Screen */}
+      <mesh position={[0, 0.3, -0.02]}>
+        <boxGeometry args={[0.5, 0.34, 0.02]} />
+        <meshStandardMaterial color="#1A1A1A" />
+      </mesh>
+      {/* Screen glow */}
+      <mesh position={[0, 0.3, -0.008]}>
+        <planeGeometry args={[0.44, 0.28]} />
+        <meshStandardMaterial color="#D0E8FF" emissive="#A0C8FF" emissiveIntensity={0.5} />
       </mesh>
     </group>
   );
 }
 
-/** Water cooler / dispenser */
+/** Tan upholstered chair with wood legs */
+function OfficeChair({ position, rotation = 0 }: {
+  position: [number, number, number]; rotation?: number;
+}) {
+  return (
+    <group position={position} rotation={[0, rotation, 0]}>
+      {/* Seat — tan upholstery */}
+      <mesh position={[0, 0.45, 0]}>
+        <boxGeometry args={[0.42, 0.08, 0.42]} />
+        <meshStandardMaterial color="#A89070" roughness={0.85} />
+      </mesh>
+      {/* Backrest */}
+      <mesh position={[0, 0.73, -0.17]}>
+        <boxGeometry args={[0.42, 0.5, 0.06]} />
+        <meshStandardMaterial color="#A89070" roughness={0.85} />
+      </mesh>
+      {/* Wood legs */}
+      {[[-0.16, -0.16], [0.16, -0.16], [-0.16, 0.16], [0.16, 0.16]].map(([x, z], i) => (
+        <mesh key={i} position={[x, 0.2, z]}>
+          <cylinderGeometry args={[0.02, 0.02, 0.4, 6]} />
+          <meshStandardMaterial color="#6B5040" roughness={0.7} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Dark leather lounge chair */
+function LoungeChair({ position, rotation = 0 }: {
+  position: [number, number, number]; rotation?: number;
+}) {
+  return (
+    <group position={position} rotation={[0, rotation, 0]}>
+      {/* Thick cushion seat */}
+      <mesh position={[0, 0.28, 0]}>
+        <boxGeometry args={[0.7, 0.2, 0.65]} />
+        <meshStandardMaterial color="#5A3A28" roughness={0.9} />
+      </mesh>
+      {/* Backrest */}
+      <mesh position={[0, 0.6, -0.28]}>
+        <boxGeometry args={[0.7, 0.5, 0.1]} />
+        <meshStandardMaterial color="#5A3A28" roughness={0.9} />
+      </mesh>
+      {/* Armrests */}
+      {[-0.32, 0.32].map((x, i) => (
+        <mesh key={i} position={[x, 0.42, 0]}>
+          <boxGeometry args={[0.06, 0.12, 0.65]} />
+          <meshStandardMaterial color="#4A2A18" roughness={0.9} />
+        </mesh>
+      ))}
+      {/* Wood legs */}
+      {[[-0.28, -0.25], [0.28, -0.25], [-0.28, 0.25], [0.28, 0.25]].map(([x, z], i) => (
+        <mesh key={i} position={[x, 0.07, z]}>
+          <cylinderGeometry args={[0.025, 0.025, 0.14, 6]} />
+          <meshStandardMaterial color="#6B5040" roughness={0.7} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Coffee table with hairpin legs */
+function CoffeeTable({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 0.38, 0]} castShadow>
+        <boxGeometry args={[1.0, 0.04, 0.55]} />
+        <meshStandardMaterial color="#6B5040" roughness={0.6} />
+      </mesh>
+      {[[-0.4, -0.2], [0.4, -0.2], [-0.4, 0.2], [0.4, 0.2]].map(([x, z], i) => (
+        <mesh key={i} position={[x, 0.18, z]}>
+          <cylinderGeometry args={[0.015, 0.015, 0.36, 6]} />
+          <meshStandardMaterial color="#333333" metalness={0.6} roughness={0.3} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Bookshelf with colorful book blocks */
+function Bookshelf({ position, width = 3 }: {
+  position: [number, number, number]; width?: number;
+}) {
+  const bookColors = ['#C02020', '#2050A0', '#D0A020', '#208040', '#6030A0', '#D06020', '#2080A0', '#A03060'];
+  return (
+    <group position={position}>
+      {/* Back panel — walnut */}
+      <mesh position={[0, 1.1, -0.18]}>
+        <boxGeometry args={[width, 2.2, 0.04]} />
+        <meshStandardMaterial color="#6B5040" roughness={0.7} />
+      </mesh>
+      {/* Side panels */}
+      {[-width / 2, width / 2].map((x, i) => (
+        <mesh key={i} position={[x, 1.1, 0]}>
+          <boxGeometry args={[0.05, 2.2, 0.4]} />
+          <meshStandardMaterial color="#6B5040" roughness={0.7} />
+        </mesh>
+      ))}
+      {/* Shelves */}
+      {[0, 0.55, 1.1, 1.65, 2.2].map((y, i) => (
+        <mesh key={i} position={[0, y, 0]}>
+          <boxGeometry args={[width, 0.04, 0.4]} />
+          <meshStandardMaterial color="#7B6050" roughness={0.7} />
+        </mesh>
+      ))}
+      {/* Colorful books on each shelf */}
+      {[0.25, 0.8, 1.35, 1.9].map((shelfY, si) => {
+        const numBooks = Math.floor(width / 0.12);
+        return Array.from({ length: numBooks }).map((_, bi) => {
+          const bx = -width / 2 + 0.15 + bi * 0.12;
+          const bh = 0.3 + Math.sin(bi * 3 + si) * 0.08;
+          const color = bookColors[(bi + si * 3) % bookColors.length];
+          return (
+            <mesh key={`${si}-${bi}`} position={[bx, shelfY + bh / 2 + 0.02, 0]}>
+              <boxGeometry args={[0.08, bh, 0.28]} />
+              <meshStandardMaterial color={color} roughness={0.8} />
+            </mesh>
+          );
+        });
+      })}
+    </group>
+  );
+}
+
+/** Fiddle leaf fig plant — dark green spheres on brown stem in beige pot */
+function FiddleLeafFig({ position, scale = 1 }: {
+  position: [number, number, number]; scale?: number;
+}) {
+  return (
+    <group position={position} scale={scale}>
+      {/* Beige pot */}
+      <mesh position={[0, 0.15, 0]}>
+        <cylinderGeometry args={[0.18, 0.14, 0.3, 12]} />
+        <meshStandardMaterial color="#D2C4A8" roughness={0.85} />
+      </mesh>
+      {/* Brown stem */}
+      <mesh position={[0, 0.6, 0]}>
+        <cylinderGeometry args={[0.03, 0.04, 0.9, 6]} />
+        <meshStandardMaterial color="#5A3A20" roughness={0.9} />
+      </mesh>
+      {/* Dark green leaf clusters */}
+      {[[0, 1.05, 0], [-0.15, 0.9, 0.1], [0.15, 0.95, -0.08], [0, 0.8, 0.12]].map(([x, y, z], i) => (
+        <mesh key={i} position={[x, y, z]}>
+          <sphereGeometry args={[0.18 - i * 0.02, 8, 8]} />
+          <meshStandardMaterial color="#2A5A2A" roughness={0.85} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Vending machine */
+function VendingMachine({ position, rotation = 0 }: {
+  position: [number, number, number]; rotation?: number;
+}) {
+  return (
+    <group position={position} rotation={[0, rotation, 0]}>
+      {/* Body */}
+      <mesh position={[0, 1.0, 0]} castShadow>
+        <boxGeometry args={[0.8, 2.0, 0.6]} />
+        <meshStandardMaterial color="#404850" metalness={0.3} roughness={0.5} />
+      </mesh>
+      {/* Front panel / display */}
+      <mesh position={[0, 1.2, 0.31]}>
+        <planeGeometry args={[0.6, 1.2]} />
+        <meshStandardMaterial color="#203040" emissive="#304860" emissiveIntensity={0.4} />
+      </mesh>
+      {/* Light strip */}
+      <mesh position={[0, 1.9, 0.31]}>
+        <planeGeometry args={[0.7, 0.08]} />
+        <meshStandardMaterial color="#F0F0F0" emissive="#FFFFFF" emissiveIntensity={0.6} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Water cooler */
 function WaterCooler({ position }: { position: [number, number, number] }) {
   return (
     <group position={position}>
-      {/* Base cabinet */}
-      <mesh position={[0, 0.25, 0]}>
-        <boxGeometry args={[0.3, 0.5, 0.3]} />
-        <meshStandardMaterial color="#e0e0e0" roughness={0.5} />
-      </mesh>
-      {/* Water bottle (inverted) */}
-      <mesh position={[0, 0.72, 0]}>
-        <cylinderGeometry args={[0.1, 0.1, 0.45, 12]} />
-        <meshStandardMaterial color="#aaddff" transparent opacity={0.5} roughness={0.1} />
-      </mesh>
-      {/* Bottle cap */}
-      <mesh position={[0, 0.95, 0]}>
-        <sphereGeometry args={[0.1, 10, 10, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshStandardMaterial color="#aaddff" transparent opacity={0.4} roughness={0.1} />
-      </mesh>
-      {/* Tap area */}
-      <mesh position={[0, 0.48, 0.16]}>
-        <boxGeometry args={[0.08, 0.04, 0.02]} />
-        <meshStandardMaterial color="#888" metalness={0.6} />
-      </mesh>
-      {/* Drip tray */}
-      <mesh position={[0, 0.38, 0.12]}>
-        <boxGeometry args={[0.18, 0.02, 0.08]} />
-        <meshStandardMaterial color="#999" metalness={0.4} />
-      </mesh>
-    </group>
-  );
-}
-
-/** Small decorative bookshelf */
-function SmallBookshelf({ position, rotation = 0 }: { position: [number, number, number]; rotation?: number }) {
-  const bookColors = ['#8b2500', '#1a4a6b', '#2d5a27', '#6b3a8a', '#8a6b3a'];
-  return (
-    <group position={position} rotation={[0, rotation, 0]}>
-      {/* Shelf frame */}
+      {/* Body */}
       <mesh position={[0, 0.5, 0]}>
-        <boxGeometry args={[0.6, 1.0, 0.25]} />
-        <meshStandardMaterial color="#4a3a2e" roughness={0.8} />
+        <boxGeometry args={[0.35, 1.0, 0.35]} />
+        <meshStandardMaterial color="#E8E0D8" roughness={0.6} />
       </mesh>
-      {/* Shelves */}
-      {[0.15, 0.5, 0.85].map((y, i) => (
-        <mesh key={i} position={[0, y, 0]}>
-          <boxGeometry args={[0.56, 0.03, 0.23]} />
-          <meshStandardMaterial color="#5a4a3e" roughness={0.7} />
-        </mesh>
-      ))}
-      {/* Books on shelves */}
-      {bookColors.map((col, i) => {
-        const shelfY = i < 2 ? 0.28 : i < 4 ? 0.63 : 0.93;
-        const xOff = (i % 2 === 0 ? -0.12 : 0.12) + (i % 3) * 0.04;
-        const h = 0.18 + (i % 3) * 0.03;
-        return (
-          <mesh key={i} position={[xOff, shelfY, 0]}>
-            <boxGeometry args={[0.06, h, 0.16]} />
-            <meshStandardMaterial color={col} roughness={0.7} />
-          </mesh>
-        );
-      })}
-    </group>
-  );
-}
-
-/** Wall clock */
-function WallClock({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={position}>
-      {/* Clock face */}
-      <mesh>
-        <circleGeometry args={[0.25, 24]} />
-        <meshStandardMaterial color="#f5f0e8" roughness={0.5} />
-      </mesh>
-      {/* Rim */}
-      <mesh>
-        <ringGeometry args={[0.24, 0.27, 24]} />
-        <meshStandardMaterial color="#3a3a3a" metalness={0.5} />
-      </mesh>
-      {/* Hour marks */}
-      {Array.from({ length: 12 }).map((_, i) => {
-        const angle = (i * Math.PI * 2) / 12;
-        const r = 0.20;
-        return (
-          <mesh key={i} position={[Math.sin(angle) * r, Math.cos(angle) * r, 0.01]}>
-            <boxGeometry args={[0.015, 0.04, 0.005]} />
-            <meshStandardMaterial color="#333" />
-          </mesh>
-        );
-      })}
-      {/* Hour hand */}
-      <mesh position={[0, 0.06, 0.015]} rotation={[0, 0, -0.8]}>
-        <boxGeometry args={[0.015, 0.12, 0.005]} />
-        <meshStandardMaterial color="#222" />
-      </mesh>
-      {/* Minute hand */}
-      <mesh position={[0, 0.08, 0.02]} rotation={[0, 0, 0.4]}>
-        <boxGeometry args={[0.01, 0.16, 0.005]} />
-        <meshStandardMaterial color="#222" />
-      </mesh>
-      {/* Center dot */}
-      <mesh position={[0, 0, 0.025]}>
-        <sphereGeometry args={[0.015, 8, 8]} />
-        <meshStandardMaterial color="#333" metalness={0.5} />
+      {/* Water bottle on top */}
+      <mesh position={[0, 1.2, 0]}>
+        <cylinderGeometry args={[0.12, 0.12, 0.5, 12]} />
+        <meshStandardMaterial color="#C0E0FF" transparent opacity={0.6} />
       </mesh>
     </group>
   );
 }
 
-/** Coffee cup (small) */
-function CoffeeCup({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={position}>
-      <mesh position={[0, 0.04, 0]}>
-        <cylinderGeometry args={[0.03, 0.025, 0.06, 8]} />
-        <meshStandardMaterial color="#f0f0f0" roughness={0.4} />
-      </mesh>
-      {/* Handle */}
-      <mesh position={[0.04, 0.04, 0]}>
-        <torusGeometry args={[0.015, 0.004, 6, 12, Math.PI]} />
-        <meshStandardMaterial color="#f0f0f0" roughness={0.4} />
-      </mesh>
-    </group>
-  );
-}
-
-/** Coffee counter surface */
-function CoffeeCounter({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={position}>
-      {/* Counter base */}
-      <mesh position={[0, 0.4, 0]}>
-        <boxGeometry args={[1.2, 0.8, 0.5]} />
-        <meshStandardMaterial color="#4a3a2e" roughness={0.7} />
-      </mesh>
-      {/* Counter top */}
-      <mesh position={[0, 0.81, 0]}>
-        <boxGeometry args={[1.3, 0.04, 0.55]} />
-        <meshStandardMaterial color="#6b5a4a" roughness={0.5} />
-      </mesh>
-    </group>
-  );
-}
-
-/** Stool for coffee counter */
-function Stool({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={position}>
-      <mesh position={[0, 0.35, 0]}>
-        <cylinderGeometry args={[0.15, 0.15, 0.04, 10]} />
-        <meshStandardMaterial color="#3a3a3a" metalness={0.4} />
-      </mesh>
-      <mesh position={[0, 0.17, 0]}>
-        <cylinderGeometry args={[0.03, 0.03, 0.33, 8]} />
-        <meshStandardMaterial color="#444" metalness={0.6} />
-      </mesh>
-      {[0, 1.57, 3.14, 4.71].map((a, i) => (
-        <mesh key={i} position={[Math.cos(a) * 0.12, 0.02, Math.sin(a) * 0.12]}>
-          <sphereGeometry args={[0.025, 6, 6]} />
-          <meshStandardMaterial color="#333" metalness={0.5} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-/** Bean bag / armchair for lounge */
-function BeanBag({ position, rotation = 0 }: { position: [number, number, number]; rotation?: number }) {
+/** Gold-framed painting */
+function Painting({ position, rotation = 0 }: {
+  position: [number, number, number]; rotation?: number;
+}) {
   return (
     <group position={position} rotation={[0, rotation, 0]}>
-      <mesh position={[0, 0.22, 0]} scale={[1, 0.6, 0.9]}>
-        <sphereGeometry args={[0.35, 12, 12]} />
-        <meshStandardMaterial color="#3a2a4e" roughness={0.92} />
+      {/* Gold frame */}
+      <mesh>
+        <boxGeometry args={[1.2, 0.9, 0.06]} />
+        <meshStandardMaterial color="#C8A040" metalness={0.6} roughness={0.3} />
       </mesh>
-      <mesh position={[0, 0.42, -0.18]} scale={[0.9, 0.8, 0.5]}>
-        <sphereGeometry args={[0.28, 10, 10]} />
-        <meshStandardMaterial color="#3a2a4e" roughness={0.92} />
+      {/* Canvas */}
+      <mesh position={[0, 0, 0.02]}>
+        <planeGeometry args={[1.0, 0.7]} />
+        <meshStandardMaterial color="#3A5060" roughness={0.9} />
       </mesh>
     </group>
   );
 }
 
-/** Sala de Descanso — 3 distinct seating areas, spread out.
- *  Area 1: Main U-shaped sofa (center-left ~x=-12, z=6)
- *  Area 2: Coffee corner (upper-right ~x=-4, z=8)
- *  Area 3: Lounge area (lower-left ~x=-16, z=4.5) with bean bags + TV
- */
-export function DescansoFurniture() {
+/** Meeting table */
+function MeetingTable({ position }: { position: [number, number, number] }) {
   return (
-    <group>
-      {/* ═══ AREA 1: Main sofa U-shape (x=-14 to -10, z=5 to 8.5) ═══ */}
-      {/* Left arm (vertical, facing inward) */}
-      <Sofa position={[-14, 0, 6]} rotation={Math.PI / 2} />
-      {/* Back sofa (horizontal, facing south) */}
-      <Sofa position={[-12, 0, 8.5]} rotation={0} />
-      {/* Right arm (vertical, facing inward) */}
-      <Sofa position={[-10, 0, 6]} rotation={-Math.PI / 2} />
-      {/* Coffee table in the center */}
-      <CoffeeTable position={[-12, 0, 6]} />
-
-      {/* ── Rug under sofa area ── */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-12, 0.015, 6.5]}>
-        <planeGeometry args={[6, 5]} />
-        <meshStandardMaterial color="#8b4513" roughness={0.95} opacity={0.7} transparent />
+    <group position={position}>
+      <mesh position={[0, 0.72, 0]} castShadow>
+        <boxGeometry args={[3.2, 0.06, 1.5]} />
+        <meshStandardMaterial color="#6B5040" roughness={0.6} />
       </mesh>
-
-      {/* ═══ AREA 2: Coffee corner (x=-5 to -3, z=8 to 9) ═══ */}
-      <CoffeeCounter position={[-4, 0, 8.5]} />
-      <CoffeeMachine position={[-4, 0.83, 8.5]} />
-      <CoffeeCup position={[-4.4, 0.83, 8.3]} />
-      <CoffeeCup position={[-3.6, 0.83, 8.3]} />
-      {/* Stools for sitting at counter */}
-      <Stool position={[-4.5, 0, 7.8]} />
-      <Stool position={[-3.5, 0, 7.8]} />
-
-      {/* ═══ AREA 3: Lounge (x=-18 to -14, z=3.5 to 5.5) ═══ */}
-      {/* Bean bags / armchairs */}
-      <BeanBag position={[-16, 0, 4.5]} rotation={0} />
-      <BeanBag position={[-14.5, 0, 4.5]} rotation={0.3} />
-      {/* TV on the south wall */}
-      <WallTV position={[-10, 1.6, 3.2]} rotation={0} />
-
-      {/* ═══ UTILITIES ═══ */}
-      {/* Water cooler (far left wall) */}
-      <WaterCooler position={[-18, 0, 8]} />
-      {/* Small bookshelf (far left wall) */}
-      <SmallBookshelf position={[-18, 0, 6]} rotation={Math.PI / 2} />
-
-      {/* ── Wall clock ── */}
-      <WallClock position={[-7, 2.2, 3.25]} />
-
-      {/* ── Plants (decorative) ── */}
-      <PottedPlant position={[-2, 0, 5]} seed={1} />
-      <PottedPlant position={[-19, 0, 9]} seed={3} />
-      <PottedPlant position={[-7, 0, 4]} seed={5} />
-      <PottedPlant position={[-8, 0, 9]} seed={7} />
+      {[[-1.35, -0.6], [1.35, -0.6], [-1.35, 0.6], [1.35, 0.6]].map(([x, z], i) => (
+        <mesh key={i} position={[x, 0.35, z]}>
+          <cylinderGeometry args={[0.04, 0.04, 0.7, 10]} />
+          <meshStandardMaterial color="#404040" metalness={0.4} roughness={0.3} />
+        </mesh>
+      ))}
     </group>
   );
 }
 
-/** Sala de Comunicación: meeting table, whiteboard, plants */
-export function ComunicacionFurniture() {
+/* ═══════════════════════════════════════════════════════════════════
+   BEACH-SPECIFIC FURNITURE
+   ═══════════════════════════════════════════════════════════════════ */
+
+/** Beach lounger — honey-teak slatted with optional striped towel */
+function BeachLounger({ position, rotation = 0, towelColor = '#E04040' }: {
+  position: [number, number, number]; rotation?: number; towelColor?: string;
+}) {
   return (
-    <group>
-      <MeetingTable position={[10, 0, 6.5]} />
-      <Whiteboard position={[16, 0, 9]} />
-      <PottedPlant position={[4, 0, 8.5]} seed={0} />
-      <PottedPlant position={[17, 0, 5]} seed={2} />
-      <PottedPlant position={[4, 0, 4.5]} seed={4} />
-      <PottedPlant position={[16, 0, 4.5]} seed={6} />
-      {/* Extra chairs around table */}
-      <OfficeChair position={[8, 0, 5.8]} />
-      <OfficeChair position={[12, 0, 5.8]} />
-      <OfficeChair position={[8, 0, 7.2]} />
-      <OfficeChair position={[12, 0, 7.2]} />
-      <OfficeChair position={[10, 0, 5.5]} />
-      <OfficeChair position={[10, 0, 7.5]} />
+    <group position={position} rotation={[0, rotation, 0]}>
+      {/* Frame */}
+      <mesh position={[0, 0.25, 0]} castShadow>
+        <boxGeometry args={[0.65, 0.06, 1.8]} />
+        <meshStandardMaterial color="#C09860" roughness={0.75} />
+      </mesh>
+      {/* Slats */}
+      {Array.from({ length: 8 }).map((_, i) => (
+        <mesh key={i} position={[0, 0.28, -0.7 + i * 0.2]}>
+          <boxGeometry args={[0.6, 0.02, 0.14]} />
+          <meshStandardMaterial color="#B08848" roughness={0.8} />
+        </mesh>
+      ))}
+      {/* Raised back */}
+      <mesh position={[0, 0.45, -0.75]} rotation={[0.4, 0, 0]}>
+        <boxGeometry args={[0.6, 0.04, 0.5]} />
+        <meshStandardMaterial color="#C09860" roughness={0.75} />
+      </mesh>
+      {/* Legs */}
+      {[[-0.25, -0.7], [0.25, -0.7], [-0.25, 0.7], [0.25, 0.7]].map(([x, z], i) => (
+        <mesh key={i} position={[x, 0.1, z]}>
+          <cylinderGeometry args={[0.02, 0.02, 0.2, 6]} />
+          <meshStandardMaterial color="#A08040" roughness={0.8} />
+        </mesh>
+      ))}
+      {/* Striped towel */}
+      <mesh position={[0, 0.3, 0.1]}>
+        <boxGeometry args={[0.55, 0.02, 1.2]} />
+        <meshStandardMaterial color={towelColor} roughness={0.9} />
+      </mesh>
+      {/* Towel stripe */}
+      <mesh position={[0, 0.31, 0.1]}>
+        <boxGeometry args={[0.55, 0.01, 0.15]} />
+        <meshStandardMaterial color="#FFFFFF" roughness={0.9} />
+      </mesh>
     </group>
   );
 }
 
-/** Sala de Trabajo: 12+ desks with laptops, chairs, lamps in rows */
-export function TrabajoFurniture() {
-  // 4 columns x 3 rows = 12 desks
-  const desks: [number, number, number][] = [];
-  for (let row = 0; row < 3; row++) {
-    for (let col = 0; col < 4; col++) {
-      desks.push([-12 + col * 7, 0, -3.5 + row * 2.5]);
-    }
+/** Hammock — simple catenary curve between two posts */
+function Hammock({ position, rotation = 0 }: {
+  position: [number, number, number]; rotation?: number;
+}) {
+  return (
+    <group position={position} rotation={[0, rotation, 0]}>
+      {/* Two posts */}
+      {[-1.5, 1.5].map((x, i) => (
+        <mesh key={i} position={[x, 0.8, 0]} castShadow>
+          <cylinderGeometry args={[0.04, 0.05, 1.6, 8]} />
+          <meshStandardMaterial color="#5A3A20" roughness={0.9} />
+        </mesh>
+      ))}
+      {/* Hammock fabric — approximated with curved boxes */}
+      {Array.from({ length: 7 }).map((_, i) => {
+        const t = (i - 3) / 3;
+        const x = t * 1.2;
+        const y = 1.1 - t * t * 0.5; // catenary-ish curve
+        return (
+          <mesh key={i} position={[x, y, 0]} rotation={[0, 0, t * 0.15]}>
+            <boxGeometry args={[0.4, 0.02, 0.7]} />
+            <meshStandardMaterial color="#F0E0C0" roughness={0.9} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
+/** Laptop on low table (beach version) */
+function LaptopOnTable({ position, rotation = 0 }: {
+  position: [number, number, number]; rotation?: number;
+}) {
+  return (
+    <group position={position} rotation={[0, rotation, 0]}>
+      {/* Low bamboo table */}
+      <mesh position={[0, 0.3, 0]} castShadow>
+        <boxGeometry args={[0.6, 0.04, 0.4]} />
+        <meshStandardMaterial color="#B09060" roughness={0.8} />
+      </mesh>
+      {[[-0.24, -0.14], [0.24, -0.14], [-0.24, 0.14], [0.24, 0.14]].map(([x, z], i) => (
+        <mesh key={i} position={[x, 0.14, z]}>
+          <cylinderGeometry args={[0.02, 0.02, 0.28, 6]} />
+          <meshStandardMaterial color="#A08050" roughness={0.8} />
+        </mesh>
+      ))}
+      {/* Laptop */}
+      <mesh position={[0, 0.34, 0]}>
+        <boxGeometry args={[0.34, 0.02, 0.22]} />
+        <meshStandardMaterial color="#222222" />
+      </mesh>
+      <mesh position={[0, 0.46, -0.1]} rotation={[-1.2, 0, 0]}>
+        <boxGeometry args={[0.34, 0.24, 0.01]} />
+        <meshStandardMaterial color="#1A2A3A" emissive="#40A0D0" emissiveIntensity={0.7} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Tiki bar counter */
+function TikiBar({ position, rotation = 0 }: {
+  position: [number, number, number]; rotation?: number;
+}) {
+  return (
+    <group position={position} rotation={[0, rotation, 0]}>
+      {/* Bar top */}
+      <mesh position={[0, 1.0, 0]} castShadow>
+        <boxGeometry args={[3.0, 0.08, 0.7]} />
+        <meshStandardMaterial color="#5A3A20" roughness={0.7} />
+      </mesh>
+      {/* Bar front */}
+      <mesh position={[0, 0.5, -0.3]}>
+        <boxGeometry args={[3.0, 1.0, 0.06]} />
+        <meshStandardMaterial color="#6B4A30" roughness={0.85} />
+      </mesh>
+      {/* Bamboo texture strips on front */}
+      {Array.from({ length: 10 }).map((_, i) => (
+        <mesh key={i} position={[-1.35 + i * 0.3, 0.5, -0.27]}>
+          <cylinderGeometry args={[0.04, 0.04, 0.9, 6]} />
+          <meshStandardMaterial color="#A08050" roughness={0.8} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Tropical palm tree */
+function PalmTree({ position, height = 5, seed = 0 }: {
+  position: [number, number, number]; height?: number; seed?: number;
+}) {
+  const ref = useRef<Group>(null);
+  useFrame(({ clock }) => {
+    if (ref.current) ref.current.rotation.z = Math.sin(clock.elapsedTime * 0.3 + seed) * 0.02;
+  });
+  return (
+    <group position={position} ref={ref}>
+      {/* Trunk — slightly curved using stacked cylinders */}
+      {Array.from({ length: 6 }).map((_, i) => {
+        const t = i / 5;
+        const y = t * height;
+        const lean = Math.sin(t * 0.5 + seed) * 0.3;
+        const r = 0.15 - t * 0.06;
+        return (
+          <mesh key={i} position={[lean, y, 0]}>
+            <cylinderGeometry args={[r, r + 0.02, height / 5.5, 8]} />
+            <meshStandardMaterial color="#7A5A30" roughness={0.9} />
+          </mesh>
+        );
+      })}
+      {/* Fan leaf clusters at top */}
+      {[0, Math.PI * 0.5, Math.PI, Math.PI * 1.5, Math.PI * 0.25, Math.PI * 0.75].map((angle, i) => {
+        const lx = Math.cos(angle) * 0.8;
+        const lz = Math.sin(angle) * 0.8;
+        return (
+          <mesh key={i} position={[lx, height - 0.2, lz]} rotation={[0.5, angle, -0.3]}>
+            <boxGeometry args={[0.15, 1.8, 0.02]} />
+            <meshStandardMaterial color={i % 2 === 0 ? '#2A8A3A' : '#348A40'} roughness={0.85} />
+          </mesh>
+        );
+      })}
+      {/* Coconut cluster */}
+      {[[0.1, height - 0.6, 0.1], [-0.1, height - 0.55, -0.05]].map(([x, y, z], i) => (
+        <mesh key={`c${i}`} position={[x, y, z]}>
+          <sphereGeometry args={[0.08, 8, 8]} />
+          <meshStandardMaterial color="#5A4020" roughness={0.9} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Seashell small decoration */
+function Seashell({ position }: { position: [number, number, number] }) {
+  return (
+    <mesh position={position} rotation={[0.3, Math.random() * Math.PI, 0]}>
+      <coneGeometry args={[0.06, 0.04, 8]} />
+      <meshStandardMaterial color="#F0E0D0" roughness={0.8} />
+    </mesh>
+  );
+}
+
+/** Surfboard leaning */
+function Surfboard({ position, rotation = 0, color = '#E06030' }: {
+  position: [number, number, number]; rotation?: number; color?: string;
+}) {
+  return (
+    <group position={position} rotation={[0, rotation, 0.25]}>
+      <mesh position={[0, 1.0, 0]}>
+        <boxGeometry args={[0.3, 2.0, 0.05]} />
+        <meshStandardMaterial color={color} roughness={0.6} />
+      </mesh>
+      {/* Fin */}
+      <mesh position={[0, 0.15, -0.04]}>
+        <boxGeometry args={[0.08, 0.2, 0.06]} />
+        <meshStandardMaterial color="#333333" />
+      </mesh>
+    </group>
+  );
+}
+
+/** Sun umbrella */
+function SunUmbrella({ position, color = '#E06040' }: {
+  position: [number, number, number]; color?: string;
+}) {
+  return (
+    <group position={position}>
+      <mesh position={[0, 1.8, 0]}>
+        <coneGeometry args={[1.4, 0.4, 16]} />
+        <meshStandardMaterial color={color} roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 0.9, 0]}>
+        <cylinderGeometry args={[0.03, 0.03, 1.8, 8]} />
+        <meshStandardMaterial color="#C0C0C0" metalness={0.5} roughness={0.3} />
+      </mesh>
+    </group>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   ROOM FURNITURE EXPORTS — conditional on beachMode
+   ═══════════════════════════════════════════════════════════════════ */
+
+function DensityRows(density: WorldEnvironment['density']) {
+  if (density === 'high') return { rows: 5, cols: 5 };
+  if (density === 'low') return { rows: 3, cols: 4 };
+  return { rows: 4, cols: 5 };
+}
+
+export function LobbyFurniture({ environment }: { environment: WorldEnvironment }) {
+  const isBeach = !!environment.beachMode;
+
+  if (isBeach) {
+    return (
+      <group>
+        {/* Welcome tiki bar */}
+        <TikiBar position={[0, 0, 15]} />
+        <PalmTree position={[-14, 0, 16]} height={5.5} seed={1} />
+        <PalmTree position={[14, 0, 16]} height={6} seed={2} />
+        <PalmTree position={[-8, 0, 17]} height={4.5} seed={10} />
+        <BeachLounger position={[-8, 0, 13.5]} rotation={0} towelColor="#3080C0" />
+        <BeachLounger position={[8, 0, 13.5]} rotation={0} towelColor="#C04040" />
+        <SunUmbrella position={[-8, 0, 13.5]} color="#F0A040" />
+        <SunUmbrella position={[8, 0, 13.5]} color="#40A0D0" />
+        <Seashell position={[-3, 0, 16.5]} />
+        <Seashell position={[5, 0, 17.2]} />
+        <Seashell position={[1, 0, 16.8]} />
+      </group>
+    );
   }
 
   return (
     <group>
-      {desks.map((pos, i) => {
-        const deskTopY = 0.75;
-        return (
-          <group key={i}>
-            <Desk position={pos} />
-            <Laptop position={[pos[0], deskTopY, pos[2]]} />
-            <OfficeChair position={[pos[0], 0, pos[2] + 0.6]} />
-            <DeskLamp position={[pos[0] + 0.5, deskTopY, pos[2] - 0.2]} />
-          </group>
-        );
-      })}
+      {/* Reception desk */}
+      <mesh position={[0, 0.5, 15]} castShadow>
+        <boxGeometry args={[3.4, 1.0, 1.0]} />
+        <meshStandardMaterial color="#6B5040" roughness={0.6} />
+      </mesh>
+      <mesh position={[0, 1.03, 15]}>
+        <boxGeometry args={[3.6, 0.05, 1.05]} />
+        <meshStandardMaterial color="#8B6538" roughness={0.5} />
+      </mesh>
+      {/* Bench seating */}
+      <LoungeChair position={[-8, 0, 13.5]} rotation={Math.PI / 4} />
+      <LoungeChair position={[8, 0, 13.5]} rotation={-Math.PI / 4} />
+      {/* Fiddle leaf figs */}
+      <FiddleLeafFig position={[-14, 0, 16]} scale={1.2} />
+      <FiddleLeafFig position={[14, 0, 16]} scale={1.2} />
+      <FiddleLeafFig position={[0, 0, 12.2]} />
     </group>
   );
 }
 
-/** Biblioteca: bookshelves, reading tables, quiet lighting */
-export function BibliotecaFurniture() {
+export function DescansoFurniture({ environment }: { environment: WorldEnvironment }) {
+  const isBeach = !!environment.beachMode;
+
+  if (isBeach) {
+    return (
+      <group>
+        {/* Beach loungers */}
+        <BeachLounger position={[-19, 0, 7]} rotation={Math.PI / 2} towelColor="#D04040" />
+        <BeachLounger position={[-17, 0, 9]} rotation={0} towelColor="#4080C0" />
+        <BeachLounger position={[-15, 0, 7]} rotation={-Math.PI / 2} towelColor="#40B060" />
+        <BeachLounger position={[-12, 0, 5]} rotation={Math.PI / 4} towelColor="#D0A040" />
+        {/* Hammocks */}
+        <Hammock position={[-10, 0, 8]} rotation={Math.PI / 6} />
+        <Hammock position={[-7, 0, 6]} rotation={-Math.PI / 6} />
+        {/* Palm trees */}
+        <PalmTree position={[-22, 0, 4]} height={5} seed={4} />
+        <PalmTree position={[-21, 0, 10]} height={6} seed={5} />
+        {/* Sun umbrella over loungers */}
+        <SunUmbrella position={[-17, 0, 8]} color="#F06040" />
+      </group>
+    );
+  }
+
   return (
     <group>
-      {/* 3 tall bookshelves — one per district */}
-      <TallBookshelf position={[-12, 0, -13.5]} width={4} />
-      <TallBookshelf position={[0, 0, -13.5]} width={5} />
-      <TallBookshelf position={[12, 0, -13.5]} width={4} />
+      {/* Leather lounge chairs around coffee table */}
+      <LoungeChair position={[-19, 0, 7]} rotation={Math.PI / 2} />
+      <LoungeChair position={[-16.8, 0, 9]} rotation={0} />
+      <LoungeChair position={[-14.6, 0, 7]} rotation={-Math.PI / 2} />
+      <CoffeeTable position={[-16.8, 0, 7]} />
 
-      {/* Reading tables */}
-      <ReadingTable position={[-6, 0, -8]} />
-      <ReadingTable position={[6, 0, -8]} />
+      {/* Second seating group */}
+      <LoungeChair position={[-10.5, 0, 5.1]} rotation={Math.PI} />
+      <LoungeChair position={[-8.8, 0, 8.7]} rotation={0} />
+      <CoffeeTable position={[-9.7, 0, 6.8]} />
 
-      {/* Chairs at reading tables */}
-      <OfficeChair position={[-6, 0, -7.2]} />
-      <OfficeChair position={[-6, 0, -8.8]} />
-      <OfficeChair position={[6, 0, -7.2]} />
-      <OfficeChair position={[6, 0, -8.8]} />
+      {/* Fiddle leaf figs */}
+      <FiddleLeafFig position={[-22, 0, 4]} scale={1.3} />
+      <FiddleLeafFig position={[-21, 0, 10]} scale={1.4} />
+      <FiddleLeafFig position={[-11.5, 0, 10.2]} />
 
-      {/* Subtle warm lights for reading areas */}
-      <pointLight position={[-6, 3, -8]} intensity={3} color="#ffd699" distance={6} />
-      <pointLight position={[6, 3, -8]} intensity={3} color="#ffd699" distance={6} />
+      {/* Gold-framed painting on wall */}
+      <Painting position={[-23.9, 1.8, 7]} rotation={Math.PI / 2} />
+    </group>
+  );
+}
+
+export function ComunicacionFurniture({ environment }: { environment: WorldEnvironment }) {
+  const isBeach = !!environment.beachMode;
+  const chairs = environment.density === 'low' ? [-1.2, 0, 1.2] : [-1.7, -0.6, 0.6, 1.7];
+
+  if (isBeach) {
+    return (
+      <group>
+        {/* Low meeting table (beach bamboo) */}
+        <MeetingTable position={[10, 0, 6.3]} />
+        {/* Beach-style chairs around table */}
+        {chairs.map((x, i) => (
+          <OfficeChair key={`n${i}`} position={[10 + x, 0, 4.9]} rotation={Math.PI} />
+        ))}
+        {chairs.map((x, i) => (
+          <OfficeChair key={`s${i}`} position={[10 + x, 0, 7.7]} rotation={0} />
+        ))}
+        {/* Whiteboard on bamboo easel */}
+        <mesh position={[19, 1.4, 9.8]}>
+          <boxGeometry args={[3.2, 1.5, 0.06]} />
+          <meshStandardMaterial color="#FFFFF0" roughness={0.3} />
+        </mesh>
+        <PalmTree position={[5, 0, 9.8]} height={4.5} seed={8} />
+        <PalmTree position={[20.5, 0, 4]} height={5} seed={9} />
+      </group>
+    );
+  }
+
+  return (
+    <group>
+      <MeetingTable position={[10, 0, 6.3]} />
+      {chairs.map((x, i) => (
+        <OfficeChair key={`n${i}`} position={[10 + x, 0, 4.9]} rotation={Math.PI} />
+      ))}
+      {chairs.map((x, i) => (
+        <OfficeChair key={`s${i}`} position={[10 + x, 0, 7.7]} rotation={0} />
+      ))}
+      <OfficeChair position={[8, 0, 6.3]} rotation={Math.PI / 2} />
+      <OfficeChair position={[12, 0, 6.3]} rotation={-Math.PI / 2} />
+      {/* Whiteboard */}
+      <mesh position={[19, 1.4, 9.8]}>
+        <boxGeometry args={[3.2, 1.5, 0.06]} />
+        <meshStandardMaterial color="#F0F0F0" roughness={0.25} />
+      </mesh>
+      <FiddleLeafFig position={[5, 0, 9.8]} />
+      <FiddleLeafFig position={[20.5, 0, 4]} />
+    </group>
+  );
+}
+
+export function TrabajoFurniture({ environment }: { environment: WorldEnvironment }) {
+  const { cols, rows } = DensityRows(environment.density);
+  const isBeach = !!environment.beachMode;
+  const startX = -16;
+  const startZ = -6;
+  const dx = 8;
+  const dz = 2.2;
+
+  if (isBeach) {
+    return (
+      <group>
+        {Array.from({ length: rows * cols }).map((_, i) => {
+          const col = i % cols;
+          const row = Math.floor(i / cols);
+          const x = startX + col * dx;
+          const z = startZ + row * dz;
+          return (
+            <group key={i}>
+              <LaptopOnTable position={[x, 0, z]} />
+              <OfficeChair position={[x, 0, z + 0.95]} rotation={Math.PI} />
+            </group>
+          );
+        })}
+        <PalmTree position={[-2, 0, 1]} height={4} seed={11} />
+        <PalmTree position={[14, 0, 1]} height={4.5} seed={12} />
+      </group>
+    );
+  }
+
+  return (
+    <group>
+      {Array.from({ length: rows * cols }).map((_, i) => {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const x = startX + col * dx;
+        const z = startZ + row * dz;
+        return (
+          <group key={i}>
+            <WoodDesk position={[x, 0, z]} />
+            <IMac position={[x, 0.76, z - 0.08]} />
+            <OfficeChair position={[x, 0, z + 0.95]} rotation={Math.PI} />
+          </group>
+        );
+      })}
+      <FiddleLeafFig position={[-2, 0, 1]} scale={1.2} />
+      <FiddleLeafFig position={[14, 0, 1]} scale={1.2} />
+    </group>
+  );
+}
+
+export function BibliotecaFurniture({ environment }: { environment: WorldEnvironment }) {
+  const isBeach = !!environment.beachMode;
+
+  if (isBeach) {
+    return (
+      <group>
+        {/* Quiet reading loungers */}
+        <BeachLounger position={[-17, 0, -12]} rotation={0} towelColor="#6080A0" />
+        <BeachLounger position={[-12, 0, -12]} rotation={0} towelColor="#A06040" />
+        <BeachLounger position={[-7, 0, -12]} rotation={0} towelColor="#40A080" />
+        <BeachLounger position={[-2, 0, -12]} rotation={0} towelColor="#A04080" />
+        {/* Low tables with laptops */}
+        <LaptopOnTable position={[-17, 0, -14.5]} />
+        <LaptopOnTable position={[-7, 0, -14.5]} />
+        <PalmTree position={[-20, 0, -18]} height={5} seed={20} />
+        <PalmTree position={[2, 0, -18]} height={4.5} seed={21} />
+        <pointLight position={[-12, 2.8, -12]} intensity={1.5} color="#FFF0D0" distance={8} />
+        <pointLight position={[-2, 2.8, -12]} intensity={1.5} color="#FFF0D0" distance={8} />
+      </group>
+    );
+  }
+
+  return (
+    <group>
+      <Bookshelf position={[-20, 0, -18]} width={5.5} />
+      <Bookshelf position={[-12.5, 0, -18]} width={5.5} />
+      <Bookshelf position={[-5, 0, -18]} width={5.5} />
+      <Bookshelf position={[2.5, 0, -18]} width={5.5} />
+
+      {[-17, -12, -7, -2].map((x) => (
+        <group key={x}>
+          <WoodDesk position={[x, 0, -12]} rotation={0} w={1.6} />
+          <IMac position={[x, 0.76, -12.08]} />
+          <OfficeChair position={[x, 0, -10.9]} rotation={Math.PI} />
+        </group>
+      ))}
+
+      <pointLight position={[-12, 2.8, -12]} intensity={1.8} color="#FFF0D0" distance={8} />
+      <pointLight position={[-2, 2.8, -12]} intensity={1.8} color="#FFF0D0" distance={8} />
+    </group>
+  );
+}
+
+export function ExteriorFurniture({ environment }: { environment: WorldEnvironment }) {
+  const isBeach = !!environment.beachMode;
+
+  if (isBeach) {
+    return (
+      <group>
+        {/* Beach loungers with umbrellas */}
+        <BeachLounger position={[14, 0, -12.5]} rotation={Math.PI / 2} towelColor="#C04040" />
+        <BeachLounger position={[20, 0, -12.5]} rotation={Math.PI / 2} towelColor="#4080C0" />
+        <BeachLounger position={[17, 0, -17.5]} rotation={0} towelColor="#40C060" />
+        <SunUmbrella position={[14, 0, -12.5]} color="#F0A040" />
+        <SunUmbrella position={[20, 0, -12.5]} color="#40C0C0" />
+
+        {/* Surfboards leaning against tiki hut */}
+        <Surfboard position={[13, 0, -10.5]} rotation={0.2} color="#E06030" />
+        <Surfboard position={[13.5, 0, -10.3]} rotation={-0.1} color="#3090D0" />
+
+        {/* Palm trees */}
+        <PalmTree position={[11.5, 0, -10.2]} height={6} seed={13} />
+        <PalmTree position={[22.2, 0, -10.5]} height={6.5} seed={14} />
+        <PalmTree position={[22, 0, -18]} height={5.5} seed={15} />
+        <PalmTree position={[12.2, 0, -18.1]} height={5} seed={16} />
+
+        {/* Seashells scattered on sand */}
+        <Seashell position={[15, 0, -15]} />
+        <Seashell position={[19, 0, -16]} />
+        <Seashell position={[16, 0, -18.5]} />
+        <Seashell position={[21, 0, -13]} />
+        <Seashell position={[13.5, 0, -17]} />
+      </group>
+    );
+  }
+
+  return (
+    <group>
+      {/* Outdoor seating */}
+      <LoungeChair position={[14, 0, -12.5]} rotation={Math.PI / 2} />
+      <LoungeChair position={[20, 0, -12.5]} rotation={Math.PI / 2} />
+      <LoungeChair position={[17, 0, -17.5]} rotation={0} />
+      <CoffeeTable position={[17, 0, -14]} />
+
+      {/* Vending machines */}
+      <VendingMachine position={[12, 0, -10]} rotation={Math.PI / 2} />
+      <WaterCooler position={[12, 0, -11.5]} />
+
+      {/* Plants */}
+      <FiddleLeafFig position={[11.5, 0, -10.2]} scale={1.4} />
+      <FiddleLeafFig position={[22.2, 0, -10.5]} scale={1.5} />
+      <Plant position={[22, 0, -18]} seed={15} scale={1.4} />
+      <Plant position={[12.2, 0, -18.1]} seed={16} scale={1.3} />
     </group>
   );
 }
