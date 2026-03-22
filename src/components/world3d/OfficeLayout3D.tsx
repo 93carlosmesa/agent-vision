@@ -247,14 +247,16 @@ function LEDStrips({ walls }: { walls: WallSegment[] }) {
               <meshStandardMaterial
                 color="#ffe8c0"
                 emissive="#ffe8c0"
-                emissiveIntensity={2.0}
+                emissiveIntensity={0.55}
+                transparent
+                opacity={0.28}
               />
             </mesh>
             <pointLight
               position={[w.position[0], topY + 0.12, w.position[2]]}
               color="#ffe8c0"
-              intensity={1.5}
-              distance={8}
+              intensity={0.35}
+              distance={7}
             />
             {/* Base LED strip */}
             <mesh
@@ -265,14 +267,16 @@ function LEDStrips({ walls }: { walls: WallSegment[] }) {
               <meshStandardMaterial
                 color="#ffe8c0"
                 emissive="#ffe8c0"
-                emissiveIntensity={1.5}
+                emissiveIntensity={0.35}
+                transparent
+                opacity={0.22}
               />
             </mesh>
             <pointLight
               position={[w.position[0], 0.1, w.position[2]]}
               color="#ffe8c0"
-              intensity={0.8}
-              distance={5}
+              intensity={0.2}
+              distance={4}
             />
           </group>
         );

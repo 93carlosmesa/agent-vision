@@ -584,10 +584,10 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
           <pointLight position={[-8, 6, -14]} intensity={0.8} color="#FFE8C0" distance={16} />
           <pointLight position={[17, 6, -14]} intensity={0.8} color="#FFE0B0" distance={18} />
           {/* Room center lights — subtle fill, LED strips do the heavy lifting */}
-          <pointLight position={[0, 4, -3]} color="#ffe8c0" intensity={0.4} distance={12} />
-          <pointLight position={[-7, 4, -14]} color="#e0e8ff" intensity={0.3} distance={10} />
-          <pointLight position={[10, 4, 6.5]} color="#ffe8c0" intensity={0.35} distance={10} />
-          <pointLight position={[-14, 4, 6.5]} color="#ffd4a0" intensity={0.3} distance={10} />
+          <pointLight position={[0, 4, -3]} color="#ffe8c0" intensity={0.18} distance={10} />
+          <pointLight position={[-7, 4, -14]} color="#e0e8ff" intensity={0.14} distance={9} />
+          <pointLight position={[10, 4, 6.5]} color="#ffe8c0" intensity={0.16} distance={9} />
+          <pointLight position={[-14, 4, 6.5]} color="#ffd4a0" intensity={0.14} distance={9} />
 
           {/* Warm fog matching navy walls */}
           <fog attach="fog" args={['#2D3A4A', 40, 85]} />
