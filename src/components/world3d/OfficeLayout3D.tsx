@@ -223,6 +223,64 @@ function SandPlane() {
   );
 }
 
+/* ── LED strip lights on walls ── */
+interface WallSegment {
+  position: [number, number, number];
+  width: number;
+  height: number;
+  rotation: number;
+}
+
+function LEDStrips({ walls }: { walls: WallSegment[] }) {
+  return (
+    <group>
+      {walls.map((w, i) => {
+        const topY = w.position[1] + w.height / 2 + 0.025;
+        return (
+          <group key={`led-${i}`}>
+            {/* Top LED strip */}
+            <mesh
+              position={[w.position[0], topY, w.position[2]]}
+              rotation={[0, w.rotation, 0]}
+            >
+              <boxGeometry args={[w.width, 0.05, 0.1]} />
+              <meshStandardMaterial
+                color="#ffe8c0"
+                emissive="#ffe8c0"
+                emissiveIntensity={2.0}
+              />
+            </mesh>
+            <pointLight
+              position={[w.position[0], topY + 0.12, w.position[2]]}
+              color="#ffe8c0"
+              intensity={1.5}
+              distance={8}
+            />
+            {/* Base LED strip */}
+            <mesh
+              position={[w.position[0], 0.025, w.position[2]]}
+              rotation={[0, w.rotation, 0]}
+            >
+              <boxGeometry args={[w.width, 0.05, 0.1]} />
+              <meshStandardMaterial
+                color="#ffe8c0"
+                emissive="#ffe8c0"
+                emissiveIntensity={1.5}
+              />
+            </mesh>
+            <pointLight
+              position={[w.position[0], 0.1, w.position[2]]}
+              color="#ffe8c0"
+              intensity={0.8}
+              distance={5}
+            />
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
 /* ── Main layout component ── */
 
 export function OfficeLayout3D({ environment }: { environment: WorldEnvironment }) {
@@ -349,6 +407,29 @@ export function OfficeLayout3D({ environment }: { environment: WorldEnvironment 
       <Skylight position={[10, WALL_H - 0.01, 6.5]} size={[6, 4]} />
       <Skylight position={[0, WALL_H - 0.01, -3]} size={[8, 5]} />
       <Skylight position={[-7, WALL_H - 0.01, -14]} size={[6, 4]} />
+
+      {/* LED strip lights on every wall */}
+      <LEDStrips walls={[
+        /* Outer walls */
+        { position: [0, wy, 18], width: 48, height: WALL_H, rotation: 0 },
+        { position: [-7, wy, -20], width: 34, height: WALL_H, rotation: 0 },
+        { position: [17, 1.1, -20], width: 14, height: 1.2, rotation: 0 },
+        { position: [-24, wy, -1], width: 38, height: WALL_H, rotation: Math.PI / 2 },
+        { position: [24, wy, 4.5], width: 27, height: WALL_H, rotation: Math.PI / 2 },
+        { position: [24, 1.2, -13], width: 12, height: 1.4, rotation: Math.PI / 2 },
+        /* Inner walls */
+        { position: [-17, wy, 11], width: 14, height: WALL_H, rotation: 0 },
+        { position: [0, wy, 11], width: 16, height: WALL_H, rotation: 0 },
+        { position: [17, wy, 11], width: 14, height: WALL_H, rotation: 0 },
+        { position: [-4, wy, 9], width: 3.6, height: WALL_H, rotation: Math.PI / 2 },
+        { position: [-4, wy, 4], width: 3.6, height: WALL_H, rotation: Math.PI / 2 },
+        { position: [-16, wy, 2], width: 13, height: WALL_H, rotation: 0 },
+        { position: [0, wy, 2], width: 15, height: WALL_H, rotation: 0 },
+        { position: [16, wy, 2], width: 13, height: WALL_H, rotation: 0 },
+        { position: [-14, wy, -8], width: 18, height: WALL_H, rotation: 0 },
+        { position: [1, wy, -8], width: 8, height: WALL_H, rotation: 0 },
+        { position: [12, 1.2, -8], width: 10, height: 1.4, rotation: 0 },
+      ]} />
 
       {/* Room labels */}
       <RoomLabel position={[0, 3.7, 15]} label="Lobby / Recepcion" color={theme.accent.cyan} />

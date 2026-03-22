@@ -565,10 +565,10 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
       ) : (
         <>
           {/* Office — warm 4500K with skylights */}
-          <ambientLight intensity={0.6} color="#FFF0D8" />
+          <ambientLight intensity={0.9} color="#FFF0D8" />
           <directionalLight
             position={[5, 20, 10]}
-            intensity={1.5}
+            intensity={2.0}
             color="#FFF0D0"
             castShadow
             shadow-mapSize-width={2048}
@@ -582,6 +582,11 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
           <pointLight position={[0, 7, -3]} intensity={1.2} color="#FFF0D0" distance={25} />
           <pointLight position={[-8, 6, -14]} intensity={0.8} color="#FFE8C0" distance={16} />
           <pointLight position={[17, 6, -14]} intensity={0.8} color="#FFE0B0" distance={18} />
+          {/* Room center lights — one per room for full visibility */}
+          <pointLight position={[0, 4, -3]} color="#ffe8c0" intensity={2.0} distance={12} />
+          <pointLight position={[-7, 4, -14]} color="#e0e8ff" intensity={1.5} distance={10} />
+          <pointLight position={[10, 4, 6.5]} color="#ffe8c0" intensity={1.8} distance={10} />
+          <pointLight position={[-14, 4, 6.5]} color="#ffd4a0" intensity={1.5} distance={10} />
 
           {/* Warm fog matching navy walls */}
           <fog attach="fog" args={['#2D3A4A', 40, 85]} />
