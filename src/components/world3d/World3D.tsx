@@ -443,6 +443,7 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
       id: string;
       name: string;
       waypoints: [number, number, number][];
+      facingAngle?: number;
       status: SessionStatus;
       isActive: boolean;
       activityLabel: string;
@@ -452,6 +453,7 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
     for (const d of agentData) {
       let targetRoom: RoomKey;
       let targetPos: [number, number, number];
+      let targetFacing: number | undefined;
       let label: string;
 
       if (d.status === 'idle') {
@@ -460,12 +462,14 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
         if (dedicatedSeat) {
           targetRoom = 'lobby';
           targetPos = dedicatedSeat.pos;
+          targetFacing = dedicatedSeat.facing;
           label = dedicatedSeat.label;
         } else if (d.inCtx) {
           // In-context idle → Descanso spots
           targetRoom = 'descanso';
           const spot = DESCANSO_SPOTS[descansoIdx % DESCANSO_SPOTS.length];
           targetPos = spot.pos;
+          targetFacing = spot.facing;
           label = spot.label;
           descansoIdx++;
         } else {
@@ -473,6 +477,7 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
           targetRoom = 'lobby';
           const spot = LOBBY_SPOTS[lobbyIdx % LOBBY_SPOTS.length];
           targetPos = spot.pos;
+          targetFacing = spot.facing;
           label = spot.label;
           lobbyIdx++;
         }
@@ -504,6 +509,7 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
         id: d.id,
         name: d.name,
         waypoints,
+        facingAngle: targetFacing,
         status: d.status,
         isActive: d.status !== 'idle',
         activityLabel: label,

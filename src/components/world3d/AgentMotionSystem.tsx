@@ -18,6 +18,8 @@ export interface AgentEntry {
   id: string;
   name: string;
   waypoints: [number, number, number][];
+  /** Optional desired facing when stationary (e.g. seated agents facing table) */
+  facingAngle?: number;
   status: SessionStatus;
   isActive: boolean;
   activityLabel?: string;
@@ -31,7 +33,7 @@ interface AgentMotionSystemProps {
 export function AgentMotionSystem({ agents }: AgentMotionSystemProps) {
   // Build stable target list with waypoints
   const targets: AgentTarget[] = useMemo(
-    () => agents.map(a => ({ id: a.id, waypoints: a.waypoints })),
+    () => agents.map(a => ({ id: a.id, waypoints: a.waypoints, facingAngle: a.facingAngle })),
     [agents],
   );
 

@@ -14,6 +14,8 @@ import type { Obstacle } from '../utils/officePathfinding';
 export interface AgentTarget {
   id: string;
   waypoints: [number, number, number][];
+  /** Desired facing angle when stationary at destination */
+  facingAngle?: number;
 }
 
 export interface AgentMotionState {
@@ -29,6 +31,7 @@ interface InternalState {
   facingAngle: number;
   targetFacingAngle: number;
   isMoving: boolean;
+  desiredFacingAngle: number;
   hasInitialized: boolean;
 }
 
@@ -74,7 +77,7 @@ export function useAgentMotion(
     const state = stateRef.current;
     const activeIds = new Set<string>();
 
-    for (const { id, waypoints } of targets) {
+    for (const { id, waypoints, facingAngle } of targets) {
       activeIds.add(id);
       const existing = state.get(id);
 
@@ -83,13 +86,15 @@ export function useAgentMotion(
         const finalPos: [number, number, number] = waypoints.length > 0
           ? [...waypoints[waypoints.length - 1]]
           : [0, 0, 0];
+        const desired = facingAngle ?? 0;
         state.set(id, {
           currentPos: finalPos,
           waypoints: waypoints.map(w => [...w] as [number, number, number]),
           waypointIndex: waypoints.length, // already at destination
-          facingAngle: 0,
-          targetFacingAngle: 0,
+          facingAngle: desired,
+          targetFacingAngle: desired,
           isMoving: false,
+          desiredFacingAngle: desired,
           hasInitialized: true,
         });
       } else {
@@ -104,6 +109,8 @@ export function useAgentMotion(
         const changed = !oldFinal || !newFinal ||
           Math.abs(oldFinal[0] - newFinal[0]) > 0.01 ||
           Math.abs(oldFinal[2] - newFinal[2]) > 0.01;
+
+        existing.desiredFacingAngle = facingAngle ?? existing.desiredFacingAngle;
 
         if (changed) {
           existing.waypoints = waypoints.map(w => [...w] as [number, number, number]);
@@ -136,6 +143,8 @@ export function useAgentMotion(
         if (s.isMoving) {
           s.isMoving = false;
         }
+        // Snap/look at desired idle facing (seat/table orientation)
+        s.targetFacingAngle = s.desiredFacingAngle;
       } else {
         const dx = target[0] - s.currentPos[0];
         const dz = target[2] - s.currentPos[2];
