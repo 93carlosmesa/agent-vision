@@ -5,7 +5,7 @@
  * Works alongside OrbitControls (mouse zoom/rotate still works).
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
@@ -39,6 +39,12 @@ function clamp(v: number, min: number, max: number): number {
 export function CameraControls3D({ controlsRef }: CameraControls3DProps) {
   const { camera } = useThree();
   const activeKeys = useRef(new Set<KeyAction>());
+
+  const _forward = useMemo(() => new THREE.Vector3(), []);
+  const _right = useMemo(() => new THREE.Vector3(), []);
+  const _delta = useMemo(() => new THREE.Vector3(), []);
+  const _up = useMemo(() => new THREE.Vector3(0, 1, 0), []);
+  const _offset = useMemo(() => new THREE.Vector3(), []);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -75,53 +81,37 @@ export function CameraControls3D({ controlsRef }: CameraControls3DProps) {
   useFrame(() => {
     const keys = activeKeys.current;
     if (keys.size === 0) return;
-
     const controls = controlsRef.current;
     if (!controls) return;
-
-    // Camera forward/right vectors projected onto XZ plane
-    const forward = new THREE.Vector3();
-    camera.getWorldDirection(forward);
-    forward.y = 0;
-    forward.normalize();
-
-    const right = new THREE.Vector3();
-    right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
-
-    const delta = new THREE.Vector3();
-
-    if (keys.has('forward'))  delta.add(forward.clone().multiplyScalar(MOVE_SPEED));
-    if (keys.has('backward')) delta.add(forward.clone().multiplyScalar(-MOVE_SPEED));
-    if (keys.has('left'))     delta.add(right.clone().multiplyScalar(-MOVE_SPEED));
-    if (keys.has('right'))    delta.add(right.clone().multiplyScalar(MOVE_SPEED));
-
-    if (delta.lengthSq() > 0) {
-      // Move camera and target together (pan, not orbit)
-      const newCamX = clamp(camera.position.x + delta.x, BOUNDS.xMin, BOUNDS.xMax);
-      const newCamZ = clamp(camera.position.z + delta.z, BOUNDS.zMin, BOUNDS.zMax);
-
+    camera.getWorldDirection(_forward);
+    _forward.y = 0;
+    _forward.normalize();
+    _right.crossVectors(_forward, _up).normalize();
+    _delta.set(0, 0, 0);
+    if (keys.has("forward"))  _delta.addScaledVector(_forward, MOVE_SPEED);
+    if (keys.has("backward")) _delta.addScaledVector(_forward, -MOVE_SPEED);
+    if (keys.has("left"))     _delta.addScaledVector(_right, -MOVE_SPEED);
+    if (keys.has("right"))    _delta.addScaledVector(_right, MOVE_SPEED);
+    if (_delta.lengthSq() > 0) {
+      const newCamX = clamp(camera.position.x + _delta.x, BOUNDS.xMin, BOUNDS.xMax);
+      const newCamZ = clamp(camera.position.z + _delta.z, BOUNDS.zMin, BOUNDS.zMax);
       const actualDx = newCamX - camera.position.x;
       const actualDz = newCamZ - camera.position.z;
-
       camera.position.x = newCamX;
       camera.position.z = newCamZ;
-
       controls.target.x = clamp(controls.target.x + actualDx, BOUNDS.xMin, BOUNDS.xMax);
       controls.target.z = clamp(controls.target.z + actualDz, BOUNDS.zMin, BOUNDS.zMax);
     }
-
-    // Orbit rotation (Q/E) — rotate camera around target on Y axis
-    if (keys.has('rotateLeft') || keys.has('rotateRight')) {
-      const angle = keys.has('rotateLeft') ? ROTATE_SPEED : -ROTATE_SPEED;
-      const offset = new THREE.Vector3().subVectors(camera.position, controls.target);
+    if (keys.has("rotateLeft") || keys.has("rotateRight")) {
+      const angle = keys.has("rotateLeft") ? ROTATE_SPEED : -ROTATE_SPEED;
+      _offset.subVectors(camera.position, controls.target);
       const cosA = Math.cos(angle);
       const sinA = Math.sin(angle);
-      const nx = offset.x * cosA - offset.z * sinA;
-      const nz = offset.x * sinA + offset.z * cosA;
+      const nx = _offset.x * cosA - _offset.z * sinA;
+      const nz = _offset.x * sinA + _offset.z * cosA;
       camera.position.x = clamp(controls.target.x + nx, BOUNDS.xMin, BOUNDS.xMax);
       camera.position.z = clamp(controls.target.z + nz, BOUNDS.zMin, BOUNDS.zMax);
     }
-
     controls.update();
   });
 

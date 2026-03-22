@@ -545,8 +545,8 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
             intensity={2.5}
             color="#FFF0D0"
             castShadow
-            shadow-mapSize-width={2048}
-            shadow-mapSize-height={2048}
+            shadow-mapSize-width={1024}
+            shadow-mapSize-height={1024}
           />
           <hemisphereLight color="#87CEEB" groundColor="#F0E8D8" intensity={1.0} />
           {/* Warm fill lights */}
@@ -571,8 +571,8 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
             intensity={2.5}
             color="#FFF0D0"
             castShadow
-            shadow-mapSize-width={2048}
-            shadow-mapSize-height={2048}
+            shadow-mapSize-width={1024}
+            shadow-mapSize-height={1024}
           />
           <hemisphereLight color="#E8D8C8" groundColor="#A07850" intensity={0.7} />
           <hemisphereLight color="#FFF8F0" groundColor="#D8C8B0" intensity={0.4} />
@@ -583,11 +583,11 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
           <pointLight position={[0, 7, -3]} intensity={1.2} color="#FFF0D0" distance={25} />
           <pointLight position={[-8, 6, -14]} intensity={0.8} color="#FFE8C0" distance={16} />
           <pointLight position={[17, 6, -14]} intensity={0.8} color="#FFE0B0" distance={18} />
-          {/* Room center lights — one per room for full visibility */}
-          <pointLight position={[0, 4, -3]} color="#ffe8c0" intensity={2.0} distance={12} />
-          <pointLight position={[-7, 4, -14]} color="#e0e8ff" intensity={1.5} distance={10} />
-          <pointLight position={[10, 4, 6.5]} color="#ffe8c0" intensity={1.8} distance={10} />
-          <pointLight position={[-14, 4, 6.5]} color="#ffd4a0" intensity={1.5} distance={10} />
+          {/* Room center lights — subtle fill, LED strips do the heavy lifting */}
+          <pointLight position={[0, 4, -3]} color="#ffe8c0" intensity={0.4} distance={12} />
+          <pointLight position={[-7, 4, -14]} color="#e0e8ff" intensity={0.3} distance={10} />
+          <pointLight position={[10, 4, 6.5]} color="#ffe8c0" intensity={0.35} distance={10} />
+          <pointLight position={[-14, 4, 6.5]} color="#ffd4a0" intensity={0.3} distance={10} />
 
           {/* Warm fog matching navy walls */}
           <fog attach="fog" args={['#2D3A4A', 40, 85]} />
@@ -665,6 +665,8 @@ export function World3D({ sessions, agentNames, interactions, environmentId = 'o
     <div style={{ width: '100%', height: '100%', background: environment.theme.background, position: 'relative' }}>
       <Canvas
         camera={{ position: [0, 25, 30], fov: 50 }}
+        dpr={[1, 1.5]}
+        performance={{ min: 0.5 }}
         gl={{ antialias: true, alpha: false }}
         scene={{ background: environment.beachMode ? new THREE.Color('#87CEEB') : undefined }}
         style={{ width: '100%', height: '100%' }}

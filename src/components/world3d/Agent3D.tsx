@@ -12,13 +12,60 @@
 
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
+import { Billboard, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import type { Group, Mesh } from 'three';
 import type { SessionStatus } from '../../types';
 import type { AgentMotionState } from '../../hooks/useAgentMotion';
 import { SpeechBubble3D } from './SpeechBubble3D';
 import { isMaster, isCEO, getAgentColor, getAgentConfig } from '../../config/agentConfig';
+
+/* ── Agent label — WebGL-based (no DOM overhead) ── */
+function AgentLabel3D({
+  yPos,
+  name,
+  nameColor,
+  subColor,
+  activityLabel,
+  prefix = "★",
+}: {
+  yPos: number;
+  name: string;
+  nameColor: string;
+  subColor: string;
+  activityLabel?: string;
+  prefix?: string;
+}) {
+  return (
+    <Billboard position={[0, yPos, 0]}>
+      <Text
+        fontSize={0.20}
+        color={nameColor}
+        anchorX="center"
+        anchorY="middle"
+        outlineWidth={0.025}
+        outlineColor="#050510"
+        letterSpacing={0.02}
+      >
+        {`${prefix} ${name}`}
+      </Text>
+      {activityLabel && (
+        <Text
+          position={[0, -0.30, 0]}
+          fontSize={0.14}
+          color={subColor}
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.02}
+          outlineColor="#050510"
+          fillOpacity={0.75}
+        >
+          {activityLabel}
+        </Text>
+      )}
+    </Billboard>
+  );
+}
 
 /* ── Status emissive ── */
 const STATUS_EMISSIVE: Record<SessionStatus, { color: string; intensity: number }> = {
@@ -107,6 +154,27 @@ function MasterAvatar({
       const bobSpeed = status === 'idle' ? 0.8 : 1.3;
       const bobAmount = status === 'idle' ? 0.15 : 0.07;
       groupRef.current.position.y = position[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
+    }
+
+    // PERFORMANCE: Skip all animation when idle and stationary
+    if (status === "idle" && !isMoving) {
+      // Only minimal breathing bob every other frame
+      if (groupRef.current && motion) {
+        groupRef.current.position.x = motion.currentPos[0];
+        groupRef.current.position.z = motion.currentPos[2];
+        groupRef.current.position.y = motion.currentPos[1] + Math.sin(t * 0.5 + seed) * 0.03;
+      }
+      // Reset body to neutral pose (one-time convergence)
+      if (bodyRef.current) {
+        bodyRef.current.rotation.x = 0;
+        bodyRef.current.rotation.y = currentFacingAngle;
+      }
+      // Halo: very slow or stopped
+      if (haloRef.current) {
+        haloRef.current.rotation.z = t * 0.1;
+        haloRef.current.rotation.x = Math.PI / 2;
+      }
+      return; // Skip arms, legs, head, halo, visor — all frozen
     }
 
     // Facing direction
@@ -521,34 +589,7 @@ function MasterAvatar({
         {speechBubble && <SpeechBubble3D message={speechBubble} />}
 
         {/* Label */}
-        <Html position={[0, 2.15, 0]} center distanceFactor={12} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
-          <div style={{
-            background: 'rgba(10,10,26,0.90)',
-            color,
-            padding: '2px 10px',
-            borderRadius: '4px',
-            fontSize: '11px',
-            fontFamily: 'monospace',
-            fontWeight: 700,
-            border: `1px solid ${haloColor}70`,
-            textShadow: `0 0 8px ${haloColor}`,
-            letterSpacing: '0.04em',
-          }}>
-            ★ {name}
-          </div>
-          {activityLabel && (
-            <div style={{
-              color: `${haloColor}99`,
-              fontSize: '8px',
-              fontFamily: 'monospace',
-              textAlign: 'center',
-              marginTop: '2px',
-              whiteSpace: 'nowrap',
-            }}>
-              {activityLabel}
-            </div>
-          )}
-        </Html>
+        <AgentLabel3D yPos={2.15} name={name} nameColor={color} subColor={haloColor} activityLabel={activityLabel} prefix="★" />
       </group>
     </group>
   );
@@ -598,6 +639,22 @@ function RobotAvatar({
       const bobSpeed = status === 'idle' ? 0.8 : 1.5;
       const bobAmount = status === 'idle' ? 0.15 : 0.05;
       groupRef.current.position.y = position[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
+    }
+
+    // PERFORMANCE: Skip all animation when idle and stationary
+    if (status === "idle" && !isMoving) {
+      // Only minimal breathing bob every other frame
+      if (groupRef.current && motion) {
+        groupRef.current.position.x = motion.currentPos[0];
+        groupRef.current.position.z = motion.currentPos[2];
+        groupRef.current.position.y = motion.currentPos[1] + Math.sin(t * 0.5 + seed) * 0.03;
+      }
+      // Reset body to neutral pose (one-time convergence)
+      if (bodyRef.current) {
+        bodyRef.current.rotation.x = 0;
+        bodyRef.current.rotation.y = currentFacingAngle;
+      }
+      return; // Skip arms, legs, head, halo, visor — all frozen
     }
 
     // Facing direction
@@ -827,33 +884,7 @@ function RobotAvatar({
         {speechBubble && <SpeechBubble3D message={speechBubble} />}
 
         {/* Label */}
-        <Html position={[0, 1.75, 0]} center distanceFactor={12} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
-          <div style={{
-            background: 'rgba(10,10,26,0.85)',
-            color,
-            padding: '2px 8px',
-            borderRadius: '3px',
-            fontSize: '10px',
-            fontFamily: 'monospace',
-            fontWeight: 600,
-            border: `1px solid ${color}40`,
-            textShadow: `0 0 5px ${color}`,
-          }}>
-            🤖 {name}
-          </div>
-          {activityLabel && (
-            <div style={{
-              color: `${color}99`,
-              fontSize: '8px',
-              fontFamily: 'monospace',
-              textAlign: 'center',
-              marginTop: '2px',
-              whiteSpace: 'nowrap',
-            }}>
-              {activityLabel}
-            </div>
-          )}
-        </Html>
+        <AgentLabel3D yPos={1.75} name={name} nameColor={color} subColor={color} activityLabel={activityLabel} prefix="●" />
       </group>
     </group>
   );
@@ -919,6 +950,27 @@ function SamanthaAvatarDetailed({
       const bobSpeed = status === 'idle' ? 0.8 : 1.3;
       const bobAmount = status === 'idle' ? 0.12 : 0.05;
       groupRef.current.position.y = position[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
+    }
+
+    // PERFORMANCE: Skip all animation when idle and stationary
+    if (status === "idle" && !isMoving) {
+      // Only minimal breathing bob every other frame
+      if (groupRef.current && motion) {
+        groupRef.current.position.x = motion.currentPos[0];
+        groupRef.current.position.z = motion.currentPos[2];
+        groupRef.current.position.y = motion.currentPos[1] + Math.sin(t * 0.5 + seed) * 0.03;
+      }
+      // Reset body to neutral pose (one-time convergence)
+      if (bodyRef.current) {
+        bodyRef.current.rotation.x = 0;
+        bodyRef.current.rotation.y = currentFacingAngle;
+      }
+      // Halo: very slow or stopped
+      if (haloRef.current) {
+        haloRef.current.rotation.z = t * 0.1;
+        haloRef.current.rotation.x = Math.PI / 2;
+      }
+      return; // Skip arms, legs, head, halo, visor — all frozen
     }
 
     // Facing
@@ -1438,34 +1490,7 @@ function SamanthaAvatarDetailed({
         {speechBubble && <SpeechBubble3D message={speechBubble} />}
 
         {/* Label */}
-        <Html position={[0, 2.20, 0]} center distanceFactor={12} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
-          <div style={{
-            background: 'rgba(10,10,26,0.90)',
-            color,
-            padding: '2px 10px',
-            borderRadius: '4px',
-            fontSize: '11px',
-            fontFamily: 'monospace',
-            fontWeight: 700,
-            border: `1px solid ${haloColor}70`,
-            textShadow: `0 0 8px ${haloColor}`,
-            letterSpacing: '0.04em',
-          }}>
-            ★ {name}
-          </div>
-          {activityLabel && (
-            <div style={{
-              color: `${haloColor}99`,
-              fontSize: '8px',
-              fontFamily: 'monospace',
-              textAlign: 'center',
-              marginTop: '2px',
-              whiteSpace: 'nowrap',
-            }}>
-              {activityLabel}
-            </div>
-          )}
-        </Html>
+        <AgentLabel3D yPos={2.20} name={name} nameColor={color} subColor={haloColor} activityLabel={activityLabel} prefix="★" />
       </group>
     </group>
   );

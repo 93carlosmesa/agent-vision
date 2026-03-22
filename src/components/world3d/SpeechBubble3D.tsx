@@ -67,38 +67,20 @@ export function SpeechBubble3D({ message, duration = 3.5 }: SpeechBubble3DProps)
   return (
     <group ref={groupRef} position={[0, 2.5, 0]} scale={[0, 0, 0]}>
       <Html center distanceFactor={10} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
-        <BubbleContent message={message} groupRef={groupRef} />
+        <BubbleContent message={message} />
       </Html>
     </group>
   );
 }
 
-/** Inner HTML content — reads opacity from groupRef.userData */
+/** Inner HTML content — opacity handled by parent group scale */
 function BubbleContent({
   message,
-  groupRef,
 }: {
   message: string;
-  groupRef: React.RefObject<Group | null>;
 }) {
-  const divRef = useRef<HTMLDivElement>(null);
-
-  // Poll opacity from group userData (updated in useFrame above)
-  useEffect(() => {
-    let raf: number;
-    function update() {
-      if (divRef.current && groupRef.current) {
-        const op = groupRef.current.userData.opacity ?? 1;
-        divRef.current.style.opacity = String(op);
-      }
-      raf = requestAnimationFrame(update);
-    }
-    raf = requestAnimationFrame(update);
-    return () => cancelAnimationFrame(raf);
-  }, [groupRef]);
-
   return (
-    <div ref={divRef} style={{ opacity: 1, transition: 'none' }}>
+    <div style={{ opacity: 1 }}>
       {/* Bubble body */}
       <div style={{
         background: 'rgba(255, 255, 255, 0.95)',
