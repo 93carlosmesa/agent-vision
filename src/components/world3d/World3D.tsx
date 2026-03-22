@@ -85,9 +85,17 @@ const DESCANSO_SPOTS: IdleSpot[] = [
 
 /* ── Dedicated seats in Lobby for Investment Squad ── */
 const INVESTMENT_LOBBY_SEATS: Record<string, IdleSpot> = {
-  'ginny':           { id: 'inv-ginny',  pos: [19, 0, 16.2],  facing: Math.PI,          label: '📊 Standby' },
-  'inv-psych-market': { id: 'inv-psych', pos: [16.5, 0, 15],  facing: Math.PI * 0.75,   label: '🧠 Standby' },
-  'inv-us-open':      { id: 'inv-open',  pos: [21.5, 0, 15],  facing: -Math.PI * 0.75,  label: '📈 Standby' },
+  'ginny':                    { id: 'inv-ginny',          pos: [19,   0, 16.2], facing: Math.PI,          label: '📊 Standby' },
+  'inv-psych-market':         { id: 'inv-psych',          pos: [16.5, 0, 15],   facing: Math.PI * 0.75,   label: '🧠 Standby' },
+  'inv-us-open':              { id: 'inv-open',           pos: [21.5, 0, 15],   facing: -Math.PI * 0.75,  label: '📈 Standby' },
+  'inv-risk-profiler':        { id: 'inv-risk',           pos: [14.5, 0, 16],   facing: Math.PI * 0.5,    label: '🎯 Standby' },
+  'inv-analyst-stocks':       { id: 'inv-stocks',         pos: [23,   0, 16],   facing: -Math.PI * 0.5,   label: '📊 Standby' },
+  'inv-analyst-crypto':       { id: 'inv-crypto',         pos: [14.5, 0, 13.5], facing: Math.PI * 0.5,    label: '🪙 Standby' },
+  'inv-analyst-forex':        { id: 'inv-forex',          pos: [23,   0, 13.5], facing: -Math.PI * 0.5,   label: '💱 Standby' },
+  'inv-analyst-commodities':  { id: 'inv-commodities',    pos: [16,   0, 12.5], facing: Math.PI * 0.25,   label: '⛏️ Standby' },
+  'inv-analyst-ai':           { id: 'inv-ai',             pos: [22,   0, 12.5], facing: -Math.PI * 0.25,  label: '🤖 Standby' },
+  'inv-technical-analyst':    { id: 'inv-technical',      pos: [19,   0, 11.5], facing: Math.PI,           label: '📐 Standby' },
+  'inv-strategist':           { id: 'inv-strategist',     pos: [17,   0, 17.2], facing: Math.PI * 0.75,   label: '🏛️ Standby' },
 };
 
 /* ── Idle spots in Lobby — for out-of-context agents (generic) ── */
