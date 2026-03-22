@@ -48,7 +48,7 @@ export const AGENT_STATE_CONFIGS: Record<AgentVisualState, AgentStateConfig> = {
     state: 'idle',
     label: 'Sin Trabajo',
     emoji: '😌',
-    validZones: ['lobby', 'descanso', 'biblioteca'],
+    validZones: ['lobby', 'descanso', 'exterior'],
     seated: false,
     needsDesk: false,
   },
@@ -96,12 +96,16 @@ export interface AgentStateMetrics {
   cumulativeTime: Partial<Record<AgentVisualState, number>>;
 }
 
-/** Idle zone distribution — 3 possible zones for idle agents */
-export const IDLE_ZONES: AgentZone[] = ['lobby', 'descanso', 'biblioteca'];
+/** Idle zone distribution — 3 possible zones for idle agents (Charlie spec: lobby, sala espera, terraza exterior) */
+export const IDLE_ZONES: AgentZone[] = ['lobby', 'descanso', 'exterior'];
 
-/** Get a deterministic idle zone for an agent to prevent clustering */
-export function getIdleZone(_agentId: string, agentIndex: number): AgentZone {
-  // Use agent index modulo 3 to distribute across zones
-  const zoneIndex = agentIndex % IDLE_ZONES.length;
+/** Get a pseudo-random idle zone for an agent. Uses hash to be stable per session but look random. */
+export function getIdleZone(agentId: string, agentIndex: number): AgentZone {
+  // Simple hash from agentId + index for stable but varied distribution
+  let hash = agentIndex * 7;
+  for (let i = 0; i < agentId.length; i++) {
+    hash = ((hash << 5) - hash + agentId.charCodeAt(i)) | 0;
+  }
+  const zoneIndex = Math.abs(hash) % IDLE_ZONES.length;
   return IDLE_ZONES[zoneIndex];
 }

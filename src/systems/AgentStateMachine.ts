@@ -226,7 +226,16 @@ export class AgentStateMachine {
 
     // Map AgentZone → RoomKey (AgentZone has 'biblioteca' | 'lobby' | 'descanso' for idle)
     const zone = getIdleZone(agentId, agentIndex);
-    const roomKey: RoomKey = zone === 'biblioteca' ? 'biblioteca' : (zone as RoomKey);
+    // Map AgentZone → RoomKey. 'exterior' maps to 'descanso' (outdoor/beach spots near relax zone)
+    const roomMap: Record<string, RoomKey> = {
+      lobby: 'lobby',
+      descanso: 'descanso',
+      exterior: 'descanso',  // exterior spots use descanso area coordinates
+      comunicacion: 'comunicacion',
+      trabajo: 'trabajo',
+      biblioteca: 'biblioteca',
+    };
+    const roomKey: RoomKey = roomMap[zone] ?? 'lobby';
     this.idleZoneAssignments.set(agentId, roomKey);
     return roomKey;
   }
