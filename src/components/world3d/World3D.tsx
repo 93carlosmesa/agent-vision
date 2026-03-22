@@ -83,7 +83,14 @@ const DESCANSO_SPOTS: IdleSpot[] = [
   { id: 'stand-3', pos: [-14.8, 0, 10], facing: -Math.PI / 2, label: '💭 Thinking' },
 ];
 
-/* ── Idle spots in Lobby — for out-of-context agents ── */
+/* ── Dedicated seats in Lobby for Investment Squad ── */
+const INVESTMENT_LOBBY_SEATS: Record<string, IdleSpot> = {
+  'ginny':           { id: 'inv-ginny',  pos: [19, 0, 16.2],  facing: Math.PI,          label: '📊 Standby' },
+  'inv-psych-market': { id: 'inv-psych', pos: [16.5, 0, 15],  facing: Math.PI * 0.75,   label: '🧠 Standby' },
+  'inv-us-open':      { id: 'inv-open',  pos: [21.5, 0, 15],  facing: -Math.PI * 0.75,  label: '📈 Standby' },
+};
+
+/* ── Idle spots in Lobby — for out-of-context agents (generic) ── */
 const LOBBY_SPOTS: IdleSpot[] = [
   { id: 'bench-l1', pos: [-8.5, 0, 13.4], facing: 0, label: '💭 Waiting' },
   { id: 'bench-l2', pos: [-7.2, 0, 13.4], facing: 0, label: '💭 Waiting' },
@@ -448,7 +455,13 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
       let label: string;
 
       if (d.status === 'idle') {
-        if (d.inCtx) {
+        // Investment squad agents always go to their dedicated lobby seats
+        const dedicatedSeat = INVESTMENT_LOBBY_SEATS[d.id.toLowerCase()];
+        if (dedicatedSeat) {
+          targetRoom = 'lobby';
+          targetPos = dedicatedSeat.pos;
+          label = dedicatedSeat.label;
+        } else if (d.inCtx) {
           // In-context idle → Descanso spots
           targetRoom = 'descanso';
           const spot = DESCANSO_SPOTS[descansoIdx % DESCANSO_SPOTS.length];

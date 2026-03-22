@@ -566,6 +566,11 @@ export function LobbyFurniture({ environment }: { environment: WorldEnvironment 
         <BeachLounger position={[8, 0, 13.5]} rotation={0} towelColor="#C04040" />
         <SunUmbrella position={[-8, 0, 13.5]} color="#F0A040" />
         <SunUmbrella position={[8, 0, 13.5]} color="#40A0D0" />
+        {/* Investment lounge — 3 beach chairs with umbrella */}
+        <BeachLounger position={[16, 0, 14]} rotation={-Math.PI / 6} towelColor="#53e3c2" />
+        <BeachLounger position={[19, 0, 14]} rotation={0} towelColor="#a855f7" />
+        <BeachLounger position={[22, 0, 14]} rotation={Math.PI / 6} towelColor="#06b6d4" />
+        <SunUmbrella position={[19, 0, 14]} color="#53e3c2" />
         <Seashell position={[-3, 0, 16.5]} />
         <Seashell position={[5, 0, 17.2]} />
         <Seashell position={[1, 0, 16.8]} />
@@ -587,10 +592,29 @@ export function LobbyFurniture({ environment }: { environment: WorldEnvironment 
       {/* Bench seating */}
       <LoungeChair position={[-8, 0, 13.5]} rotation={Math.PI / 4} />
       <LoungeChair position={[8, 0, 13.5]} rotation={-Math.PI / 4} />
+
+      {/* ── Investment Squad Lounge ── */}
+      {/* Round coffee table */}
+      <mesh position={[19, 0.36, 14.5]} castShadow>
+        <cylinderGeometry args={[0.6, 0.6, 0.04, 16]} />
+        <meshStandardMaterial color="#6B5040" roughness={0.6} />
+      </mesh>
+      <mesh position={[19, 0.17, 14.5]}>
+        <cylinderGeometry args={[0.04, 0.04, 0.34, 8]} />
+        <meshStandardMaterial color="#404040" metalness={0.5} roughness={0.3} />
+      </mesh>
+      {/* Ginny's chair — center, facing table */}
+      <LoungeChair position={[19, 0, 16.2]} rotation={Math.PI} />
+      {/* Psych Market's chair — left, facing table */}
+      <LoungeChair position={[16.5, 0, 15]} rotation={Math.PI * 0.75} />
+      {/* US Open's chair — right, facing table */}
+      <LoungeChair position={[21.5, 0, 15]} rotation={-Math.PI * 0.75} />
+
       {/* Fiddle leaf figs */}
       <FiddleLeafFig position={[-14, 0, 16]} scale={1.2} />
       <FiddleLeafFig position={[14, 0, 16]} scale={1.2} />
       <FiddleLeafFig position={[0, 0, 12.2]} />
+      <FiddleLeafFig position={[23, 0, 16.5]} scale={1.0} />
     </group>
   );
 }
