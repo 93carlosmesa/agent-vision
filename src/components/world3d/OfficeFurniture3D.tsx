@@ -449,45 +449,122 @@ function TikiBar({ position, rotation = 0 }: {
   );
 }
 
-/** Tropical palm tree */
+/** Tropical palm tree (coconut style) — ringed leaning trunk + realistic frond crown */
 function PalmTree({ position, height = 5, seed = 0 }: {
   position: [number, number, number]; height?: number; seed?: number;
 }) {
   const ref = useRef<Group>(null);
+
+  // tiny deterministic noise helper (avoid Math.random in render)
+  const noise = (n: number) => {
+    const x = Math.sin((n + 1) * 127.1 + seed * 311.7) * 43758.5453;
+    return x - Math.floor(x);
+  };
+
   useFrame(({ clock }) => {
-    if (ref.current) ref.current.rotation.z = Math.sin(clock.elapsedTime * 0.3 + seed) * 0.02;
+    if (!ref.current) return;
+    // soft tropical wind sway
+    ref.current.rotation.z = Math.sin(clock.elapsedTime * 0.22 + seed) * 0.035;
+    ref.current.rotation.x = Math.sin(clock.elapsedTime * 0.18 + seed * 0.7) * 0.012;
   });
+
+  const trunkSegments = 11;
+  const frondCount = 14;
+  const trunkColorA = '#8A623B';
+  const trunkColorB = '#6F4E2B';
+  const ringColor = '#5F4225';
+
   return (
     <group position={position} ref={ref}>
-      {/* Trunk — slightly curved using stacked cylinders */}
-      {Array.from({ length: 6 }).map((_, i) => {
-        const t = i / 5;
-        const y = t * height;
-        const lean = Math.sin(t * 0.5 + seed) * 0.3;
-        const r = 0.15 - t * 0.06;
+      {/* Swollen base */}
+      <mesh position={[0, 0.18, 0]} castShadow>
+        <cylinderGeometry args={[0.34, 0.42, 0.36, 12]} />
+        <meshStandardMaterial color={trunkColorA} roughness={0.9} />
+      </mesh>
+
+      {/* Trunk — slender, leaning, ringed */}
+      {Array.from({ length: trunkSegments }).map((_, i) => {
+        const t = i / (trunkSegments - 1);
+        const y = 0.26 + t * (height - 0.55);
+        const bendX = Math.sin(t * 0.95 + seed * 0.35) * 0.26;
+        const bendZ = Math.sin(t * 0.75 + seed * 0.6) * 0.18;
+        const rTop = 0.165 - t * 0.08;
+        const rBot = rTop + 0.022;
+        const segH = (height - 0.55) / trunkSegments + 0.04;
+
         return (
-          <mesh key={i} position={[lean, y, 0]}>
-            <cylinderGeometry args={[r, r + 0.02, height / 5.5, 8]} />
-            <meshStandardMaterial color="#7A5A30" roughness={0.9} />
-          </mesh>
+          <group key={`trunk-${i}`} position={[bendX, y, bendZ]}>
+            <mesh castShadow>
+              <cylinderGeometry args={[rTop, rBot, segH, 10]} />
+              <meshStandardMaterial color={i % 2 === 0 ? trunkColorA : trunkColorB} roughness={0.92} />
+            </mesh>
+            {/* growth ring */}
+            <mesh position={[0, -segH * 0.22, 0]}>
+              <torusGeometry args={[Math.max(rTop, 0.06), 0.01, 6, 18]} />
+              <meshStandardMaterial color={ringColor} roughness={0.95} />
+            </mesh>
+          </group>
         );
       })}
-      {/* Fan leaf clusters at top */}
-      {[0, Math.PI * 0.5, Math.PI, Math.PI * 1.5, Math.PI * 0.25, Math.PI * 0.75].map((angle, i) => {
-        const lx = Math.cos(angle) * 0.8;
-        const lz = Math.sin(angle) * 0.8;
+
+      {/* Crown shaft near top */}
+      <mesh position={[Math.sin(seed) * 0.23, height - 0.32, Math.cos(seed * 0.7) * 0.14]} castShadow>
+        <cylinderGeometry args={[0.18, 0.12, 0.42, 10]} />
+        <meshStandardMaterial color="#6A8D45" roughness={0.85} />
+      </mesh>
+
+      {/* Frond crown — feather-like leaves with rib + leaflets */}
+      {Array.from({ length: frondCount }).map((_, i) => {
+        const a = (i / frondCount) * Math.PI * 2;
+        const n = noise(i * 7.3);
+        const len = 2.3 + n * 0.9;
+        const droop = 0.42 + n * 0.22;
+        const yaw = a + (noise(i * 3.1) - 0.5) * 0.2;
+        const baseX = Math.cos(a) * 0.18 + Math.sin(seed) * 0.05;
+        const baseZ = Math.sin(a) * 0.18 + Math.cos(seed) * 0.05;
+        const baseY = height - 0.1 + (noise(i * 1.7) - 0.5) * 0.08;
+
         return (
-          <mesh key={i} position={[lx, height - 0.2, lz]} rotation={[0.5, angle, -0.3]}>
-            <boxGeometry args={[0.15, 1.8, 0.02]} />
-            <meshStandardMaterial color={i % 2 === 0 ? '#2A8A3A' : '#348A40'} roughness={0.85} />
-          </mesh>
+          <group key={`frond-${i}`} position={[baseX, baseY, baseZ]} rotation={[droop, yaw, 0]}>
+            {/* Main rib */}
+            <mesh castShadow>
+              <boxGeometry args={[0.04, len, 0.04]} />
+              <meshStandardMaterial color="#4E7A34" roughness={0.88} />
+            </mesh>
+
+            {/* Leaflets */}
+            {Array.from({ length: 9 }).map((__, li) => {
+              const tt = (li + 1) / 10;
+              const yOff = len * 0.5 - tt * len;
+              const width = 0.22 * (1 - tt * 0.55);
+              const lLen = 0.58 * (1 - tt * 0.35);
+              const tilt = 0.4 + tt * 0.35;
+              return (
+                <group key={`leaflet-${i}-${li}`} position={[0, yOff, 0]}>
+                  <mesh position={[width * 0.6, 0, 0]} rotation={[0, 0.2, tilt]} castShadow>
+                    <boxGeometry args={[lLen, 0.018, 0.08]} />
+                    <meshStandardMaterial color={li % 2 === 0 ? '#2F8D46' : '#3B9A54'} roughness={0.86} />
+                  </mesh>
+                  <mesh position={[-width * 0.6, 0, 0]} rotation={[0, -0.2, -tilt]} castShadow>
+                    <boxGeometry args={[lLen, 0.018, 0.08]} />
+                    <meshStandardMaterial color={li % 2 === 0 ? '#2F8D46' : '#3B9A54'} roughness={0.86} />
+                  </mesh>
+                </group>
+              );
+            })}
+          </group>
         );
       })}
+
       {/* Coconut cluster */}
-      {[[0.1, height - 0.6, 0.1], [-0.1, height - 0.55, -0.05]].map(([x, y, z], i) => (
-        <mesh key={`c${i}`} position={[x, y, z]}>
-          <sphereGeometry args={[0.08, 8, 8]} />
-          <meshStandardMaterial color="#5A4020" roughness={0.9} />
+      {[
+        [0.12, height - 0.55, 0.1],
+        [-0.14, height - 0.52, -0.03],
+        [0.02, height - 0.6, -0.12],
+      ].map(([x, y, z], i) => (
+        <mesh key={`coco-${i}`} position={[x, y, z]} castShadow>
+          <sphereGeometry args={[0.1, 10, 10]} />
+          <meshStandardMaterial color="#5A3B1F" roughness={0.92} />
         </mesh>
       ))}
     </group>
