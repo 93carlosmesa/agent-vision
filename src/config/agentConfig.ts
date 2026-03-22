@@ -17,8 +17,14 @@ export interface AgentSoul {
   workingPhrase: string;
   /** What this agent says when delegating */
   delegatingPhrase?: string;
-  /** What this agent says when idle */
+  /** What this agent says when idle (no squad tasks) */
   idlePhrase: string;
+  /** What this agent says when waiting (squad active but no task assigned) */
+  waitingPhrase?: string;
+  /** What this agent says when communicating with another agent */
+  communicatingPhrase?: string;
+  /** What this agent says when walking to use a skill */
+  usingSkillPhrase?: string;
   /** Interaction style — affects speech bubbles and beam colors */
   interactionStyle: InteractionStyle;
 }
@@ -40,13 +46,13 @@ export interface AgentConfig {
 export const AGENT_REGISTRY: AgentConfig[] = [
   // Orchestrators
   { id: 'main',       role: 'ceo',                    color: '#c084fc', isFemale: true,  department: 'orchestration', hairColor: '#d4a853', haloColor: '#c084fc',
-    soul: { purpose: 'Orchestrates all agents', workingPhrase: '🔧 On it', delegatingPhrase: '📋 {target}, handle this', idlePhrase: '💭 Overseeing', interactionStyle: 'commanding' } },
+    soul: { purpose: 'Orchestrates all agents', workingPhrase: '🔧 On it', delegatingPhrase: '📋 {target}, handle this', idlePhrase: '💭 Overseeing', waitingPhrase: '👀 Monitoring squad', communicatingPhrase: '💬 Syncing with team', usingSkillPhrase: '⚡ Accessing skill', interactionStyle: 'commanding' } },
   { id: 'samantha',   role: 'ceo',                    color: '#c084fc', isFemale: true,  department: 'orchestration', hairColor: '#d4a853', haloColor: '#c084fc',
-    soul: { purpose: 'Orchestrates all agents', workingPhrase: '🔧 On it', delegatingPhrase: '📋 {target}, handle this', idlePhrase: '💭 Overseeing', interactionStyle: 'commanding' } },
+    soul: { purpose: 'Orchestrates all agents', workingPhrase: '🔧 On it', delegatingPhrase: '📋 {target}, handle this', idlePhrase: '💭 Overseeing', waitingPhrase: '👀 Monitoring squad', communicatingPhrase: '💬 Syncing with team', usingSkillPhrase: '⚡ Accessing skill', interactionStyle: 'commanding' } },
   { id: 'emma',       role: 'manager',                color: '#ff9f43', isFemale: true,  department: 'development',   hairColor: '#8b5e3c', haloColor: '#ff9f43',
-    soul: { purpose: 'Manages dev execution', workingPhrase: '🛠️ Building...', delegatingPhrase: '📢 {target}, you\'re up', idlePhrase: '📋 Planning', interactionStyle: 'commanding' } },
+    soul: { purpose: 'Manages dev execution', workingPhrase: '🛠️ Building...', delegatingPhrase: '📢 {target}, you\'re up', idlePhrase: '📋 Planning', waitingPhrase: '⏳ Waiting for task', communicatingPhrase: '📢 Coordinating', usingSkillPhrase: '🔧 Running tool', interactionStyle: 'commanding' } },
   { id: 'ginny',      role: 'orchestrator-investment', color: '#53e3c2', isFemale: true,  department: 'investment',    hairColor: '#b7410e', haloColor: '#53e3c2',
-    soul: { purpose: 'Investment strategy & analysis', workingPhrase: '📊 Analyzing markets...', delegatingPhrase: '📈 {target}, run analysis', idlePhrase: '🧘 Monitoring', interactionStyle: 'analytical' } },
+    soul: { purpose: 'Investment strategy & analysis', workingPhrase: '📊 Analyzing markets...', delegatingPhrase: '📈 {target}, run analysis', idlePhrase: '🧘 Monitoring', waitingPhrase: '📉 Awaiting signal', communicatingPhrase: '💹 Sharing analysis', usingSkillPhrase: '📡 Running scan', interactionStyle: 'analytical' } },
 
   // Dev specialists
   { id: 'dev-codereviewer',               role: 'specialist', color: '#ef4444', isFemale: false, department: 'development',

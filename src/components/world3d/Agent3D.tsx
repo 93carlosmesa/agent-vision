@@ -19,6 +19,7 @@ import type { SessionStatus } from '../../types';
 import type { AgentMotionState } from '../../hooks/useAgentMotion';
 import { SpeechBubble3D } from './SpeechBubble3D';
 import { isMaster, isCEO, getAgentColor, getAgentConfig } from '../../config/agentConfig';
+import type { AgentVisualState } from '../../types/AgentState';
 
 /* ── Agent label — WebGL-based (no DOM overhead) ── */
 function AgentLabel3D({
@@ -67,11 +68,17 @@ function AgentLabel3D({
   );
 }
 
-/* ── Status emissive ── */
+/* ── Status emissive — maps both SessionStatus and AgentVisualState ── */
 const STATUS_EMISSIVE: Record<SessionStatus, { color: string; intensity: number }> = {
   running: { color: '#22c55e', intensity: 0.9 },
   waiting: { color: '#eab308', intensity: 0.55 },
   idle:    { color: '#6b7280', intensity: 0.15 },
+};
+
+/** Emissive override for extended visual states */
+const VISUAL_STATE_EMISSIVE: Partial<Record<AgentVisualState, { color: string; intensity: number }>> = {
+  communicating: { color: '#3b82f6', intensity: 0.75 },  // blue — chatting
+  using_skill:   { color: '#f59e0b', intensity: 0.85 },  // amber — skill active
 };
 
 /* ── Halo/Hair helpers — read from registry ── */
@@ -92,6 +99,8 @@ export interface Agent3DProps {
   /** Initial position — runtime position comes from motionRef */
   position: [number, number, number];
   status: SessionStatus;
+  /** Extended 5-state visual state for richer animation control */
+  visualState?: AgentVisualState;
   isActive: boolean;
   /** Shared ref from useAgentMotion — read in useFrame for zero-overhead updates */
   motionRef: React.RefObject<Map<string, AgentMotionState>>;
@@ -105,7 +114,7 @@ export interface Agent3DProps {
    MASTER AVATAR — female humanoid Pixar-style
    ══════════════════════════════════════════ */
 function MasterAvatar({
-  agentId, name, position, status, isActive, motionRef, activityLabel, speechBubble,
+  agentId, name, position, status, visualState, isActive, motionRef, activityLabel, speechBubble,
 }: Agent3DProps) {
   const groupRef    = useRef<Group>(null);
   const bodyRef     = useRef<Group>(null);
@@ -120,7 +129,8 @@ function MasterAvatar({
   const rightEyeRef = useRef<Mesh>(null); // párpado derecho
 
   const color = getAgentColor(agentId);
-  const glow  = STATUS_EMISSIVE[status];
+  // Use extended visual state glow if available, fall back to session status
+  const glow  = (visualState && VISUAL_STATE_EMISSIVE[visualState]) ?? STATUS_EMISSIVE[status];
   const haloColor = getMasterHalo(agentId);
   const hairColor = getMasterHair(agentId);
   const skinColor = '#f5d5b0';
@@ -599,7 +609,7 @@ function MasterAvatar({
    ROBOT AVATAR — agente genérico mecánico
    ══════════════════════════════════════════ */
 function RobotAvatar({
-  agentId, name, position, status, isActive, motionRef, activityLabel, speechBubble,
+  agentId, name, position, status, visualState, isActive, motionRef, activityLabel, speechBubble,
 }: Agent3DProps) {
   const groupRef    = useRef<Group>(null);
   const bodyRef     = useRef<Group>(null);
@@ -612,7 +622,7 @@ function RobotAvatar({
   const leftLegRef  = useRef<Mesh>(null);
   const rightLegRef = useRef<Mesh>(null);
   const color = getAgentColor(agentId);
-  const glow  = STATUS_EMISSIVE[status];
+  const glow  = (visualState && VISUAL_STATE_EMISSIVE[visualState]) ?? STATUS_EMISSIVE[status];
   const bodyColor = color;
   const metalColor = '#4a5568';
 
@@ -894,7 +904,7 @@ function RobotAvatar({
    SAMANTHA AVATAR — high-detail full-body suit
    ══════════════════════════════════════════ */
 function SamanthaAvatarDetailed({
-  agentId, name, position, status, isActive, motionRef, activityLabel, speechBubble,
+  agentId, name, position, status, visualState, isActive, motionRef, activityLabel, speechBubble,
 }: Agent3DProps) {
   const groupRef    = useRef<Group>(null);
   const bodyRef     = useRef<Group>(null);
@@ -909,7 +919,7 @@ function SamanthaAvatarDetailed({
   const rightEyeRef = useRef<Mesh>(null);
 
   const color = getAgentColor(agentId);
-  const glow  = STATUS_EMISSIVE[status];
+  const glow  = (visualState && VISUAL_STATE_EMISSIVE[visualState]) ?? STATUS_EMISSIVE[status];
   const haloColor = getMasterHalo(agentId);
   const hairColor = getMasterHair(agentId);
 

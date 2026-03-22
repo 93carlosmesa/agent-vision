@@ -2,6 +2,8 @@
  * Barrel export for all types.
  */
 export type { ISession, ISessionEvent, SessionStatus } from './ISession';
+export type { AgentVisualState, AgentZone, AgentStateConfig, AgentStateMetrics, StateTransition } from './AgentState';
+export { AGENT_STATE_CONFIGS, IDLE_ZONES, getIdleZone } from './AgentState';
 export type { IAgentIdentity, AgentNameMap } from './IAgent';
 export type { IZoneDef, ZoneMapping, ZoneLabelMapping } from './IZone';
 export type { ISceneConfig, SceneRegistry } from './ISceneConfig';

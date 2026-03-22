@@ -13,6 +13,7 @@ import { useAgentMotion } from '../../hooks/useAgentMotion';
 import type { AgentTarget } from '../../hooks/useAgentMotion';
 import { Agent3D } from './Agent3D';
 import type { SessionStatus } from '../../types';
+import type { AgentVisualState } from '../../types/AgentState';
 
 export interface AgentEntry {
   id: string;
@@ -21,6 +22,8 @@ export interface AgentEntry {
   /** Optional desired facing when stationary (e.g. seated agents facing table) */
   facingAngle?: number;
   status: SessionStatus;
+  /** Full 5-state visual state (more detailed than session status) */
+  visualState?: AgentVisualState;
   isActive: boolean;
   activityLabel?: string;
   speechBubble?: string;
@@ -48,6 +51,7 @@ export function AgentMotionSystem({ agents }: AgentMotionSystemProps) {
           agentId={a.id}
           position={a.waypoints.length > 0 ? a.waypoints[a.waypoints.length - 1] : [0, 0, 0]}
           status={a.status}
+          visualState={a.visualState}
           isActive={a.isActive}
           motionRef={motionRef}
           activityLabel={a.activityLabel}

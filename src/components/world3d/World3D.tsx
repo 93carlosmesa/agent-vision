@@ -1,12 +1,16 @@
 /**
  * World3D — R3F Canvas with multi-room office building.
  *
- * NEW PHILOSOPHY: No fake movements. Agents move only on REAL status changes.
- *   - Idle agents → Sala de Descanso (near furniture spots)
- *   - Running agents → Sala de Trabajo
- *   - Waiting agents → Sala de Comunicación
- *   - Out-of-context agents → Lobby
- *   - Samantha (main) is the orchestrator — moves first, calls others via speech bubble
+ * STATE MACHINE PHILOSOPHY:
+ *   5 formal visual states per agent, driven by AgentStateMachine:
+ *   - IDLE:          Squad has no active tasks → random zone (lobby/descanso/biblioteca)
+ *   - WAITING:       Squad working, this agent has no task → comunicacion
+ *   - RUNNING:       Agent has active task → seated at desk in trabajo (via DeskManager)
+ *   - COMMUNICATING: Agent communicating → comunicacion
+ *   - USING_SKILL:   Agent visiting skill room → biblioteca (desk reserved, then returns)
+ *
+ * DeskManager ensures no 2 agents share a desk. Agents claim nearest free desk
+ * on RUNNING, release on WAITING/IDLE, and keep reserved during USING_SKILL.
  */
 
 import { useMemo, useRef, useState, useEffect, useCallback } from 'react';
@@ -41,6 +45,9 @@ import {
   AGENT_REGISTRY,
   getAgentSoul,
 } from '../../config/agentConfig';
+import { DeskManager } from '../../systems/DeskManager';
+import { AgentStateMachine } from '../../systems/AgentStateMachine';
+import type { AgentVisualState } from '../../types/AgentState';
 
 export interface World3DProps {
   sessions: ISession[];
@@ -99,6 +106,16 @@ const INVESTMENT_LOBBY_SEATS: Record<string, IdleSpot> = {
   'inv-strategist':           { id: 'inv-strategist',     pos: [17,   0, 17.2], facing: Math.PI * 0.75,   label: '🏛️ Standby' },
 };
 
+/* ── Idle spots in Biblioteca — for idle agents assigned to biblioteca zone ── */
+const BIBLIOTECA_IDLE_SPOTS: IdleSpot[] = [
+  { id: 'bib-1', pos: [-17, 0, -10.9], facing: Math.PI, label: '📚 Reading' },
+  { id: 'bib-2', pos: [-12, 0, -10.9], facing: Math.PI, label: '📖 Studying' },
+  { id: 'bib-3', pos: [-7,  0, -10.9], facing: Math.PI, label: '💡 Learning' },
+  { id: 'bib-4', pos: [-2,  0, -10.9], facing: Math.PI, label: '📚 Researching' },
+  { id: 'bib-5', pos: [-14, 0, -15],   facing: 0,        label: '💭 Thinking' },
+  { id: 'bib-6', pos: [-8,  0, -15],   facing: 0,        label: '🔬 Exploring' },
+];
+
 /* ── Idle spots in Lobby — for out-of-context agents (generic) ── */
 const LOBBY_SPOTS: IdleSpot[] = [
   { id: 'bench-l1', pos: [-8.5, 0, 13.4], facing: 0, label: '💭 Waiting' },
@@ -133,7 +150,8 @@ function isInContext(agentId: string, context: WorkContext): boolean {
   return matchesContext(agentId, DEV_AGENTS);
 }
 
-function getRoomForAgent(agentId: string, status: SessionStatus, context: WorkContext): RoomKey {
+/** @deprecated Use AgentStateMachine instead — kept for reference only */
+function _getRoomForAgent(agentId: string, status: SessionStatus, context: WorkContext): RoomKey {
   if (!isInContext(agentId, context)) return 'lobby';
   switch (status) {
     case 'running': return 'trabajo';
@@ -141,6 +159,7 @@ function getRoomForAgent(agentId: string, status: SessionStatus, context: WorkCo
     case 'idle':    return 'descanso';
   }
 }
+void _getRoomForAgent; // suppress unused warning
 
 function gridPosition(
   cx: number, cz: number, index: number, cols: number, spacing = 1.6,
@@ -151,13 +170,16 @@ function gridPosition(
 }
 
 /* ── Activity labels — uses AgentSoul phrases when available ── */
-function getActivityLabel(status: SessionStatus, isMoving: boolean, agentId?: string): string {
+function getActivityLabel(visualState: AgentVisualState, isMoving: boolean, agentId?: string): string {
   if (isMoving) return '🚶 Moving';
   const soul = agentId ? getAgentSoul(agentId) : undefined;
-  switch (status) {
-    case 'running': return soul?.workingPhrase ?? '🔧 Working';
-    case 'waiting': return '⏳ In meeting';
-    default: return soul?.idlePhrase ?? '';
+  switch (visualState) {
+    case 'running':       return soul?.workingPhrase ?? '🔧 Working';
+    case 'waiting':       return soul?.waitingPhrase ?? '⏳ Waiting';
+    case 'communicating': return soul?.communicatingPhrase ?? '💬 Communicating';
+    case 'using_skill':   return soul?.usingSkillPhrase ?? '⚡ Using skill';
+    case 'idle':          return soul?.idlePhrase ?? '😌 Resting';
+    default:              return soul?.idlePhrase ?? '';
   }
 }
 
@@ -408,25 +430,35 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const agentRoomsRef = useRef<Map<string, RoomKey>>(new Map());
 
+  // State machine systems — stable refs (no React re-renders)
+  const deskManagerRef = useRef<DeskManager>(new DeskManager());
+  const stateMachineRef = useRef<AgentStateMachine>(new AgentStateMachine(deskManagerRef.current));
+
   // Status debounce — prevents flickering
   const debouncedStatuses = useDebouncedStatuses(sessions);
 
   // Speech bubbles — detects status transitions with hierarchy
   const { bubbleMap } = useSpeechBubbles(sessions, agentNames, debouncedStatuses);
 
-  // Compute room assignments and agent list
+  // Compute room assignments and agent list using state machine
   const agents = useMemo(() => {
-    const context = detectContext(sessions);
+    void detectContext(sessions); // context detection drives future squad routing
     const sessionByAgent = new Map<string, ISession>();
     for (const s of sessions) {
       sessionByAgent.set(s.agentId, s);
     }
 
-    const allIds = new Set([...Object.keys(agentNames), ...sessions.map(s => s.agentId)]);
+    const allIds = [...new Set([...Object.keys(agentNames), ...sessions.map(s => s.agentId)])];
     const currentRooms = agentRoomsRef.current;
+    const stateMachine = stateMachineRef.current;
 
-    // Team sync heuristic: when Samantha is in waiting, force Emma+Ginny to waiting
-    // so the 3 visibly reunite in Sala de Comunicación.
+    // Determine squad-level activity
+    const runningCount = sessions.filter(s =>
+      (debouncedStatuses.get(s.agentId) ?? s.status) === 'running'
+    ).length;
+    const squadHasActiveTasks = runningCount > 0;
+
+    // Team sync heuristic: when Samantha is waiting, force Emma+Ginny to waiting
     const ceoStatus: SessionStatus | undefined =
       debouncedStatuses.get('main')
       ?? debouncedStatuses.get('samantha')
@@ -436,46 +468,54 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
       })?.status;
     const forceCoreMeeting = ceoStatus === 'waiting';
 
-    // Collect all agents with their data
-    const agentData: {
-      id: string;
-      name: string;
-      status: SessionStatus;
-      room: RoomKey;
-      inCtx: boolean;
-    }[] = [];
-
-    for (const id of allIds) {
+    // Build state machine inputs for all agents
+    const smInputs = allIds.map((id, agentIndex) => {
       const session = sessionByAgent.get(id);
-      // Use debounced status to prevent flickering
-      let status: SessionStatus = debouncedStatuses.get(id) ?? session?.status ?? 'idle';
+      let sessionStatus: SessionStatus = debouncedStatuses.get(id) ?? session?.status ?? 'idle';
 
-      // Core sync mode: if Samantha is waiting, make Emma+Ginny wait too.
+      // Core sync: if Samantha is waiting, Emma+Ginny follow to comunicacion
       const lowerId = id.toLowerCase();
       if (forceCoreMeeting && (lowerId === 'emma' || lowerId === 'ginny')) {
-        status = 'waiting';
+        sessionStatus = 'waiting';
       }
 
-      const rawName = agentNames[id] ?? id;
-      const name = rawName.replace(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F?)\s*/u, '').trim() || id;
-      const room = getRoomForAgent(id, status, context);
-      const inCtx = isInContext(id, context);
-      agentData.push({ id, name, status, room, inCtx });
-    }
+      // Detect if agent is being called (e.g. manager calling a specialist)
+      const beingCalled = sessionStatus === 'waiting' && squadHasActiveTasks;
 
-    // Group non-idle agents by room for grid positioning
+      return {
+        agentId: id,
+        agentIndex,
+        sessionStatus,
+        squadHasActiveTasks,
+        beingCalled,
+        needsSkill: false,  // Future: detect from session events
+        currentPosition: (currentRooms.has(id)
+          ? undefined  // Will use desk proximity from room center
+          : undefined),
+      };
+    });
+
+    // Compute visual states via state machine
+    const smOutputs = stateMachine.computeStates(smInputs);
+
+    // Group agents by room for grid positioning (non-running/non-desk states)
     const roomGroups: Record<RoomKey, string[]> = {
       lobby: [], descanso: [], comunicacion: [], trabajo: [], biblioteca: [],
     };
-    for (const d of agentData) {
-      if (d.status !== 'idle') {
-        roomGroups[d.room].push(d.id);
+    for (const id of allIds) {
+      const output = smOutputs.get(id);
+      if (!output) continue;
+      const vs = output.visualState;
+      // Only group agents that don't have an explicit desk position
+      if (vs !== 'running' && vs !== 'using_skill') {
+        roomGroups[output.targetRoom].push(id);
       }
     }
 
-    // Idle agents: assign to named spots
-    let descansoIdx = 0;
-    let lobbyIdx = 0;
+    // Idle agents: assign to named spots in their idle zone
+    const zoneIdxMap: Record<string, number> = {
+      lobby: 0, descanso: 0, comunicacion: 0, biblioteca: 0,
+    };
 
     const result: {
       id: string;
@@ -483,73 +523,91 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
       waypoints: [number, number, number][];
       facingAngle?: number;
       status: SessionStatus;
+      visualState: AgentVisualState;
       isActive: boolean;
       activityLabel: string;
       speechBubble?: string;
     }[] = [];
 
-    for (const d of agentData) {
-      let targetRoom: RoomKey;
+    for (const id of allIds) {
+      const session = sessionByAgent.get(id);
+      const sessionStatus: SessionStatus = debouncedStatuses.get(id) ?? session?.status ?? 'idle';
+      const output = smOutputs.get(id);
+      if (!output) continue;
+
+      const { visualState, targetRoom, desk } = output;
+
+      const rawName = agentNames[id] ?? id;
+      const name = rawName.replace(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F?)\s*/u, '').trim() || id;
+
       let targetPos: [number, number, number];
       let targetFacing: number | undefined;
-      let label: string;
 
-      if (d.status === 'idle') {
-        // Investment squad agents always go to their dedicated lobby seats
-        const dedicatedSeat = INVESTMENT_LOBBY_SEATS[d.id.toLowerCase()];
+      if (visualState === 'running' && desk) {
+        // Running agent → explicit desk position
+        targetPos = desk.position;
+        targetFacing = desk.facingAngle;
+      } else if (visualState === 'using_skill' && desk) {
+        // Using skill → walk to biblioteca, keep desk reserved
+        const center = ROOM_CENTERS['biblioteca'];
+        const idx = zoneIdxMap['biblioteca'] ?? 0;
+        zoneIdxMap['biblioteca'] = idx + 1;
+        targetPos = gridPosition(center.cx, center.cz, idx, 4, 2.0);
+        targetFacing = undefined;
+      } else if (visualState === 'idle') {
+        // Investment squad always go to dedicated lobby seats
+        const dedicatedSeat = INVESTMENT_LOBBY_SEATS[id.toLowerCase()];
         if (dedicatedSeat) {
-          targetRoom = 'lobby';
           targetPos = dedicatedSeat.pos;
           targetFacing = dedicatedSeat.facing;
-          label = dedicatedSeat.label;
-        } else if (d.inCtx) {
-          // In-context idle → Descanso spots
-          targetRoom = 'descanso';
-          const spot = DESCANSO_SPOTS[descansoIdx % DESCANSO_SPOTS.length];
-          targetPos = spot.pos;
-          targetFacing = spot.facing;
-          label = spot.label;
-          descansoIdx++;
         } else {
-          // Out-of-context idle → Lobby spots
-          targetRoom = 'lobby';
-          const spot = LOBBY_SPOTS[lobbyIdx % LOBBY_SPOTS.length];
+          // Spread idle agents across their assigned zone
+          const zone = targetRoom;
+          const zoneSpots: IdleSpot[] =
+            zone === 'descanso' ? DESCANSO_SPOTS
+            : zone === 'biblioteca'
+              ? BIBLIOTECA_IDLE_SPOTS
+              : LOBBY_SPOTS;
+          const idx = zoneIdxMap[zone] ?? 0;
+          zoneIdxMap[zone] = idx + 1;
+          const spot = zoneSpots[idx % zoneSpots.length];
           targetPos = spot.pos;
           targetFacing = spot.facing;
-          label = spot.label;
-          lobbyIdx++;
         }
       } else {
-        // Active agent — grid position in their room
-        targetRoom = d.room;
+        // Waiting / communicating / etc — grid position in room
         const agents = roomGroups[targetRoom];
-        const idx = agents.indexOf(d.id);
+        const idx = agents.indexOf(id);
         const center = ROOM_CENTERS[targetRoom];
-        const cols = Math.min(agents.length, targetRoom === 'trabajo' ? 4 : 3);
+        const cols = Math.min(agents.length, targetRoom === 'comunicacion' ? 4 : 3);
         const spacing = targetRoom === 'lobby' ? 2.0 : 1.6;
         targetPos = idx >= 0
           ? gridPosition(center.cx, center.cz, idx, Math.max(cols, 1), spacing)
           : [center.cx, 0, center.cz];
-        label = getActivityLabel(d.status, false, d.id);
+        targetFacing = undefined;
       }
 
       // Pathfinding through doors
-      const prevRoom = currentRooms.get(d.id) ?? targetRoom;
+      const prevRoom = currentRooms.get(id) ?? targetRoom;
       const doorWaypoints = findPath(prevRoom, targetRoom);
       const waypoints: [number, number, number][] = [...doorWaypoints, targetPos];
 
-      currentRooms.set(d.id, targetRoom);
+      currentRooms.set(id, targetRoom);
+
+      // Activity label with soul phrase override
+      const label = getActivityLabel(visualState, false, id);
 
       // Speech bubble
-      const bubble = bubbleMap.get(d.id);
+      const bubble = bubbleMap.get(id);
 
       result.push({
-        id: d.id,
-        name: d.name,
+        id,
+        name,
         waypoints,
         facingAngle: targetFacing,
-        status: d.status,
-        isActive: d.status !== 'idle',
+        status: sessionStatus,
+        visualState,
+        isActive: visualState !== 'idle',
         activityLabel: label,
         speechBubble: bubble,
       });
