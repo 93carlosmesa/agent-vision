@@ -81,15 +81,17 @@ export class WebSocketServer {
   }
 
   /**
-   * Broadcast sessions update to all connected clients.
+   * Broadcast sessions + interactions update to all connected clients.
    */
   private broadcastSessions(): void {
     if (!this.wss) return;
     const sessions = this.sessionReader.getSessions();
     const names = this.nameResolver.resolve();
+    const interactions = this.sessionReader.getInteractions(sessions);
 
     this.broadcast({ type: 'sessions:update', sessions });
     this.broadcast({ type: 'agentNames:update', names });
+    this.broadcast({ type: 'interactions:update', interactions });
   }
 
   /**

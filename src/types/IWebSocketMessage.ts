@@ -6,6 +6,7 @@
  */
 
 import type { ISession, ISessionEvent } from './ISession';
+import type { IInteraction } from './IInteraction';
 import type { AgentNameMap } from './IAgent';
 
 // ─── Server → Client messages ───
@@ -36,6 +37,12 @@ export interface IWsSessionDetail {
   events: ISessionEvent[];
 }
 
+/** Real agent-to-agent interactions detected from session data */
+export interface IWsInteractionsUpdate {
+  type: 'interactions:update';
+  interactions: IInteraction[];
+}
+
 /** Server error message */
 export interface IWsError {
   type: 'error';
@@ -48,6 +55,7 @@ export type ServerMessage =
   | IWsTimelineUpdate
   | IWsAgentNamesUpdate
   | IWsSessionDetail
+  | IWsInteractionsUpdate
   | IWsError;
 
 // ─── Client → Server messages ───

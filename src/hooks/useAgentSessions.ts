@@ -5,13 +5,14 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { WebSocketClient } from '../services/WebSocketClient';
 import { SessionService } from '../services/SessionService';
-import type { ISession, AgentNameMap, ISceneConfig, ISquad, AgentRole } from '../types';
+import type { ISession, IInteraction, AgentNameMap, ISceneConfig, ISquad, AgentRole } from '../types';
 import { scenes, DEFAULT_SCENE } from '../scenes/sceneConfig';
 import { ROLE_LABELS, ROLE_TAGS, SQUAD_DEFINITIONS, resolveRoleFromText } from '../config/squads';
 
 export interface IUseAgentSessions {
   sessions: ISession[];
   agentNames: AgentNameMap;
+  interactions: IInteraction[];
   isConnected: boolean;
   currentScene: ISceneConfig;
   setScene: (sceneId: string) => void;
@@ -140,6 +141,7 @@ export function useAgentSessions(): IUseAgentSessions {
 
   const [sessions, setSessions] = useState<ISession[]>([]);
   const [agentNames, setAgentNames] = useState<AgentNameMap>({});
+  const [interactions, setInteractions] = useState<IInteraction[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [sceneId, setSceneId] = useState<string>(DEFAULT_SCENE);
 
@@ -157,6 +159,7 @@ export function useAgentSessions(): IUseAgentSessions {
     sessionService.onChange((state) => {
       setSessions([...state.sessions]);
       setAgentNames({ ...state.agentNames });
+      setInteractions([...state.interactions]);
     });
 
     wsClient.onConnect(() => setIsConnected(true));
@@ -182,5 +185,5 @@ export function useAgentSessions(): IUseAgentSessions {
     [sessions, agentNames, currentScene],
   );
 
-  return { sessions, agentNames, isConnected, currentScene, setScene, squads };
+  return { sessions, agentNames, interactions, isConnected, currentScene, setScene, squads };
 }

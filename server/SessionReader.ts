@@ -9,7 +9,7 @@
 
 import { readFileSync, readdirSync, existsSync } from 'fs';
 import { join, basename, resolve } from 'path';
-import type { ISession, ISessionEvent, SessionStatus } from '../src/types/index.js';
+import type { ISession, ISessionEvent, SessionStatus, IInteraction, InteractionType } from '../src/types/index.js';
 
 /** Raw event line from a JSONL session file */
 interface RawMessage {
@@ -236,5 +236,168 @@ export class SessionReader {
     const result = Array.from(bestByAgent.values());
     result.sort((a, b) => b.updatedAtMs - a.updatedAtMs);
     return result;
+  }
+
+  /**
+   * Detect real interactions between agents from session data.
+   * Looks for tool calls that reference other agent IDs (spawn, send, subagents)
+   * and user messages that come from another agent.
+   */
+  getInteractions(sessions: ISession[]): IInteraction[] {
+    const now = Date.now();
+    const interactions: IInteraction[] = [];
+    const agentSessionKeys = new Map<string, string>();
+    for (const s of sessions) agentSessionKeys.set(s.agentId, s.key);
+
+    // Only detect interactions for active agents (running/waiting)
+    const activeSessions = sessions.filter(s => s.status === 'running' || s.status === 'waiting');
+
+    for (const session of activeSessions) {
+      const agentId = session.agentId;
+      const sessionsDir = join(this.agentsBase, agentId, 'sessions');
+      if (!existsSync(sessionsDir)) continue;
+
+      // Read the most recent session file for this agent
+      const sessionFile = session.key.includes(':')
+        ? session.key.split(':').pop() + '.jsonl'
+        : session.key + '.jsonl';
+      const filePath = join(sessionsDir, sessionFile);
+      if (!existsSync(filePath)) continue;
+
+      // Security: prevent path traversal
+      if (!resolve(filePath).startsWith(resolve(sessionsDir) + '/')) continue;
+
+      const events = this.parseJsonlFile(filePath);
+      // Only check recent events (last 20) for performance
+      const recentEvents = events.slice(-20);
+
+      for (const ev of recentEvents) {
+        if (ev.type !== 'message' || !ev.message) continue;
+
+        const tsStr = ev.timestamp ?? '';
+        const tsMs = tsStr ? new Date(tsStr).getTime() : 0;
+        // Only consider events from the last 30s
+        if (now - tsMs > 30_000) continue;
+
+        const content = ev.message.content;
+        if (!content || !Array.isArray(content)) continue;
+
+        for (const part of content) {
+          // Look for tool_use blocks that reference other agents
+          if (part.type === 'tool_use') {
+            const toolName = (part as Record<string, unknown>).name as string | undefined;
+            const toolInput = (part as Record<string, unknown>).input as Record<string, unknown> | undefined;
+
+            if (!toolName || !toolInput) continue;
+
+            const { targetId, interactionType } = this.detectToolInteraction(
+              toolName,
+              toolInput,
+              agentSessionKeys,
+            );
+
+            if (targetId) {
+              const targetKey = agentSessionKeys.get(targetId);
+              if (targetKey) {
+                interactions.push({
+                  id: `real-${agentId}-${targetId}-${tsMs}`,
+                  fromSessionKey: session.key,
+                  toSessionKey: targetKey,
+                  type: interactionType,
+                  label: this.getInteractionLabel(interactionType, toolName),
+                  startedAt: tsMs,
+                  durationMs: Math.max(5000, now - tsMs),
+                });
+              }
+            }
+          }
+
+          // Look for text content that references other agent IDs
+          if (part.type === 'text' && part.text && ev.message.role === 'user') {
+            for (const [otherId, otherKey] of agentSessionKeys) {
+              if (otherId === agentId) continue;
+              if (part.text.includes(otherId)) {
+                interactions.push({
+                  id: `ref-${agentId}-${otherId}-${tsMs}`,
+                  fromSessionKey: session.key,
+                  toSessionKey: otherKey,
+                  type: 'consulting',
+                  label: 'referencing agent',
+                  startedAt: tsMs,
+                  durationMs: Math.max(5000, now - tsMs),
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Deduplicate: keep the most recent interaction per agent pair
+    const uniqueMap = new Map<string, IInteraction>();
+    for (const interaction of interactions) {
+      const pairKey = `${interaction.fromSessionKey}:${interaction.toSessionKey}`;
+      const existing = uniqueMap.get(pairKey);
+      if (!existing || interaction.startedAt > existing.startedAt) {
+        uniqueMap.set(pairKey, interaction);
+      }
+    }
+
+    return Array.from(uniqueMap.values());
+  }
+
+  private detectToolInteraction(
+    toolName: string,
+    toolInput: Record<string, unknown>,
+    knownAgents: Map<string, string>,
+  ): { targetId: string | null; interactionType: InteractionType } {
+    const lower = toolName.toLowerCase();
+
+    // Spawn/delegate patterns
+    if (lower.includes('spawn') || lower.includes('delegate') || lower.includes('dispatch')) {
+      const targetId = this.findAgentRef(toolInput, knownAgents);
+      return { targetId, interactionType: 'delegating' };
+    }
+
+    // Send/message patterns
+    if (lower.includes('send') || lower.includes('message') || lower.includes('notify')) {
+      const targetId = this.findAgentRef(toolInput, knownAgents);
+      return { targetId, interactionType: 'consulting' };
+    }
+
+    // Validate/review patterns
+    if (lower.includes('validate') || lower.includes('review') || lower.includes('check') || lower.includes('verify')) {
+      const targetId = this.findAgentRef(toolInput, knownAgents);
+      return { targetId, interactionType: 'validating' };
+    }
+
+    // Generic tool call — check if any input value references a known agent
+    const targetId = this.findAgentRef(toolInput, knownAgents);
+    if (targetId) {
+      return { targetId, interactionType: 'consulting' };
+    }
+
+    return { targetId: null, interactionType: 'consulting' };
+  }
+
+  private findAgentRef(
+    input: Record<string, unknown>,
+    knownAgents: Map<string, string>,
+  ): string | null {
+    const text = JSON.stringify(input).toLowerCase();
+    for (const agentId of knownAgents.keys()) {
+      if (text.includes(agentId.toLowerCase())) {
+        return agentId;
+      }
+    }
+    return null;
+  }
+
+  private getInteractionLabel(type: InteractionType, toolName: string): string {
+    switch (type) {
+      case 'delegating': return `delegating via ${toolName}`;
+      case 'validating': return `validating via ${toolName}`;
+      case 'consulting': return `consulting via ${toolName}`;
+    }
   }
 }

@@ -8,6 +8,21 @@
 export type AgentRole = 'ceo' | 'manager' | 'specialist' | 'orchestrator-investment';
 export type AgentDepartment = 'orchestration' | 'development' | 'investment';
 
+export type InteractionStyle = 'commanding' | 'analytical' | 'creative' | 'supportive';
+
+export interface AgentSoul {
+  /** What this agent does — shown in tooltips/bubbles */
+  purpose: string;
+  /** What this agent says when it starts working */
+  workingPhrase: string;
+  /** What this agent says when delegating */
+  delegatingPhrase?: string;
+  /** What this agent says when idle */
+  idlePhrase: string;
+  /** Interaction style — affects speech bubbles and beam colors */
+  interactionStyle: InteractionStyle;
+}
+
 export interface AgentConfig {
   id: string;
   role: AgentRole;
@@ -18,44 +33,76 @@ export interface AgentConfig {
   hairColor?: string;
   /** Halo color override for master avatars */
   haloColor?: string;
+  /** Agent personality and behavior */
+  soul: AgentSoul;
 }
 
 export const AGENT_REGISTRY: AgentConfig[] = [
-  { id: 'main',       role: 'ceo',                    color: '#c084fc', isFemale: true,  department: 'orchestration', hairColor: '#d4a853', haloColor: '#c084fc' },
-  { id: 'samantha',   role: 'ceo',                    color: '#c084fc', isFemale: true,  department: 'orchestration', hairColor: '#d4a853', haloColor: '#c084fc' },
-  { id: 'emma',       role: 'manager',                color: '#ff9f43', isFemale: true,  department: 'development',   hairColor: '#8b5e3c', haloColor: '#ff9f43' },
-  { id: 'ginny',      role: 'orchestrator-investment', color: '#53e3c2', isFemale: true,  department: 'investment',    hairColor: '#b7410e', haloColor: '#53e3c2' },
+  // Orchestrators
+  { id: 'main',       role: 'ceo',                    color: '#c084fc', isFemale: true,  department: 'orchestration', hairColor: '#d4a853', haloColor: '#c084fc',
+    soul: { purpose: 'Orchestrates all agents', workingPhrase: '🔧 On it', delegatingPhrase: '📋 {target}, handle this', idlePhrase: '💭 Overseeing', interactionStyle: 'commanding' } },
+  { id: 'samantha',   role: 'ceo',                    color: '#c084fc', isFemale: true,  department: 'orchestration', hairColor: '#d4a853', haloColor: '#c084fc',
+    soul: { purpose: 'Orchestrates all agents', workingPhrase: '🔧 On it', delegatingPhrase: '📋 {target}, handle this', idlePhrase: '💭 Overseeing', interactionStyle: 'commanding' } },
+  { id: 'emma',       role: 'manager',                color: '#ff9f43', isFemale: true,  department: 'development',   hairColor: '#8b5e3c', haloColor: '#ff9f43',
+    soul: { purpose: 'Manages dev execution', workingPhrase: '🛠️ Building...', delegatingPhrase: '📢 {target}, you\'re up', idlePhrase: '📋 Planning', interactionStyle: 'commanding' } },
+  { id: 'ginny',      role: 'orchestrator-investment', color: '#53e3c2', isFemale: true,  department: 'investment',    hairColor: '#b7410e', haloColor: '#53e3c2',
+    soul: { purpose: 'Investment strategy & analysis', workingPhrase: '📊 Analyzing markets...', delegatingPhrase: '📈 {target}, run analysis', idlePhrase: '🧘 Monitoring', interactionStyle: 'analytical' } },
 
   // Dev specialists
-  { id: 'dev-codereviewer',               role: 'specialist', color: '#ef4444', isFemale: false, department: 'development' },
-  { id: 'dev-cybersec',                   role: 'specialist', color: '#22d3ee', isFemale: false, department: 'development' },
-  { id: 'dev-git-guardian',               role: 'specialist', color: '#84cc16', isFemale: false, department: 'development' },
-  { id: 'dev-senior-frontend-architect',  role: 'specialist', color: '#f472b6', isFemale: false, department: 'development' },
-  { id: 'dev-linter',                     role: 'specialist', color: '#a3e635', isFemale: false, department: 'development' },
-  { id: 'dev-prettier',                   role: 'specialist', color: '#f59e0b', isFemale: false, department: 'development' },
-  { id: 'dev-controlnaming',             role: 'specialist', color: '#38bdf8', isFemale: false, department: 'development' },
-  { id: 'dev-ui-usability-analyst',       role: 'specialist', color: '#e879f9', isFemale: false, department: 'development' },
-  { id: 'dev-tester',                     role: 'specialist', color: '#34d399', isFemale: false, department: 'development' },
-  { id: 'dev-backend-socket-architect',   role: 'specialist', color: '#fb923c', isFemale: false, department: 'development' },
+  { id: 'dev-codereviewer',               role: 'specialist', color: '#ef4444', isFemale: false, department: 'development',
+    soul: { purpose: 'Reviews code quality', workingPhrase: '🔍 Reviewing...', idlePhrase: '📖 Standby', interactionStyle: 'analytical' } },
+  { id: 'dev-cybersec',                   role: 'specialist', color: '#22d3ee', isFemale: false, department: 'development',
+    soul: { purpose: 'Security auditing', workingPhrase: '🔒 Scanning...', idlePhrase: '👁️ Watching', interactionStyle: 'analytical' } },
+  { id: 'dev-git-guardian',               role: 'specialist', color: '#84cc16', isFemale: false, department: 'development',
+    soul: { purpose: 'Git flow & branch management', workingPhrase: '🌿 Managing branches...', idlePhrase: '🛡️ Guarding', interactionStyle: 'supportive' } },
+  { id: 'dev-senior-frontend-architect',  role: 'specialist', color: '#f472b6', isFemale: false, department: 'development',
+    soul: { purpose: 'Frontend architecture & design', workingPhrase: '🏗️ Architecting...', idlePhrase: '🧩 Designing', interactionStyle: 'creative' } },
+  { id: 'dev-linter',                     role: 'specialist', color: '#a3e635', isFemale: false, department: 'development',
+    soul: { purpose: 'Code style enforcement', workingPhrase: '📏 Linting...', idlePhrase: '✅ Clean', interactionStyle: 'analytical' } },
+  { id: 'dev-prettier',                   role: 'specialist', color: '#f59e0b', isFemale: false, department: 'development',
+    soul: { purpose: 'Code formatting', workingPhrase: '✨ Formatting...', idlePhrase: '🎨 Ready', interactionStyle: 'supportive' } },
+  { id: 'dev-controlnaming',             role: 'specialist', color: '#38bdf8', isFemale: false, department: 'development',
+    soul: { purpose: 'Naming conventions', workingPhrase: '🏷️ Checking names...', idlePhrase: '📝 Standby', interactionStyle: 'analytical' } },
+  { id: 'dev-ui-usability-analyst',       role: 'specialist', color: '#e879f9', isFemale: false, department: 'development',
+    soul: { purpose: 'UX & usability analysis', workingPhrase: '🎯 Analyzing UX...', idlePhrase: '👀 Observing', interactionStyle: 'creative' } },
+  { id: 'dev-tester',                     role: 'specialist', color: '#34d399', isFemale: false, department: 'development',
+    soul: { purpose: 'Testing & QA', workingPhrase: '🧪 Testing...', idlePhrase: '🔬 Standby', interactionStyle: 'analytical' } },
+  { id: 'dev-backend-socket-architect',   role: 'specialist', color: '#fb923c', isFemale: false, department: 'development',
+    soul: { purpose: 'Backend & WebSocket architecture', workingPhrase: '🔌 Wiring sockets...', idlePhrase: '⚡ Listening', interactionStyle: 'creative' } },
 
   // Investment specialists
-  { id: 'inv-psych-market',         role: 'specialist', color: '#2dd4bf', isFemale: false, department: 'investment' },
-  { id: 'inv-us-open',              role: 'specialist', color: '#06b6d4', isFemale: false, department: 'investment' },
-  { id: 'inv-risk-profiler',        role: 'specialist', color: '#2dd4bf', isFemale: false, department: 'investment' },
-  { id: 'inv-analyst-stocks',       role: 'specialist', color: '#2dd4bf', isFemale: false, department: 'investment' },
-  { id: 'inv-analyst-crypto',       role: 'specialist', color: '#2dd4bf', isFemale: false, department: 'investment' },
-  { id: 'inv-analyst-forex',        role: 'specialist', color: '#2dd4bf', isFemale: false, department: 'investment' },
-  { id: 'inv-analyst-commodities',  role: 'specialist', color: '#2dd4bf', isFemale: false, department: 'investment' },
-  { id: 'inv-analyst-ai',           role: 'specialist', color: '#2dd4bf', isFemale: false, department: 'investment' },
-  { id: 'inv-technical-analyst',    role: 'specialist', color: '#2dd4bf', isFemale: false, department: 'investment' },
-  { id: 'inv-strategist',           role: 'specialist', color: '#2dd4bf', isFemale: false, department: 'investment' },
+  { id: 'inv-psych-market',         role: 'specialist', color: '#a855f7', isFemale: false, department: 'investment',
+    soul: { purpose: 'Market psychology analysis', workingPhrase: '🧠 Reading sentiment...', idlePhrase: '📉 Watching', interactionStyle: 'analytical' } },
+  { id: 'inv-us-open',              role: 'specialist', color: '#06b6d4', isFemale: false, department: 'investment',
+    soul: { purpose: 'US market open prediction', workingPhrase: '📈 Tracking US markets...', idlePhrase: '🔭 Monitoring', interactionStyle: 'analytical' } },
+  { id: 'inv-risk-profiler',        role: 'specialist', color: '#f43f5e', isFemale: false, department: 'investment',
+    soul: { purpose: 'Portfolio risk profiling', workingPhrase: '⚖️ Assessing risk...', idlePhrase: '🛡️ Guarding', interactionStyle: 'analytical' } },
+  { id: 'inv-analyst-stocks',       role: 'specialist', color: '#22c55e', isFemale: false, department: 'investment',
+    soul: { purpose: 'Stock market analysis', workingPhrase: '📊 Analyzing stocks...', idlePhrase: '🏦 Watching', interactionStyle: 'analytical' } },
+  { id: 'inv-analyst-crypto',       role: 'specialist', color: '#f59e0b', isFemale: false, department: 'investment',
+    soul: { purpose: 'Crypto market analysis', workingPhrase: '₿ Scanning chains...', idlePhrase: '🔗 On-chain', interactionStyle: 'analytical' } },
+  { id: 'inv-analyst-forex',        role: 'specialist', color: '#3b82f6', isFemale: false, department: 'investment',
+    soul: { purpose: 'Forex pair analysis', workingPhrase: '💱 Reading pairs...', idlePhrase: '🌍 Monitoring', interactionStyle: 'analytical' } },
+  { id: 'inv-analyst-commodities',  role: 'specialist', color: '#d97706', isFemale: false, department: 'investment',
+    soul: { purpose: 'Commodities analysis', workingPhrase: '🛢️ Tracking commodities...', idlePhrase: '⛏️ Standby', interactionStyle: 'analytical' } },
+  { id: 'inv-analyst-ai',           role: 'specialist', color: '#8b5cf6', isFemale: false, department: 'investment',
+    soul: { purpose: 'AI ecosystem tracking', workingPhrase: '🤖 Scanning AI landscape...', idlePhrase: '🧪 Researching', interactionStyle: 'creative' } },
+  { id: 'inv-technical-analyst',    role: 'specialist', color: '#14b8a6', isFemale: false, department: 'investment',
+    soul: { purpose: 'Technical chart analysis', workingPhrase: '📉 Reading charts...', idlePhrase: '📐 Standby', interactionStyle: 'analytical' } },
+  { id: 'inv-strategist',           role: 'specialist', color: '#e11d48', isFemale: false, department: 'investment',
+    soul: { purpose: 'Investment strategy & allocation', workingPhrase: '♟️ Planning strategy...', idlePhrase: '🎯 Thinking', interactionStyle: 'creative' } },
 
   // Vision specialists
-  { id: 'dev-vision-3d-architect',      role: 'specialist', color: '#7c3aed', isFemale: false, department: 'development' },
-  { id: 'dev-vision-world-designer',    role: 'specialist', color: '#2563eb', isFemale: false, department: 'development' },
-  { id: 'dev-vision-avatar-creator',    role: 'specialist', color: '#ec4899', isFemale: false, department: 'development' },
-  { id: 'dev-vision-fx-animator',       role: 'specialist', color: '#06b6d4', isFemale: false, department: 'development' },
-  { id: 'dev-vision-office-decorator',  role: 'specialist', color: '#10b981', isFemale: false, department: 'development' },
+  { id: 'dev-vision-3d-architect',      role: 'specialist', color: '#7c3aed', isFemale: false, department: 'development',
+    soul: { purpose: '3D scene architecture', workingPhrase: '🎮 Building 3D...', idlePhrase: '🌐 Standby', interactionStyle: 'creative' } },
+  { id: 'dev-vision-world-designer',    role: 'specialist', color: '#2563eb', isFemale: false, department: 'development',
+    soul: { purpose: 'World & level design', workingPhrase: '🗺️ Designing world...', idlePhrase: '🌍 Standby', interactionStyle: 'creative' } },
+  { id: 'dev-vision-avatar-creator',    role: 'specialist', color: '#ec4899', isFemale: false, department: 'development',
+    soul: { purpose: 'Avatar creation & rigging', workingPhrase: '👤 Crafting avatars...', idlePhrase: '🎭 Standby', interactionStyle: 'creative' } },
+  { id: 'dev-vision-fx-animator',       role: 'specialist', color: '#06b6d4', isFemale: false, department: 'development',
+    soul: { purpose: 'Visual effects & animation', workingPhrase: '💫 Animating...', idlePhrase: '🎬 Standby', interactionStyle: 'creative' } },
+  { id: 'dev-vision-office-decorator',  role: 'specialist', color: '#10b981', isFemale: false, department: 'development',
+    soul: { purpose: 'Office decoration & props', workingPhrase: '🪴 Decorating...', idlePhrase: '🏠 Standby', interactionStyle: 'creative' } },
 ];
 
 /* ── Derived lookup helpers ── */
@@ -71,6 +118,10 @@ export function getAgentConfig(agentId: string): AgentConfig | undefined {
 export function isMaster(agentId: string): boolean {
   const cfg = _byId.get(agentId.toLowerCase());
   return cfg?.hairColor !== undefined;
+}
+
+export function getAgentSoul(agentId: string): AgentSoul | undefined {
+  return _byId.get(agentId.toLowerCase())?.soul;
 }
 
 export function getAgentColor(agentId: string): string {
