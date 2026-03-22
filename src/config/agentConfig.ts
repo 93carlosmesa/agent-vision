@@ -39,8 +39,16 @@ export const AGENT_REGISTRY: AgentConfig[] = [
   { id: 'dev-backend-socket-architect',   role: 'specialist', color: '#fb923c', isFemale: false, department: 'development' },
 
   // Investment specialists
-  { id: 'inv-psych-market', role: 'specialist', color: '#a855f7', isFemale: false, department: 'investment' },
-  { id: 'inv-us-open',      role: 'specialist', color: '#06b6d4', isFemale: false, department: 'investment' },
+  { id: 'inv-psych-market',         role: 'specialist', color: '#2dd4bf', isFemale: false, department: 'investment' },
+  { id: 'inv-us-open',              role: 'specialist', color: '#06b6d4', isFemale: false, department: 'investment' },
+  { id: 'inv-risk-profiler',        role: 'specialist', color: '#2dd4bf', isFemale: false, department: 'investment' },
+  { id: 'inv-analyst-stocks',       role: 'specialist', color: '#2dd4bf', isFemale: false, department: 'investment' },
+  { id: 'inv-analyst-crypto',       role: 'specialist', color: '#2dd4bf', isFemale: false, department: 'investment' },
+  { id: 'inv-analyst-forex',        role: 'specialist', color: '#2dd4bf', isFemale: false, department: 'investment' },
+  { id: 'inv-analyst-commodities',  role: 'specialist', color: '#2dd4bf', isFemale: false, department: 'investment' },
+  { id: 'inv-analyst-ai',           role: 'specialist', color: '#2dd4bf', isFemale: false, department: 'investment' },
+  { id: 'inv-technical-analyst',    role: 'specialist', color: '#2dd4bf', isFemale: false, department: 'investment' },
+  { id: 'inv-strategist',           role: 'specialist', color: '#2dd4bf', isFemale: false, department: 'investment' },
 
   // Vision specialists
   { id: 'dev-vision-3d-architect',      role: 'specialist', color: '#7c3aed', isFemale: false, department: 'development' },
