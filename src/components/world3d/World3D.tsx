@@ -425,6 +425,17 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
     const allIds = new Set([...Object.keys(agentNames), ...sessions.map(s => s.agentId)]);
     const currentRooms = agentRoomsRef.current;
 
+    // Team sync heuristic: when Samantha is in waiting, force Emma+Ginny to waiting
+    // so the 3 visibly reunite in Sala de Comunicación.
+    const ceoStatus: SessionStatus | undefined =
+      debouncedStatuses.get('main')
+      ?? debouncedStatuses.get('samantha')
+      ?? sessions.find(s => {
+        const id = s.agentId.toLowerCase();
+        return id === 'main' || id === 'samantha';
+      })?.status;
+    const forceCoreMeeting = ceoStatus === 'waiting';
+
     // Collect all agents with their data
     const agentData: {
       id: string;
@@ -437,7 +448,14 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
     for (const id of allIds) {
       const session = sessionByAgent.get(id);
       // Use debounced status to prevent flickering
-      const status: SessionStatus = debouncedStatuses.get(id) ?? session?.status ?? 'idle';
+      let status: SessionStatus = debouncedStatuses.get(id) ?? session?.status ?? 'idle';
+
+      // Core sync mode: if Samantha is waiting, make Emma+Ginny wait too.
+      const lowerId = id.toLowerCase();
+      if (forceCoreMeeting && (lowerId === 'emma' || lowerId === 'ginny')) {
+        status = 'waiting';
+      }
+
       const rawName = agentNames[id] ?? id;
       const name = rawName.replace(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F?)\s*/u, '').trim() || id;
       const room = getRoomForAgent(id, status, context);
