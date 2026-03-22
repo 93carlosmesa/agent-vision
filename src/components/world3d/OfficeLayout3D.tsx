@@ -395,12 +395,6 @@ export function OfficeLayout3D({ environment }: { environment: WorldEnvironment 
       <Baseboard position={[0, 0.075, 2]} width={15} color={theme.walls.baseboard} />
       <Baseboard position={[16, 0.075, 2]} width={13} color={theme.walls.baseboard} />
 
-      {/* Ceiling plane for skylight contrast */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, WALL_H, 0]}>
-        <planeGeometry args={[52, 44]} />
-        <meshStandardMaterial color="#E8E0D8" roughness={0.9} />
-      </mesh>
-
       {/* Skylights — casting warm light pools */}
       <Skylight position={[0, WALL_H - 0.01, 14]} size={[6, 3]} />
       <Skylight position={[-14, WALL_H - 0.01, 6.5]} size={[5, 4]} />

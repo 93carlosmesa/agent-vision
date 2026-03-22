@@ -568,13 +568,14 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
           <ambientLight intensity={0.9} color="#FFF0D8" />
           <directionalLight
             position={[5, 20, 10]}
-            intensity={2.0}
+            intensity={2.5}
             color="#FFF0D0"
             castShadow
             shadow-mapSize-width={2048}
             shadow-mapSize-height={2048}
           />
-          <hemisphereLight color="#E8D8C8" groundColor="#A07850" intensity={0.5} />
+          <hemisphereLight color="#E8D8C8" groundColor="#A07850" intensity={0.7} />
+          <hemisphereLight color="#FFF8F0" groundColor="#D8C8B0" intensity={0.4} />
           {/* Room-specific warm point lights */}
           <pointLight position={[0, 8, 14]} intensity={1.0} color="#FFF0D0" distance={22} />
           <pointLight position={[-14, 7, 6.5]} intensity={1.0} color="#FFE0B0" distance={18} />
