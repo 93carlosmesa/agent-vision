@@ -590,8 +590,8 @@ export function LobbyFurniture({ environment }: { environment: WorldEnvironment 
         <meshStandardMaterial color="#8B6538" roughness={0.5} />
       </mesh>
       {/* Bench seating */}
-      <LoungeChair position={[-8, 0, 13.5]} rotation={Math.PI / 4} />
-      <LoungeChair position={[8, 0, 13.5]} rotation={-Math.PI / 4} />
+      <LoungeChair position={[-8, 0, 13.5]} rotation={1.39} />
+      <LoungeChair position={[8, 0, 13.5]} rotation={-1.39} />
 
       {/* ── Investment Squad Lounge ── */}
       {/* Round coffee table */}
@@ -606,9 +606,9 @@ export function LobbyFurniture({ environment }: { environment: WorldEnvironment 
       {/* Ginny's chair — center, facing table */}
       <LoungeChair position={[19, 0, 16.2]} rotation={Math.PI} />
       {/* Psych Market's chair — left, facing table */}
-      <LoungeChair position={[16.5, 0, 15]} rotation={Math.PI * 0.75} />
+      <LoungeChair position={[16.5, 0, 15]} rotation={1.77} />
       {/* US Open's chair — right, facing table */}
-      <LoungeChair position={[21.5, 0, 15]} rotation={-Math.PI * 0.75} />
+      <LoungeChair position={[21.5, 0, 15]} rotation={-1.77} />
 
       {/* Fiddle leaf figs */}
       <FiddleLeafFig position={[-14, 0, 16]} scale={1.2} />
@@ -646,13 +646,13 @@ export function DescansoFurniture({ environment }: { environment: WorldEnvironme
     <group>
       {/* Leather lounge chairs around coffee table */}
       <LoungeChair position={[-19, 0, 7]} rotation={Math.PI / 2} />
-      <LoungeChair position={[-16.8, 0, 9]} rotation={0} />
+      <LoungeChair position={[-16.8, 0, 9]} rotation={Math.PI} />
       <LoungeChair position={[-14.6, 0, 7]} rotation={-Math.PI / 2} />
       <CoffeeTable position={[-16.8, 0, 7]} />
 
       {/* Second seating group */}
-      <LoungeChair position={[-10.5, 0, 5.1]} rotation={Math.PI} />
-      <LoungeChair position={[-8.8, 0, 8.7]} rotation={0} />
+      <LoungeChair position={[-10.5, 0, 5.1]} rotation={0.44} />
+      <LoungeChair position={[-8.8, 0, 8.7]} rotation={-2.70} />
       <CoffeeTable position={[-9.7, 0, 6.8]} />
 
       {/* Fiddle leaf figs */}
@@ -677,10 +677,10 @@ export function ComunicacionFurniture({ environment }: { environment: WorldEnvir
         <MeetingTable position={[10, 0, 6.3]} />
         {/* Beach-style chairs around table */}
         {chairs.map((x, i) => (
-          <OfficeChair key={`n${i}`} position={[10 + x, 0, 4.9]} rotation={Math.PI} />
+          <OfficeChair key={`n${i}`} position={[10 + x, 0, 4.9]} rotation={0} />
         ))}
         {chairs.map((x, i) => (
-          <OfficeChair key={`s${i}`} position={[10 + x, 0, 7.7]} rotation={0} />
+          <OfficeChair key={`s${i}`} position={[10 + x, 0, 7.7]} rotation={Math.PI} />
         ))}
         {/* Whiteboard on bamboo easel */}
         <mesh position={[19, 1.4, 9.8]}>
@@ -697,10 +697,10 @@ export function ComunicacionFurniture({ environment }: { environment: WorldEnvir
     <group>
       <MeetingTable position={[10, 0, 6.3]} />
       {chairs.map((x, i) => (
-        <OfficeChair key={`n${i}`} position={[10 + x, 0, 4.9]} rotation={Math.PI} />
+        <OfficeChair key={`n${i}`} position={[10 + x, 0, 4.9]} rotation={0} />
       ))}
       {chairs.map((x, i) => (
-        <OfficeChair key={`s${i}`} position={[10 + x, 0, 7.7]} rotation={0} />
+        <OfficeChair key={`s${i}`} position={[10 + x, 0, 7.7]} rotation={Math.PI} />
       ))}
       <OfficeChair position={[8, 0, 6.3]} rotation={Math.PI / 2} />
       <OfficeChair position={[12, 0, 6.3]} rotation={-Math.PI / 2} />
@@ -845,7 +845,7 @@ export function ExteriorFurniture({ environment }: { environment: WorldEnvironme
     <group>
       {/* Outdoor seating */}
       <LoungeChair position={[14, 0, -12.5]} rotation={Math.PI / 2} />
-      <LoungeChair position={[20, 0, -12.5]} rotation={Math.PI / 2} />
+      <LoungeChair position={[20, 0, -12.5]} rotation={-Math.PI / 2} />
       <LoungeChair position={[17, 0, -17.5]} rotation={0} />
       <CoffeeTable position={[17, 0, -14]} />
 
