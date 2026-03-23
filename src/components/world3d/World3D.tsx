@@ -35,6 +35,7 @@ import {
 import { getWorldEnvironment, ROOM_CENTERS } from './officeTheme';
 import { SamanthaDesk } from './SamanthaDesk';
 import { SystemMetricsPanel } from './SystemMetricsPanel';
+import { TaskCompletionParticles } from './TaskCompletionParticles';
 import { findPath } from '../../utils/officePathfinding';
 import type { RoomKey } from '../../utils/officePathfinding';
 import type { ISession, AgentNameMap, IInteraction, SessionStatus } from '../../types';
@@ -48,6 +49,7 @@ import {
   MANAGER_ID,
   AGENT_REGISTRY,
   getAgentSoul,
+  getAgentColor,
 } from '../../config/agentConfig';
 import { DeskManager } from '../../systems/DeskManager';
 import { AgentStateMachine } from '../../systems/AgentStateMachine';
@@ -470,6 +472,69 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
   // Speech bubbles — detects status transitions with hierarchy
   const { bubbleMap } = useSpeechBubbles(sessions, agentNames, debouncedStatuses);
 
+  // ── Task completion particle bursts ──────────────────────────────────────
+  // Track previous debounced statuses to detect running → idle/waiting transitions.
+  // Uses refs to avoid re-render storms; burst list drives a single state update.
+  interface ParticleBurst {
+    agentId: string;
+    position: [number, number, number];
+    color: string;
+    startTime: number;
+  }
+  const prevDebounced = useRef<Map<string, SessionStatus>>(new Map());
+  const [particleBursts, setParticleBursts] = useState<ParticleBurst[]>([]);
+
+  useEffect(() => {
+    const prev = prevDebounced.current;
+    const now = Date.now();
+    const newBursts: ParticleBurst[] = [];
+
+    for (const [agentId, status] of debouncedStatuses) {
+      const prevStatus = prev.get(agentId);
+      // Detect running → idle or running → waiting
+      if (
+        prevStatus === 'running' &&
+        (status === 'idle' || status === 'waiting')
+      ) {
+        // Find the agent's last known position from session data (agents computed later)
+        const session = sessions.find(s => s.agentId === agentId);
+        const pos: [number, number, number] = session ? [0, 0, 0] : [0, 0, 0];
+        newBursts.push({
+          agentId,
+          position: pos as [number, number, number],
+          color: getAgentColor(agentId),
+          startTime: now,
+        });
+      }
+    }
+
+    // Update previous map
+    const newPrev = new Map<string, SessionStatus>();
+    for (const [id, status] of debouncedStatuses) {
+      newPrev.set(id, status);
+    }
+    prevDebounced.current = newPrev;
+
+    if (newBursts.length > 0) {
+      setParticleBursts(prev => [
+        // Keep unexpired bursts (max 2s)
+        ...prev.filter(b => now - b.startTime < 2000),
+        ...newBursts,
+      ]);
+    }
+  }, [debouncedStatuses, sessions]);
+
+  // Auto-clean expired bursts
+  useEffect(() => {
+    if (particleBursts.length === 0) return;
+    const maxLifetime = 2000;
+    const timer = setTimeout(() => {
+      const now = Date.now();
+      setParticleBursts(prev => prev.filter(b => now - b.startTime < maxLifetime));
+    }, maxLifetime);
+    return () => clearTimeout(timer);
+  }, [particleBursts]);
+
   // Compute room assignments and agent list using state machine
   const agents = useMemo(() => {
     void detectContext(sessions); // context detection drives future squad routing
@@ -785,6 +850,15 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
 
       {/* Agents with smooth motion system */}
       <AgentMotionSystem agents={agents} />
+
+      {/* Task completion particle bursts */}
+      {particleBursts.map((burst) => (
+        <TaskCompletionParticles
+          key={`${burst.agentId}-${burst.startTime}`}
+          position={burst.position}
+          color={burst.color}
+        />
+      ))}
 
       {/* Interaction beams */}
       {beams.map((b) => (
