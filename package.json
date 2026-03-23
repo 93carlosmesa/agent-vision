@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "preview:4173": "vite preview --host 127.0.0.1 --port 4173",
     "start": "npm run build && PORT=4173 BIND_HOST=127.0.0.1 tsx server/index.ts",
-    "start:4173": "npm run build && PORT=4173 BIND_HOST=127.0.0.1 tsx server/index.ts"
+    "start:4173": "npm run build && PORT=4173 BIND_HOST=127.0.0.1 tsx server/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
@@ -38,6 +40,7 @@
     "tsx": "^4.21.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.57.0",
-    "vite": "^8.0.1"
+    "vite": "^8.0.1",
+    "vitest": "^4.1.1"
   }
 }

@@ -1,13 +1,13 @@
 /**
  * Agent3D — Avatar 3D diferenciado con animaciones de actividad:
- *   - Masters (Samantha, Ginny, Emma): humanoide premium con halo/corona flotante
+ *   - Masters (Samantha, Ginny, Emma): humanoide premium
  *   - Resto de agentes: robot metálico con visor, antena y cuerpo angular
  *
  * Animations:
  *   - Walking: leg pendulum, arm swing, body bounce + lean
  *   - Running (working): forward lean, typing arms, head nod
  *   - Waiting (meeting): upright, arm gestures, head turns
- *   - Idle (relaxing): lean back, slow bob, slow halo/antenna
+ *   - Idle (relaxing): lean back, slow bob, slow antenna
  */
 
 import { useRef } from 'react';
@@ -81,8 +81,8 @@ const VISUAL_STATE_EMISSIVE: Partial<Record<AgentVisualState, { color: string; i
   using_skill:   { color: '#f59e0b', intensity: 0.85 },  // amber — skill active
 };
 
-/* ── Halo/Hair helpers — read from registry ── */
-function getMasterHalo(agentId: string): string {
+/* ── Accent/Hair helpers — read from registry ── */
+function getMasterAccent(agentId: string): string {
   const cfg = getAgentConfig(agentId);
   return cfg?.haloColor ?? cfg?.color ?? '#c084fc';
 }
@@ -118,7 +118,6 @@ function MasterAvatar({
 }: Agent3DProps) {
   const groupRef    = useRef<Group>(null);
   const bodyRef     = useRef<Group>(null);
-  const haloRef     = useRef<Group>(null);
   const headRef     = useRef<Group>(null);
   const torsoRef    = useRef<Mesh>(null);
   const leftArmRef  = useRef<Mesh>(null);
@@ -131,7 +130,7 @@ function MasterAvatar({
   const color = getAgentColor(agentId);
   // Use extended visual state glow if available, fall back to session status
   const glow  = (visualState && VISUAL_STATE_EMISSIVE[visualState]) ?? STATUS_EMISSIVE[status];
-  const haloColor = getMasterHalo(agentId);
+  const accentColor = getMasterAccent(agentId);
   const hairColor = getMasterHair(agentId);
   const skinColor = '#f5d5b0';
   const skinDark  = '#e8c49e';
@@ -179,12 +178,7 @@ function MasterAvatar({
         bodyRef.current.rotation.x = 0;
         bodyRef.current.rotation.y = currentFacingAngle;
       }
-      // Halo: very slow or stopped
-      if (haloRef.current) {
-        haloRef.current.rotation.z = t * 0.1;
-        haloRef.current.rotation.x = Math.PI / 2;
-      }
-      return; // Skip arms, legs, head, halo, visor — all frozen
+      return; // Skip arms, legs, head, visor — all frozen
     }
 
     // Facing direction
@@ -276,13 +270,6 @@ function MasterAvatar({
       }
     }
 
-    // Halo animation — rotation + vertical bob
-    if (haloRef.current) {
-      const haloSpeed = status === 'idle' ? 0.25 : 0.6;
-      haloRef.current.rotation.z = t * haloSpeed;
-      haloRef.current.rotation.x = Math.PI / 2 + Math.sin(t * 0.4) * 0.15;
-      haloRef.current.position.y = 1.80 + Math.sin(t * 0.8 + seed) * 0.1;
-    }
   });
 
   return (
@@ -573,20 +560,6 @@ function MasterAvatar({
           </mesh>
         </group>
 
-        {/* ── HALO / CORONA FLOTANTE ── */}
-        <group ref={haloRef} position={[0, 1.80, 0]}>
-          <mesh>
-            <torusGeometry args={[0.30, 0.025, 8, 36]} />
-            <meshStandardMaterial
-              color={haloColor}
-              emissive={haloColor}
-              emissiveIntensity={2.5}
-              transparent
-              opacity={0.85}
-            />
-          </mesh>
-        </group>
-
         {/* Status ring */}
         {isActive && (
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
@@ -599,7 +572,7 @@ function MasterAvatar({
         {speechBubble && <SpeechBubble3D message={speechBubble} />}
 
         {/* Label */}
-        <AgentLabel3D yPos={2.15} name={name} nameColor={color} subColor={haloColor} activityLabel={activityLabel} prefix="★" />
+        <AgentLabel3D yPos={2.15} name={name} nameColor={color} subColor={accentColor} activityLabel={activityLabel} prefix="★" />
       </group>
     </group>
   );
@@ -908,7 +881,6 @@ function SamanthaAvatarDetailed({
 }: Agent3DProps) {
   const groupRef    = useRef<Group>(null);
   const bodyRef     = useRef<Group>(null);
-  const haloRef     = useRef<Group>(null);
   const headRef     = useRef<Group>(null);
   const torsoRef    = useRef<Mesh>(null);
   const leftArmRef  = useRef<Mesh>(null);
@@ -920,7 +892,7 @@ function SamanthaAvatarDetailed({
 
   const color = getAgentColor(agentId);
   const glow  = (visualState && VISUAL_STATE_EMISSIVE[visualState]) ?? STATUS_EMISSIVE[status];
-  const haloColor = getMasterHalo(agentId);
+  const accentColor = getMasterAccent(agentId);
   const hairColor = getMasterHair(agentId);
 
   // Palette
@@ -975,12 +947,7 @@ function SamanthaAvatarDetailed({
         bodyRef.current.rotation.x = 0;
         bodyRef.current.rotation.y = currentFacingAngle;
       }
-      // Halo: very slow or stopped
-      if (haloRef.current) {
-        haloRef.current.rotation.z = t * 0.1;
-        haloRef.current.rotation.x = Math.PI / 2;
-      }
-      return; // Skip arms, legs, head, halo, visor — all frozen
+      return; // Skip arms, legs, head, visor — all frozen
     }
 
     // Facing
@@ -1073,13 +1040,6 @@ function SamanthaAvatarDetailed({
       }
     }
 
-    // Halo
-    if (haloRef.current) {
-      const haloSpeed = status === 'idle' ? 0.25 : 0.6;
-      haloRef.current.rotation.z = t * haloSpeed;
-      haloRef.current.rotation.x = Math.PI / 2 + Math.sin(t * 0.4) * 0.15;
-      haloRef.current.position.y = 1.85 + Math.sin(t * 0.8 + seed) * 0.1;
-    }
   });
 
   return (
@@ -1474,20 +1434,6 @@ function SamanthaAvatarDetailed({
           </mesh>
         </group>
 
-        {/* ══ HALO / FLOATING CROWN ══ */}
-        <group ref={haloRef} position={[0, 1.85, 0]}>
-          <mesh>
-            <torusGeometry args={[0.28, 0.022, 8, 36]} />
-            <meshStandardMaterial
-              color={haloColor}
-              emissive={haloColor}
-              emissiveIntensity={2.5}
-              transparent
-              opacity={0.85}
-            />
-          </mesh>
-        </group>
-
         {/* Status ring */}
         {isActive && (
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
@@ -1500,7 +1446,7 @@ function SamanthaAvatarDetailed({
         {speechBubble && <SpeechBubble3D message={speechBubble} />}
 
         {/* Label */}
-        <AgentLabel3D yPos={2.20} name={name} nameColor={color} subColor={haloColor} activityLabel={activityLabel} prefix="★" />
+        <AgentLabel3D yPos={2.20} name={name} nameColor={color} subColor={accentColor} activityLabel={activityLabel} prefix="★" />
       </group>
     </group>
   );

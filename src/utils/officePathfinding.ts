@@ -58,12 +58,13 @@ interface DoorWaypoint {
 }
 
 const DOORS: DoorWaypoint[] = [
-  { from: 'lobby', to: 'descanso', point: [-10, 0, 11] },
-  { from: 'lobby', to: 'comunicacion', point: [10, 0, 11] },
-  { from: 'descanso', to: 'comunicacion', point: [-4, 0, 6.5] },
-  { from: 'descanso', to: 'trabajo', point: [-9.5, 0, 2] },
-  { from: 'comunicacion', to: 'trabajo', point: [7.5, 0, 2] },
-  { from: 'trabajo', to: 'biblioteca', point: [-5, 0, -8] },
+  // Door coordinates centered in actual wall gaps (see OfficeLayout3D wall geometry)
+  { from: 'lobby', to: 'descanso', point: [-9, 0, 11] },        // gap x: -10 → -8
+  { from: 'lobby', to: 'comunicacion', point: [9, 0, 11] },     // gap x:   8 → 10
+  { from: 'descanso', to: 'comunicacion', point: [-4, 0, 6.5] },// gap z: 5.8 → 7.2
+  { from: 'descanso', to: 'trabajo', point: [-8.5, 0, 2] },     // gap x: -9.5 → -7.5
+  { from: 'comunicacion', to: 'trabajo', point: [8.5, 0, 2] },  // gap x:  7.5 → 9.5
+  { from: 'trabajo', to: 'biblioteca', point: [-4, 0, -8] },     // gap x:  -5 → -3
 ];
 
 const ADJ = new Map<RoomKey, { neighbor: RoomKey; door: [number, number, number] }[]>();
