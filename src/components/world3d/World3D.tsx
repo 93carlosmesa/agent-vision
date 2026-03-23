@@ -36,6 +36,8 @@ import { getWorldEnvironment, ROOM_CENTERS } from './officeTheme';
 import { findPath } from '../../utils/officePathfinding';
 import type { RoomKey } from '../../utils/officePathfinding';
 import type { ISession, AgentNameMap, IInteraction, SessionStatus } from '../../types';
+import { getLightingConfig } from '../../systems/DayNightCycle';
+import type { LightingConfig } from '../../systems/DayNightCycle';
 import {
   isOrchestrator,
   isCEO,
@@ -423,12 +425,38 @@ function useSpeechBubbles(
   return { bubbles, bubbleMap };
 }
 
+/* ── Day/Night cycle hook — updates every minute ── */
+function useDayNightCycle(): LightingConfig {
+  const [config, setConfig] = useState<LightingConfig>(() => getLightingConfig());
+
+  useEffect(() => {
+    // Align first tick to the next full minute
+    const now = new Date();
+    const msToNextMinute = (60 - now.getSeconds()) * 1000 - now.getMilliseconds();
+
+    const timeout = setTimeout(() => {
+      setConfig(getLightingConfig());
+      const interval = setInterval(() => {
+        setConfig(getLightingConfig());
+      }, 60_000);
+      return () => clearInterval(interval);
+    }, msToNextMinute);
+
+    return () => clearTimeout(timeout);
+  }, []);
+
+  return config;
+}
+
 /* ── Scene internals ── */
 function SceneContent({ sessions, agentNames, interactions = [], environmentId = 'office' }: World3DProps) {
   const environment = getWorldEnvironment(environmentId);
   const theme = environment.theme;
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const agentRoomsRef = useRef<Map<string, RoomKey>>(new Map());
+
+  // Day/night lighting (updates every minute, skipped on beach mode)
+  const dnc = useDayNightCycle();
 
   // State machine systems — stable refs (no React re-renders)
   const deskManagerRef = useRef<DeskManager>(new DeskManager());
@@ -679,33 +707,43 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
         </>
       ) : (
         <>
-          {/* Office — warm 4500K with skylights */}
-          <ambientLight intensity={0.9} color="#FFF0D8" />
+          {/* Office — day/night reactive lighting (Europe/Madrid clock) */}
+          {/* Ambient — time-of-day color */}
+          <ambientLight intensity={dnc.ambientIntensity} color={dnc.ambientColor} />
+
+          {/* Primary directional (sun / moon) */}
           <directionalLight
-            position={[5, 20, 10]}
-            intensity={2.5}
-            color="#FFF0D0"
+            position={dnc.sunPosition}
+            intensity={dnc.sunIntensity}
+            color={dnc.sunColor}
             castShadow
             shadow-mapSize-width={1024}
             shadow-mapSize-height={1024}
           />
-          <hemisphereLight color="#E8D8C8" groundColor="#A07850" intensity={0.7} />
-          <hemisphereLight color="#FFF8F0" groundColor="#D8C8B0" intensity={0.4} />
-          {/* Room-specific warm point lights */}
-          <pointLight position={[0, 8, 14]} intensity={1.0} color="#FFF0D0" distance={22} />
-          <pointLight position={[-14, 7, 6.5]} intensity={1.0} color="#FFE0B0" distance={18} />
-          <pointLight position={[10, 7, 6.5]} intensity={1.0} color="#FFE0B0" distance={20} />
-          <pointLight position={[0, 7, -3]} intensity={1.2} color="#FFF0D0" distance={25} />
-          <pointLight position={[-8, 6, -14]} intensity={0.8} color="#FFE8C0" distance={16} />
-          <pointLight position={[17, 6, -14]} intensity={0.8} color="#FFE0B0" distance={18} />
-          {/* Room center lights — subtle fill, LED strips do the heavy lifting */}
-          <pointLight position={[0, 4, -3]} color="#ffe8c0" intensity={0.18} distance={10} />
-          <pointLight position={[-7, 4, -14]} color="#e0e8ff" intensity={0.14} distance={9} />
-          <pointLight position={[10, 4, 6.5]} color="#ffe8c0" intensity={0.16} distance={9} />
-          <pointLight position={[-14, 4, 6.5]} color="#ffd4a0" intensity={0.14} distance={9} />
 
-          {/* Warm fog matching navy walls */}
-          <fog attach="fog" args={['#2D3A4A', 40, 85]} />
+          {/* Hemisphere — sky/ground gradient */}
+          <hemisphereLight color={dnc.hemiSkyColor} groundColor={dnc.hemiGroundColor} intensity={dnc.hemiIntensity} />
+
+          {/* Room-specific point lights — intensity scales with roomLightsIntensity */}
+          <pointLight position={[0, 8, 14]}   intensity={1.0 * dnc.roomLightsIntensity} color="#FFF0D0" distance={22} />
+          <pointLight position={[-14, 7, 6.5]} intensity={1.0 * dnc.roomLightsIntensity} color="#FFE0B0" distance={18} />
+          <pointLight position={[10, 7, 6.5]}  intensity={1.0 * dnc.roomLightsIntensity} color="#FFE0B0" distance={20} />
+          <pointLight position={[0, 7, -3]}    intensity={1.2 * dnc.roomLightsIntensity} color="#FFF0D0" distance={25} />
+          <pointLight position={[-8, 6, -14]}  intensity={0.8 * dnc.roomLightsIntensity} color="#FFE8C0" distance={16} />
+          <pointLight position={[17, 6, -14]}  intensity={0.8 * dnc.roomLightsIntensity} color="#FFE0B0" distance={18} />
+
+          {/* Desk lamp glow — warm orange, active at night/late_evening */}
+          {dnc.deskLampIntensity > 0 && (
+            <>
+              <pointLight position={[0, 2, -3]}    intensity={dnc.deskLampIntensity * 0.6} color={dnc.deskLampColor} distance={8} />
+              <pointLight position={[-7, 2, -14]}  intensity={dnc.deskLampIntensity * 0.5} color={dnc.deskLampColor} distance={7} />
+              <pointLight position={[10, 2, 6.5]}  intensity={dnc.deskLampIntensity * 0.5} color={dnc.deskLampColor} distance={7} />
+              <pointLight position={[-14, 2, 6.5]} intensity={dnc.deskLampIntensity * 0.4} color={dnc.deskLampColor} distance={6} />
+            </>
+          )}
+
+          {/* Time-reactive fog */}
+          <fog attach="fog" args={[dnc.fogColor, dnc.fogNear, dnc.fogFar]} />
 
           {/* Environment map for reflections */}
           <Environment preset="city" />
@@ -775,15 +813,26 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
 
 export function World3D({ sessions, agentNames, interactions, environmentId = 'office' }: World3DProps) {
   const environment = getWorldEnvironment(environmentId);
+  const dnc = useDayNightCycle();
+
+  // Inject CSS variable so the rest of the UI can react to day/night
+  useEffect(() => {
+    if (environment.beachMode) return;
+    document.documentElement.setAttribute('data-time-of-day', dnc.timeOfDay);
+    document.documentElement.style.setProperty('--dnc-sky', dnc.skyColor);
+    document.documentElement.style.setProperty('--dnc-ambient', dnc.ambientColor);
+  }, [dnc, environment.beachMode]);
+
+  const bgColor = environment.beachMode ? '#87CEEB' : dnc.skyColor;
 
   return (
-    <div style={{ width: '100%', height: '100%', background: environment.theme.background, position: 'relative' }}>
+    <div style={{ width: '100%', height: '100%', background: bgColor, position: 'relative' }}>
       <Canvas
         camera={{ position: [0, 25, 30], fov: 50 }}
         dpr={[1, 1.5]}
         performance={{ min: 0.5 }}
         gl={{ antialias: true, alpha: false }}
-        scene={{ background: environment.beachMode ? new THREE.Color('#87CEEB') : undefined }}
+        scene={{ background: environment.beachMode ? new THREE.Color('#87CEEB') : new THREE.Color(dnc.skyColor) }}
         style={{ width: '100%', height: '100%' }}
       >
         <SceneContent sessions={sessions} agentNames={agentNames} interactions={interactions} environmentId={environmentId} />

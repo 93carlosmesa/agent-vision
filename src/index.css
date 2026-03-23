@@ -1157,3 +1157,64 @@ body {
   overflow-x: auto;
   white-space: pre;
 }
+
+/* ── Day/Night Cycle — UI chrome adapts to Madrid time ── */
+
+/* CSS variables set dynamically by World3D.tsx via data-time-of-day attribute */
+:root {
+  --dnc-sky: #1a2030;
+  --dnc-ambient: #fff0d8;
+}
+
+/* Night (00:00–06:00): darkest UI chrome */
+[data-time-of-day="night"] {
+  --bg-base: #040609;
+  --bg-surface: #080c12;
+  --bg-elevated: #0e1218;
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --text-secondary: #7090b0;
+  --text-muted: #354560;
+}
+
+/* Early morning (06:00–09:00): warm dark with orange tint */
+[data-time-of-day="early_morning"] {
+  --bg-base: #0c0804;
+  --bg-surface: #100e08;
+  --bg-elevated: #181408;
+  --border-subtle: rgba(255, 180, 80, 0.10);
+  --text-secondary: #a09060;
+  --text-muted: #604828;
+}
+
+/* Day (09:00–18:00): default dark theme (no change needed) */
+[data-time-of-day="day"] {
+  /* Uses default :root values */
+}
+
+/* Evening (18:00–21:00): golden amber tint */
+[data-time-of-day="evening"] {
+  --bg-base: #0a0604;
+  --bg-surface: #100906;
+  --bg-elevated: #180e06;
+  --border-subtle: rgba(255, 160, 60, 0.10);
+  --text-secondary: #9a8060;
+  --text-muted: #584030;
+}
+
+/* Late evening (21:00–00:00): dim, cozy */
+[data-time-of-day="late_evening"] {
+  --bg-base: #070810;
+  --bg-surface: #0c0e18;
+  --bg-elevated: #12141e;
+  --border-subtle: rgba(100, 120, 200, 0.08);
+  --text-secondary: #6070a0;
+  --text-muted: #303850;
+}
+
+/* Smooth CSS transitions for all surfaces */
+body, .app-header, .sidebar, .agent-card, .squad-panel, .timeline-panel {
+  transition:
+    background-color 3s ease,
+    border-color 3s ease,
+    color 2s ease;
+}
