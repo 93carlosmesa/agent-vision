@@ -26,6 +26,20 @@ export interface DeskOccupancy {
 }
 
 /**
+ * Samantha's permanent personal desk — CEO workstation in Sala de Trabajo.
+ * Always reserved for agentId 'main' or 'samantha'. Other agents cannot claim it.
+ */
+export const SAMANTHA_DESK_ID = 'samantha-desk';
+export const SAMANTHA_DESK_POSITION: [number, number, number] = [-2, 0, -12];
+
+export const SAMANTHA_DESK: Desk = {
+  id: SAMANTHA_DESK_ID,
+  position: SAMANTHA_DESK_POSITION,
+  facingAngle: Math.PI,
+  room: 'trabajo',
+};
+
+/**
  * Explicit desk positions in Sala de Trabajo.
  * Layout: 4 cols × 5 rows starting at (-16, 0, -6), dx=8, dz=2.2
  * Chair is at z+0.95, so agent sits facing the screen (rotation Math.PI)
@@ -64,7 +78,7 @@ const BIBLIOTECA_DESKS: Desk[] = [-17, -12, -7, -2].map((x, i) => ({
   room: 'biblioteca',
 }));
 
-export const ALL_DESKS: Desk[] = [...TRABAJO_DESKS, ...BIBLIOTECA_DESKS];
+export const ALL_DESKS: Desk[] = [SAMANTHA_DESK, ...TRABAJO_DESKS, ...BIBLIOTECA_DESKS];
 
 /** Distance between two 3D points (ignoring Y) */
 function dist2D(a: [number, number, number], b: [number, number, number]): number {
@@ -89,6 +103,12 @@ export class DeskManager {
         reservedAt: null,
       });
     }
+    // Permanently reserve Samantha's desk
+    this.occupancy.set(SAMANTHA_DESK_ID, {
+      deskId: SAMANTHA_DESK_ID,
+      agentId: 'main',
+      reservedAt: Date.now(),
+    });
   }
 
   /** Get all desks */
@@ -126,8 +146,10 @@ export class DeskManager {
     this.releaseDesk(agentId);
 
     // Find free desks, sorted by distance
+    // Never let other agents claim Samantha's desk
+    const isSamantha = agentId === 'main' || agentId === 'samantha';
     const freeDesks = ALL_DESKS
-      .filter(d => this.isFree(d.id))
+      .filter(d => this.isFree(d.id) && (isSamantha || d.id !== SAMANTHA_DESK_ID))
       .sort((a, b) => dist2D(a.position, fromPosition) - dist2D(b.position, fromPosition));
 
     if (freeDesks.length === 0) return null;

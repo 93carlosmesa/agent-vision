@@ -33,6 +33,8 @@ import {
   ExteriorFurniture,
 } from './OfficeFurniture3D';
 import { getWorldEnvironment, ROOM_CENTERS } from './officeTheme';
+import { SamanthaDesk } from './SamanthaDesk';
+import { SystemMetricsPanel } from './SystemMetricsPanel';
 import { findPath } from '../../utils/officePathfinding';
 import type { RoomKey } from '../../utils/officePathfinding';
 import type { ISession, AgentNameMap, IInteraction, SessionStatus } from '../../types';
@@ -788,6 +790,10 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
       {beams.map((b) => (
         <InteractionBeam3D key={b.id} from={b.from} to={b.to} type={b.type} />
       ))}
+
+      {/* Samantha's personal CEO desk — always at fixed position */}
+      <SamanthaDesk />
+      <SystemMetricsPanel />
 
       {/* Skill folders in Biblioteca */}
       <SkillFolders3D />

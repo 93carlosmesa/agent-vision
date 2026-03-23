@@ -21,6 +21,7 @@ import type { AgentVisualState, AgentStateMetrics } from '../types/AgentState';
 import { getIdleZone } from '../types/AgentState';
 import type { DeskManager } from './DeskManager';
 import type { Desk } from './DeskManager';
+import { SAMANTHA_DESK, SAMANTHA_DESK_ID } from './DeskManager';
 import type { RoomKey } from '../utils/officePathfinding';
 
 export interface AgentStateInput {
@@ -152,8 +153,17 @@ export class AgentStateMachine {
       let seated = false;
 
       // Desk management based on state transitions
+      const isSamantha = input.agentId === 'main' || input.agentId === 'samantha';
       if (newState === 'running') {
-        if (prev === 'using_skill') {
+        if (isSamantha) {
+          // Samantha always goes to her own dedicated desk
+          desk = SAMANTHA_DESK;
+          // Ensure DeskManager reflects Samantha's occupancy (re-claim if needed)
+          const occupiedDesk = this.deskManager.getDeskForAgent(input.agentId);
+          if (!occupiedDesk || occupiedDesk.id !== SAMANTHA_DESK_ID) {
+            this.deskManager.claimNearestDesk(input.agentId, SAMANTHA_DESK.position);
+          }
+        } else if (prev === 'using_skill') {
           // Return to previously reserved desk
           desk = this.skillReturnDesks.get(input.agentId)
             ?? this.deskManager.getDeskForAgent(input.agentId)
