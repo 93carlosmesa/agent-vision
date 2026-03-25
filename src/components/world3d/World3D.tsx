@@ -19,7 +19,7 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { CameraControls3D, CameraHUD } from './CameraControls3D';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import { AvatarVisibilitySystem } from './AvatarVisibilitySystem';
-import { SkillFolders3D } from './Folder3D';
+// import { SkillFolders3D } from './Folder3D'; // removed — folders were floating mid-room
 import { InteractionBeam3D } from './InteractionBeam3D';
 import { OfficeLayout3D } from './OfficeLayout3D';
 import {
@@ -408,8 +408,7 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
       <SamanthaDesk />
       <SystemMetricsPanel />
 
-      {/* Skill folders in Biblioteca */}
-      <SkillFolders3D />
+      {/* Skill folders removed — bookshelves visible via BibliotecaFurniture */}
 
       {/* Controls */}
       <OrbitControls
