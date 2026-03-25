@@ -40,7 +40,7 @@ function getTargetForStatus(
   seed: number,
 ): { pos: [number, number, number]; facingAngle: number; room: RoomKey } {
   if (status === 'running' && isCEO(agentId)) {
-    return { pos: SAMANTHA_DESK.position, facingAngle: SAMANTHA_DESK.facingAngle, room: 'trabajo' };
+    return { pos: SAMANTHA_DESK.position, facingAngle: SAMANTHA_DESK.facingAngle, room: 'biblioteca' };
   }
   const room = getRoomForStatus(status === 'running' ? 'running' : status === 'waiting' ? 'waiting' : 'idle');
   const seat = getRandomSeat(room, seed);

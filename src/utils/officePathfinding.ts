@@ -43,12 +43,10 @@ export const FURNITURE_OBSTACLES: Obstacle[] = [
   // Biblioteca
   { cx: -20, cz: -18, hw: 2.8, hd: 0.45 },
   { cx: -12.5, cz: -18, hw: 2.8, hd: 0.45 },
-  { cx: -5, cz: -18, hw: 2.8, hd: 0.45 },
-  { cx: 2.5, cz: -18, hw: 2.8, hd: 0.45 },
-  { cx: -17, cz: -12, hw: 0.95, hd: 0.45 },
-  { cx: -12, cz: -12, hw: 0.95, hd: 0.45 },
-  { cx: -7, cz: -12, hw: 0.95, hd: 0.45 },
-  { cx: -2, cz: -12, hw: 0.95, hd: 0.45 },
+  { cx: -20, cz: -12, hw: 0.95, hd: 0.45 },
+  { cx: -15, cz: -12, hw: 0.95, hd: 0.45 },
+  { cx: -10, cz: -12, hw: 0.95, hd: 0.45 },
+  { cx: 3, cz: -14, hw: 0.95, hd: 0.45 },  // Samantha desk in Despacho CEO
 ];
 
 interface DoorWaypoint {

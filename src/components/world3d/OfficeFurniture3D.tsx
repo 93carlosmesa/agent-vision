@@ -868,12 +868,12 @@ export function BibliotecaFurniture({ environment }: { environment: WorldEnviron
 
   return (
     <group>
+      {/* Bookshelves — left side (Biblioteca only) */}
       <Bookshelf position={[-20, 0, -18]} width={5.5} />
       <Bookshelf position={[-12.5, 0, -18]} width={5.5} />
-      <Bookshelf position={[-5, 0, -18]} width={5.5} />
-      <Bookshelf position={[2.5, 0, -18]} width={5.5} />
 
-      {[-17, -12, -7, -2].map((x) => (
+      {/* Biblioteca desks — left zone only */}
+      {[-20, -15, -10].map((x) => (
         <group key={x}>
           <WoodDesk position={[x, 0, -12]} rotation={0} w={1.6} />
           <IMac position={[x, 0.76, -12.08]} />
@@ -881,8 +881,10 @@ export function BibliotecaFurniture({ environment }: { environment: WorldEnviron
         </group>
       ))}
 
-      <pointLight position={[-12, 2.8, -12]} intensity={1.8} color="#FFF0D0" distance={8} />
-      <pointLight position={[-2, 2.8, -12]} intensity={1.8} color="#FFF0D0" distance={8} />
+      <pointLight position={[-15, 2.8, -12]} intensity={1.8} color="#FFF0D0" distance={8} />
+
+      {/* Despacho CEO — ambient purple light */}
+      <pointLight position={[3, 2.5, -14]} intensity={1.0} color="#a855f7" distance={8} />
     </group>
   );
 }

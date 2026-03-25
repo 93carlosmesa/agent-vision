@@ -291,7 +291,8 @@ export function OfficeLayout3D({ environment }: { environment: WorldEnvironment 
         <RoomFloor position={[-14, 0.04, 6.5]} size={[20, 9]} color={theme.roomFloors.descanso} />
         <RoomFloor position={[10, 0.04, 6.5]} size={[28, 9]} color={theme.roomFloors.comunicacion} />
         <RoomFloor position={[0, 0.04, -3]} size={[48, 10]} color={theme.roomFloors.trabajo} />
-        <RoomFloor position={[-7, 0.04, -14]} size={[34, 12]} color={theme.roomFloors.biblioteca} />
+        <RoomFloor position={[-15, 0.04, -14]} size={[18, 12]} color={theme.roomFloors.biblioteca} />
+      <RoomFloor position={[2, 0.04, -14]} size={[16, 12]} color="#1a1030" />
         <RoomFloor position={[17, 0.04, -14]} size={[14, 12]} color={theme.roomFloors.exterior} />
 
         {/* Tiki hut over break/relax area */}
@@ -313,7 +314,8 @@ export function OfficeLayout3D({ environment }: { environment: WorldEnvironment 
         <RoomLabel position={[-14, 3.7, 6.5]} label="Beach Lounge" color={theme.accent.amber} />
         <RoomLabel position={[10, 3.7, 6.5]} label="Meeting Palapa" color={theme.accent.mint} />
         <RoomLabel position={[0, 3.7, -3]} label="Beach Work Hub" color={theme.accent.violet} />
-        <RoomLabel position={[-7, 3.7, -14]} label="Quiet Cove" color="#E8D8B0" />
+        <RoomLabel position={[-15, 3.7, -14]} label="Quiet Cove" color="#E8D8B0" />
+        <RoomLabel position={[2, 3.7, -14]} label="CEO Cove" color="#c084fc" />
         <RoomLabel position={[17, 3.7, -14]} label="Tiki Terrace" color="#80D8A0" />
       </group>
     );
@@ -330,7 +332,8 @@ export function OfficeLayout3D({ environment }: { environment: WorldEnvironment 
       <RoomFloor position={[-14, 0.005, 6.5]} size={[20, 9]} color={theme.roomFloors.descanso} />
       <RoomFloor position={[10, 0.005, 6.5]} size={[28, 9]} color={theme.roomFloors.comunicacion} />
       <RoomFloor position={[0, 0.005, -3]} size={[48, 10]} color={theme.roomFloors.trabajo} />
-      <RoomFloor position={[-7, 0.005, -14]} size={[34, 12]} color={theme.roomFloors.biblioteca} />
+      <RoomFloor position={[-15, 0.005, -14]} size={[18, 12]} color={theme.roomFloors.biblioteca} />
+      <RoomFloor position={[2, 0.005, -14]} size={[16, 12]} color="#1a1030" />
       <RoomFloor position={[17, 0.005, -14]} size={[14, 12]} color={theme.roomFloors.exterior} />
 
       {/* Outer walls — navy blue */}
@@ -360,6 +363,10 @@ export function OfficeLayout3D({ environment }: { environment: WorldEnvironment 
 
       <Wall position={[-14, wy, -8]} size={[18, WALL_H]} color={theme.walls.inner} />
       <Wall position={[1, wy, -8]} size={[8, WALL_H]} color={theme.walls.inner} />
+
+      {/* Dividing wall: Biblioteca | Despacho CEO (gap at z=-11 to z=-13 for door) */}
+      <Wall position={[-5, wy, -16.5]} size={[7, WALL_H]} rotation={Math.PI / 2} color={theme.walls.inner} />
+      <Wall position={[-5, wy, -9.5]} size={[3, WALL_H]} rotation={Math.PI / 2} color={theme.walls.inner} />
       <GlassWall position={[12, 1.2, -8]} size={[10, 1.4]} color={theme.walls.glass} />
 
       {/* White baseboards along inner walls */}
@@ -390,6 +397,8 @@ export function OfficeLayout3D({ environment }: { environment: WorldEnvironment 
         { position: [16, wy, 2], width: 13, height: WALL_H, rotation: 0 },
         { position: [-14, wy, -8], width: 18, height: WALL_H, rotation: 0 },
         { position: [1, wy, -8], width: 8, height: WALL_H, rotation: 0 },
+        { position: [-5, wy, -16.5], width: 7, height: WALL_H, rotation: Math.PI / 2 },
+        { position: [-5, wy, -9.5], width: 3, height: WALL_H, rotation: Math.PI / 2 },
         { position: [12, 1.2, -8], width: 10, height: 1.4, rotation: 0 },
       ]} />
 
@@ -398,7 +407,8 @@ export function OfficeLayout3D({ environment }: { environment: WorldEnvironment 
       <RoomLabel position={[-14, 3.7, 6.5]} label="Sala de Descanso" color={theme.accent.amber} />
       <RoomLabel position={[10, 3.7, 6.5]} label="Comunicacion & Reuniones" color={theme.accent.mint} />
       <RoomLabel position={[0, 3.7, -3]} label="Work Hub" color={theme.accent.violet} />
-      <RoomLabel position={[-7, 3.7, -14]} label="Biblioteca / Quiet Room" color="#E0D2A8" />
+      <RoomLabel position={[-15, 3.7, -14]} label="Biblioteca" color="#E0D2A8" />
+      <RoomLabel position={[2, 3.7, -14]} label="Despacho CEO" color="#c084fc" />
       <RoomLabel position={[17, 3.7, -14]} label="Terraza Exterior" color="#9EF3BE" />
     </group>
   );

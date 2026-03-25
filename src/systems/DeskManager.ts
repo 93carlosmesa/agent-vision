@@ -30,13 +30,13 @@ export interface DeskOccupancy {
  * Always reserved for agentId 'main' or 'samantha'. Other agents cannot claim it.
  */
 export const SAMANTHA_DESK_ID = 'samantha-desk';
-export const SAMANTHA_DESK_POSITION: [number, number, number] = [-2, 0, -12];
+export const SAMANTHA_DESK_POSITION: [number, number, number] = [3, 0, -14];
 
 export const SAMANTHA_DESK: Desk = {
   id: SAMANTHA_DESK_ID,
   position: SAMANTHA_DESK_POSITION,
   facingAngle: Math.PI,
-  room: 'trabajo',
+  room: 'biblioteca',  // Despacho CEO is within biblioteca zone for pathfinding
 };
 
 /**
@@ -71,7 +71,7 @@ const TRABAJO_DESKS: Desk[] = (() => {
 /**
  * Desk positions in Biblioteca (4 desks for overflow / library work)
  */
-const BIBLIOTECA_DESKS: Desk[] = [-17, -12, -7, -2].map((x, i) => ({
+const BIBLIOTECA_DESKS: Desk[] = [-20, -15, -10].map((x, i) => ({
   id: `biblioteca-${i}`,
   position: [x, 0, -10.9],  // chair at z=-10.9 (desk at -12, chair offset +1.1)
   facingAngle: Math.PI,
