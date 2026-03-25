@@ -28,8 +28,9 @@ interface RawEvent {
 
 const SNIPPET_MAX_LEN = 180;
 const RECENT_EVENTS_COUNT = 5;
-const RUNNING_THRESHOLD_MS = 45_000;   // last event < 45s ago → running (covers slow tool calls)
-const WAITING_THRESHOLD_MS = 120_000;  // last event < 2min ago → waiting
+const RUNNING_THRESHOLD_TOOL_MS = 45_000;  // tool_result: Claude still processing → running up to 45s
+const RUNNING_THRESHOLD_REPLY_MS = 6_000;  // assistant reply sent: go to waiting after 6s
+const WAITING_THRESHOLD_MS = 120_000;      // session alive but inactive → waiting up to 2min
 
 type MessageContent = Array<{ type: string; text?: string; thinking?: string; name?: string }>;
 
@@ -47,17 +48,20 @@ function extractSnippet(content: MessageContent | undefined): string {
 function deriveStatus(lastRole: string, lastTimestampMs: number): SessionStatus {
   const ageMs = Date.now() - lastTimestampMs;
 
-  // Roles that indicate Claude is actively processing
-  const isActiveRole = lastRole === 'assistant' || lastRole === 'tool_result';
+  if (lastRole === 'tool_result') {
+    // Claude is mid-execution (tools running) → running until 45s stale
+    return ageMs < RUNNING_THRESHOLD_TOOL_MS ? 'running' : 'waiting';
+  }
 
-  if (ageMs < RUNNING_THRESHOLD_MS) {
-    // Recent event: assistant/tool_result = running, user = waiting (for Claude to respond)
-    return isActiveRole ? 'running' : 'waiting';
+  if (lastRole === 'assistant') {
+    // Claude finished replying → show running for ~6s, then switch to waiting
+    if (ageMs < RUNNING_THRESHOLD_REPLY_MS) return 'running';
+    if (ageMs < WAITING_THRESHOLD_MS) return 'waiting';
+    return 'idle';
   }
-  if (ageMs < WAITING_THRESHOLD_MS) {
-    // Moderately recent: still considered waiting (agent session alive)
-    return 'waiting';
-  }
+
+  // lastRole === 'user' → waiting for Claude to respond
+  if (ageMs < WAITING_THRESHOLD_MS) return 'waiting';
   return 'idle';
 }
 
