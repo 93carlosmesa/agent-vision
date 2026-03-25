@@ -7,25 +7,22 @@ import type { WorldEnvironment } from './officeTheme';
    SHARED FURNITURE PRIMITIVES
    ═══════════════════════════════════════════════════════════════════ */
 
-function Plant({ position, seed = 0, scale = 1, color = '#2D7E58' }: {
+function Plant({ position, seed: _seed = 0, scale = 1, color = '#2D7E58' }: {
   position: [number, number, number]; seed?: number; scale?: number; color?: string;
 }) {
-  const ref = useRef<Group>(null);
-  useFrame(({ clock }) => {
-    if (ref.current) ref.current.rotation.z = Math.sin(clock.elapsedTime * 0.55 + seed) * 0.02;
-  });
+  // Static plant — removed per-frame useFrame rotation (imperceptible sway, saves CPU)
   return (
-    <group position={position} scale={scale} ref={ref}>
+    <group position={position} scale={scale}>
       <mesh position={[0, 0.12, 0]}>
-        <cylinderGeometry args={[0.12, 0.1, 0.24, 12]} />
+        <cylinderGeometry args={[0.12, 0.1, 0.24, 8]} />
         <meshStandardMaterial color="#D2B48C" roughness={0.85} />
       </mesh>
       <mesh position={[0, 0.55, 0]}>
-        <sphereGeometry args={[0.22, 10, 10]} />
+        <sphereGeometry args={[0.22, 8, 8]} />
         <meshStandardMaterial color={color} roughness={0.85} />
       </mesh>
       <mesh position={[0.12, 0.72, 0]}>
-        <sphereGeometry args={[0.15, 10, 10]} />
+        <sphereGeometry args={[0.15, 8, 8]} />
         <meshStandardMaterial color="#39A06A" roughness={0.85} />
       </mesh>
     </group>
@@ -162,7 +159,7 @@ function CoffeeTable({ position }: { position: [number, number, number] }) {
   );
 }
 
-/** Bookshelf with colorful book blocks */
+/** Bookshelf with colorful book blocks (optimized: fewer books, wider spines) */
 function Bookshelf({ position, width = 3 }: {
   position: [number, number, number]; width?: number;
 }) {
@@ -188,16 +185,17 @@ function Bookshelf({ position, width = 3 }: {
           <meshStandardMaterial color="#7B6050" roughness={0.7} />
         </mesh>
       ))}
-      {/* Colorful books on each shelf */}
+      {/* Books — wider spines (0.25 instead of 0.12), ~60% fewer meshes but same visual density */}
       {[0.25, 0.8, 1.35, 1.9].map((shelfY, si) => {
-        const numBooks = Math.floor(width / 0.12);
+        const bookW = 0.25;
+        const numBooks = Math.floor((width - 0.3) / bookW);
         return Array.from({ length: numBooks }).map((_, bi) => {
-          const bx = -width / 2 + 0.15 + bi * 0.12;
+          const bx = -width / 2 + 0.15 + bi * bookW + bookW / 2;
           const bh = 0.3 + Math.sin(bi * 3 + si) * 0.08;
           const color = bookColors[(bi + si * 3) % bookColors.length];
           return (
             <mesh key={`${si}-${bi}`} position={[bx, shelfY + bh / 2 + 0.02, 0]}>
-              <boxGeometry args={[0.08, bh, 0.28]} />
+              <boxGeometry args={[bookW - 0.03, bh, 0.28]} />
               <meshStandardMaterial color={color} roughness={0.8} />
             </mesh>
           );

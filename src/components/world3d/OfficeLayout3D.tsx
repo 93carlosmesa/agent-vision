@@ -1,6 +1,7 @@
-import React, { useRef } from 'react';
+import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
+import * as THREE from 'three';
 import type { Mesh } from 'three';
 import type { WorldEnvironment } from './officeTheme';
 
@@ -96,14 +97,13 @@ function RoomLabel({ position, label, color }: {
   );
 }
 
-/* ── Parquet basketweave pattern for office ── */
+/* ── Parquet basketweave pattern for office (optimized: instanced mesh) ── */
 function ParquetFloor({ position, size }: {
   position: [number, number, number];
   size: [number, number];
 }) {
-  const tiles: React.JSX.Element[] = [];
-  const tileW = 2;
-  const tileD = 2;
+  const tileW = 4;
+  const tileD = 4;
   const colorA = '#A07850';
   const colorB = '#8B6538';
 
@@ -112,23 +112,55 @@ function ParquetFloor({ position, size }: {
   const ox = position[0] - size[0] / 2 + tileW / 2;
   const oz = position[2] - size[1] / 2 + tileD / 2;
 
+  // Split tiles into two instanced meshes by color
+  const tilesA: [number, number, number][] = [];
+  const tilesB: [number, number, number][] = [];
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      const isAlt = (r + c) % 2 === 0;
-      tiles.push(
-        <mesh
-          key={`pq-${r}-${c}`}
-          rotation={[-Math.PI / 2, 0, 0]}
-          position={[ox + c * tileW, position[1], oz + r * tileD]}
-          receiveShadow
-        >
-          <planeGeometry args={[tileW - 0.04, tileD - 0.04]} />
-          <meshStandardMaterial color={isAlt ? colorA : colorB} roughness={0.75} metalness={0.02} />
-        </mesh>
-      );
+      const pos: [number, number, number] = [ox + c * tileW, position[1], oz + r * tileD];
+      if ((r + c) % 2 === 0) tilesA.push(pos);
+      else tilesB.push(pos);
     }
   }
-  return <group>{tiles}</group>;
+
+  return (
+    <group>
+      {/* Color A tiles — single instanced mesh */}
+      <instancedMesh args={[undefined, undefined, tilesA.length]} receiveShadow
+        ref={(mesh) => {
+          if (!mesh) return;
+          const dummy = new THREE.Object3D();
+          tilesA.forEach((p, i) => {
+            dummy.position.set(p[0], p[1], p[2]);
+            dummy.rotation.set(-Math.PI / 2, 0, 0);
+            dummy.updateMatrix();
+            mesh.setMatrixAt(i, dummy.matrix);
+          });
+          mesh.instanceMatrix.needsUpdate = true;
+        }}
+      >
+        <planeGeometry args={[tileW - 0.06, tileD - 0.06]} />
+        <meshStandardMaterial color={colorA} roughness={0.75} metalness={0.02} />
+      </instancedMesh>
+      {/* Color B tiles — single instanced mesh */}
+      <instancedMesh args={[undefined, undefined, tilesB.length]} receiveShadow
+        ref={(mesh) => {
+          if (!mesh) return;
+          const dummy = new THREE.Object3D();
+          tilesB.forEach((p, i) => {
+            dummy.position.set(p[0], p[1], p[2]);
+            dummy.rotation.set(-Math.PI / 2, 0, 0);
+            dummy.updateMatrix();
+            mesh.setMatrixAt(i, dummy.matrix);
+          });
+          mesh.instanceMatrix.needsUpdate = true;
+        }}
+      >
+        <planeGeometry args={[tileW - 0.06, tileD - 0.06]} />
+        <meshStandardMaterial color={colorB} roughness={0.75} metalness={0.02} />
+      </instancedMesh>
+    </group>
+  );
 }
 
 
@@ -377,29 +409,12 @@ export function OfficeLayout3D({ environment }: { environment: WorldEnvironment 
       <Baseboard position={[0, 0.075, 2]} width={15} color={theme.walls.baseboard} />
       <Baseboard position={[16, 0.075, 2]} width={13} color={theme.walls.baseboard} />
 
-      {/* LED strip lights on every wall */}
+      {/* LED accent strips — reduced to 4 key walls for ambient glow (was 19, massive perf drain) */}
       <LEDStrips walls={[
-        /* Outer walls */
         { position: [0, wy, 18], width: 48, height: WALL_H, rotation: 0 },
-        { position: [-7, wy, -20], width: 34, height: WALL_H, rotation: 0 },
-        { position: [17, 1.1, -20], width: 14, height: 1.2, rotation: 0 },
-        { position: [-24, wy, -1], width: 38, height: WALL_H, rotation: Math.PI / 2 },
-        { position: [24, wy, 4.5], width: 27, height: WALL_H, rotation: Math.PI / 2 },
-        { position: [24, 1.2, -13], width: 12, height: 1.4, rotation: Math.PI / 2 },
-        /* Inner walls */
-        { position: [-17, wy, 11], width: 14, height: WALL_H, rotation: 0 },
-        { position: [0, wy, 11], width: 16, height: WALL_H, rotation: 0 },
-        { position: [17, wy, 11], width: 14, height: WALL_H, rotation: 0 },
-        { position: [-4, wy, 9], width: 3.6, height: WALL_H, rotation: Math.PI / 2 },
-        { position: [-4, wy, 4], width: 3.6, height: WALL_H, rotation: Math.PI / 2 },
-        { position: [-16, wy, 2], width: 13, height: WALL_H, rotation: 0 },
         { position: [0, wy, 2], width: 15, height: WALL_H, rotation: 0 },
-        { position: [16, wy, 2], width: 13, height: WALL_H, rotation: 0 },
         { position: [-14, wy, -8], width: 18, height: WALL_H, rotation: 0 },
-        { position: [1, wy, -8], width: 8, height: WALL_H, rotation: 0 },
-        { position: [-5, wy, -16.5], width: 7, height: WALL_H, rotation: Math.PI / 2 },
-        { position: [-5, wy, -9.5], width: 3, height: WALL_H, rotation: Math.PI / 2 },
-        { position: [12, 1.2, -8], width: 10, height: 1.4, rotation: 0 },
+        { position: [17, 1.1, -20], width: 14, height: 1.2, rotation: 0 },
       ]} />
 
       {/* Room labels */}

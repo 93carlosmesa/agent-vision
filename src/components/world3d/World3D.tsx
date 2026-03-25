@@ -333,20 +333,10 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
             shadow-mapSize-height={1024}
           />
           <hemisphereLight color={dnc.hemiSkyColor} groundColor={dnc.hemiGroundColor} intensity={dnc.hemiIntensity} />
-          <pointLight position={[0, 8, 14]}   intensity={1.0 * dnc.roomLightsIntensity} color="#FFF0D0" distance={22} />
-          <pointLight position={[-14, 7, 6.5]} intensity={1.0 * dnc.roomLightsIntensity} color="#FFE0B0" distance={18} />
-          <pointLight position={[10, 7, 6.5]}  intensity={1.0 * dnc.roomLightsIntensity} color="#FFE0B0" distance={20} />
-          <pointLight position={[0, 7, -3]}    intensity={1.2 * dnc.roomLightsIntensity} color="#FFF0D0" distance={25} />
-          <pointLight position={[-8, 6, -14]}  intensity={0.8 * dnc.roomLightsIntensity} color="#FFE8C0" distance={16} />
-          <pointLight position={[17, 6, -14]}  intensity={0.8 * dnc.roomLightsIntensity} color="#FFE0B0" distance={18} />
-          {dnc.deskLampIntensity > 0 && (
-            <>
-              <pointLight position={[0, 2, -3]}    intensity={dnc.deskLampIntensity * 0.6} color={dnc.deskLampColor} distance={8} />
-              <pointLight position={[-7, 2, -14]}  intensity={dnc.deskLampIntensity * 0.5} color={dnc.deskLampColor} distance={7} />
-              <pointLight position={[10, 2, 6.5]}  intensity={dnc.deskLampIntensity * 0.5} color={dnc.deskLampColor} distance={7} />
-              <pointLight position={[-14, 2, 6.5]} intensity={dnc.deskLampIntensity * 0.4} color={dnc.deskLampColor} distance={6} />
-            </>
-          )}
+          {/* Reduced from 6+4 pointLights to 3 strategic room lights — major perf win */}
+          <pointLight position={[0, 8, 6]}    intensity={1.4 * dnc.roomLightsIntensity} color="#FFF0D0" distance={35} />
+          <pointLight position={[-12, 7, -8]} intensity={1.0 * dnc.roomLightsIntensity} color="#FFE8C0" distance={25} />
+          <pointLight position={[14, 7, -8]}  intensity={1.0 * dnc.roomLightsIntensity} color="#FFE0B0" distance={25} />
           <fog attach="fog" args={[dnc.fogColor, dnc.fogNear, dnc.fogFar]} />
           <Environment preset="city" />
         </>
@@ -358,17 +348,17 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
         <meshStandardMaterial color={theme.floorBase} roughness={0.85} />
       </mesh>
 
-      {/* Grid overlay — office uses larger cells for perf, beach fine-grained */}
+      {/* Grid overlay */}
       <Grid
         position={[0, 0, 0]}
         args={[76, 70]}
-        cellSize={isBeach ? 2 : 4}
-        cellThickness={isBeach ? 0.12 : 0.15}
+        cellSize={isBeach ? 2 : 6}
+        cellThickness={isBeach ? 0.12 : 0.12}
         cellColor={theme.gridCell}
-        sectionSize={isBeach ? 6 : 8}
-        sectionThickness={isBeach ? 0.2 : 0.25}
+        sectionSize={isBeach ? 6 : 12}
+        sectionThickness={isBeach ? 0.2 : 0.20}
         sectionColor={theme.gridSection}
-        fadeDistance={isBeach ? 35 : 30}
+        fadeDistance={isBeach ? 35 : 25}
         infiniteGrid
       />
 
@@ -410,7 +400,7 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
 
       {/* Skill folders removed — bookshelves visible via BibliotecaFurniture */}
 
-      {/* Controls */}
+      {/* Controls — office now matches beach responsiveness */}
       <OrbitControls
         ref={controlsRef}
         makeDefault
@@ -419,15 +409,15 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
         maxPolarAngle={Math.PI / 2.1}
         target={[0, 0, 0]}
         enableDamping={false}
-        rotateSpeed={isBeach ? 0.8 : 1.4}
-        zoomSpeed={isBeach ? 1.2 : 2.0}
-        panSpeed={isBeach ? 1.0 : 1.8}
+        rotateSpeed={0.8}
+        zoomSpeed={1.2}
+        panSpeed={1.0}
       />
       <CameraControls3D controlsRef={controlsRef} />
 
-      {/* Postprocessing */}
+      {/* Postprocessing — same light bloom for both environments */}
       <EffectComposer>
-        <Bloom luminanceThreshold={0.5} luminanceSmoothing={0.9} intensity={isBeach ? 0.15 : 0.2} />
+        <Bloom luminanceThreshold={0.5} luminanceSmoothing={0.9} intensity={0.15} />
       </EffectComposer>
     </>
   );
@@ -450,9 +440,9 @@ export function World3D({ sessions, agentNames, interactions, environmentId = 'o
     <div style={{ width: '100%', height: '100%', background: bgColor, position: 'relative' }}>
       <Canvas
         camera={{ position: [0, 25, 30], fov: 50 }}
-        dpr={[1, environment.beachMode ? 1.5 : 1.2]}
-        performance={{ min: environment.beachMode ? 0.5 : 0.8 }}
-        gl={{ antialias: true, alpha: false }}
+        dpr={[1, 1.5]}
+        performance={{ min: 0.5 }}
+        gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
         scene={{ background: environment.beachMode ? new THREE.Color('#87CEEB') : new THREE.Color(dnc.skyColor) }}
         style={{ width: '100%', height: '100%' }}
       >
