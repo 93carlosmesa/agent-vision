@@ -30,7 +30,8 @@ export interface DeskOccupancy {
  * Always reserved for agentId 'main' or 'samantha'. Other agents cannot claim it.
  */
 export const SAMANTHA_DESK_ID = 'samantha-desk';
-export const SAMANTHA_DESK_POSITION: [number, number, number] = [3, 0, -13.2];
+// Avatar sits AT the chair position (z = desk_center + 1.1 + 0.1 chair_offset)
+export const SAMANTHA_DESK_POSITION: [number, number, number] = [3, 0, -12.8];
 
 export const SAMANTHA_DESK: Desk = {
   id: SAMANTHA_DESK_ID,
