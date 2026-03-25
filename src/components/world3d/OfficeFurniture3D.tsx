@@ -828,6 +828,8 @@ export function TrabajoFurniture({ environment }: { environment: WorldEnvironmen
         const row = Math.floor(i / cols);
         const x = startX + col * dx;
         const z = startZ + row * dz;
+        // Skip last row (row 3) — too close to the entrada/door at z ~0.6
+        if (row === rows - 1) return null;
         return (
           <group key={i}>
             <WoodDesk position={[x, 0, z]} />
