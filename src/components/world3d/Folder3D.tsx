@@ -5,7 +5,7 @@
 
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { Html } from '@react-three/drei';
+
 import type { Mesh } from 'three';
 
 /* ── Hardcoded skill list ── */
@@ -45,11 +45,10 @@ const DISTRICT_SHELF: Record<string, {
 };
 
 /* ── Single folder on shelf ── */
-function ShelfFolder({ position, color, folderColor, label, seed }: {
+function ShelfFolder({ position, color, folderColor, seed }: {
   position: [number, number, number];
   color: string;
   folderColor: string;
-  label: string;
   seed: number;
 }) {
   const meshRef = useRef<Mesh>(null);
@@ -92,49 +91,12 @@ function ShelfFolder({ position, color, folderColor, label, seed }: {
       </group>
 
       {/* Label */}
-      <Html position={[0, -0.3, 0]} center distanceFactor={14} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
-        <div style={{
-          background: 'rgba(20,18,15,0.85)',
-          color,
-          padding: '1px 5px',
-          borderRadius: '3px',
-          fontSize: '8px',
-          fontFamily: 'monospace',
-          fontWeight: 500,
-          border: `1px solid ${color}30`,
-        }}>
-          {label}
-        </div>
-      </Html>
+      {/* skill label removed */}
     </group>
   );
 }
 
-/* ── District label ── */
-function DistrictLabel({ position, label, color }: {
-  position: [number, number, number];
-  label: string;
-  color: string;
-}) {
-  return (
-    <Html position={position} center distanceFactor={18} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
-      <div style={{
-        background: 'rgba(20,18,15,0.75)',
-        color,
-        padding: '3px 10px',
-        borderRadius: '4px',
-        fontSize: '11px',
-        fontFamily: 'monospace',
-        fontWeight: 700,
-        letterSpacing: '2px',
-        textTransform: 'uppercase',
-        border: `1px solid ${color}50`,
-      }}>
-        {label}
-      </div>
-    </Html>
-  );
-}
+/* ── District label removed ── */
 
 /* ── All skill folders on Biblioteca shelves ── */
 export function SkillFolders3D() {
@@ -154,12 +116,7 @@ export function SkillFolders3D() {
 
         return (
           <group key={district}>
-            {/* District label above bookshelf */}
-            <DistrictLabel
-              position={[shelf.cx, 2.8, shelf.cz]}
-              label={shelf.label}
-              color={shelf.color}
-            />
+            {/* District label removed */}
 
             {/* Folders on shelves — distribute across shelf rows */}
             {skills.map((skill, i) => {
@@ -178,7 +135,6 @@ export function SkillFolders3D() {
                   position={[x, y, z]}
                   color={shelf.color}
                   folderColor={shelf.folderColor}
-                  label={skill.label}
                   seed={i * 1.7 + district.charCodeAt(0)}
                 />
               );
