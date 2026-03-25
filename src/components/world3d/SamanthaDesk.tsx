@@ -224,8 +224,8 @@ export function SamanthaDesk() {
       <SamanthaDeskTop position={pos} />
       <VioletMonitor position={[pos[0], pos[1], pos[2] - 0.27]} />
 
-      {/* CEO chair — behind desk so Samantha sits in it */}
-      <CEOChair position={[pos[0], pos[1], pos[2] + 0.55]} />
+      {/* CEO chair — further back so avatar fits seated between chair and desk */}
+      <CEOChair position={[pos[0], pos[1], pos[2] + 1.1]} />
 
       {/* Particles */}
       <DeskParticles origin={[pos[0], pos[1], pos[2] - 0.27]} />

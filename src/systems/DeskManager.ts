@@ -30,7 +30,7 @@ export interface DeskOccupancy {
  * Always reserved for agentId 'main' or 'samantha'. Other agents cannot claim it.
  */
 export const SAMANTHA_DESK_ID = 'samantha-desk';
-export const SAMANTHA_DESK_POSITION: [number, number, number] = [3, 0, -14];
+export const SAMANTHA_DESK_POSITION: [number, number, number] = [3, 0, -13.2];
 
 export const SAMANTHA_DESK: Desk = {
   id: SAMANTHA_DESK_ID,
