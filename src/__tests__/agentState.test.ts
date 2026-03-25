@@ -27,30 +27,20 @@ import { AgentStateMachine, type AgentStateInput } from '../systems/AgentStateMa
 
 // ─── Helpers ──────────────────────────────────────────────
 
-/** All valid (from → to) pairs per the StateTransition type */
-const VALID_TRANSITIONS: [AgentVisualState, AgentVisualState][] = [
-  ['idle', 'waiting'],
-  ['idle', 'running'],
-  ['waiting', 'running'],
-  ['waiting', 'communicating'],
-  ['running', 'waiting'],
-  ['running', 'communicating'],
-  ['running', 'using_skill'],
-  ['communicating', 'running'],
-  ['communicating', 'waiting'],
-  ['using_skill', 'running'],
-];
-
 const ALL_STATES: AgentVisualState[] = ['idle', 'waiting', 'running', 'communicating', 'using_skill'];
 
-/** Build all theoretically possible pairs and filter out valid ones → invalid set */
-const ALL_PAIRS: [AgentVisualState, AgentVisualState][] = ALL_STATES.flatMap(
-  from => ALL_STATES.filter(to => to !== from).map(to => [from, to] as [AgentVisualState, AgentVisualState])
-);
-
-const INVALID_TRANSITIONS = ALL_PAIRS.filter(
-  ([from, to]) => !VALID_TRANSITIONS.some(([vf, vt]) => vf === from && vt === to)
-);
+/*
+ * Transition tables — available for future tests:
+ *
+ * const VALID_TRANSITIONS: [AgentVisualState, AgentVisualState][] = [
+ *   ['idle', 'waiting'], ['idle', 'running'], ['waiting', 'running'],
+ *   ['waiting', 'communicating'], ['running', 'waiting'], ['running', 'communicating'],
+ *   ['running', 'using_skill'], ['communicating', 'running'], ['communicating', 'waiting'],
+ *   ['using_skill', 'running'],
+ * ];
+ * const ALL_PAIRS = ALL_STATES.flatMap(f => ALL_STATES.filter(t => t !== f).map(t => [f,t]));
+ * const INVALID_TRANSITIONS = ALL_PAIRS.filter(([f,t]) => !VALID_TRANSITIONS.some(([vf,vt]) => vf===f && vt===t));
+ */
 
 function makeInput(overrides: Partial<AgentStateInput> & { agentId: string }): AgentStateInput {
   return {
