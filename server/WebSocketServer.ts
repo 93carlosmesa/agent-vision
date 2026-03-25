@@ -12,7 +12,7 @@ import type { SessionReader } from './SessionReader.js';
 import type { AgentNameResolver } from './AgentNameResolver.js';
 import type { ServerMessage, ClientMessage } from '../src/types/index.js';
 
-const PUSH_INTERVAL_MS = 2500;
+const PUSH_INTERVAL_MS = 1500;
 const MAX_CONNECTIONS = 10;          // Local dev tool — no reason for many clients
 const MAX_MESSAGE_SIZE_BYTES = 4096; // Reject oversized client messages
 

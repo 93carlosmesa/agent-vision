@@ -28,8 +28,8 @@ interface RawEvent {
 
 const SNIPPET_MAX_LEN = 180;
 const RECENT_EVENTS_COUNT = 5;
-const RUNNING_THRESHOLD_MS = 8_000;   // last event < 8s ago → running
-const WAITING_THRESHOLD_MS = 30_000;  // last user msg < 30s ago → waiting
+const RUNNING_THRESHOLD_MS = 45_000;   // last event < 45s ago → running (covers slow tool calls)
+const WAITING_THRESHOLD_MS = 120_000;  // last event < 2min ago → waiting
 
 type MessageContent = Array<{ type: string; text?: string; thinking?: string; name?: string }>;
 
@@ -46,10 +46,16 @@ function extractSnippet(content: MessageContent | undefined): string {
 
 function deriveStatus(lastRole: string, lastTimestampMs: number): SessionStatus {
   const ageMs = Date.now() - lastTimestampMs;
+
+  // Roles that indicate Claude is actively processing
+  const isActiveRole = lastRole === 'assistant' || lastRole === 'tool_result';
+
   if (ageMs < RUNNING_THRESHOLD_MS) {
-    return lastRole === 'assistant' ? 'running' : 'waiting';
+    // Recent event: assistant/tool_result = running, user = waiting (for Claude to respond)
+    return isActiveRole ? 'running' : 'waiting';
   }
-  if (lastRole === 'user' && ageMs < WAITING_THRESHOLD_MS) {
+  if (ageMs < WAITING_THRESHOLD_MS) {
+    // Moderately recent: still considered waiting (agent session alive)
     return 'waiting';
   }
   return 'idle';
@@ -211,6 +217,16 @@ export class SessionReader {
         if (!existing || session.updatedAtMs > existing.updatedAtMs) {
           bestByAgent.set(agentId, session);
         }
+      }
+    }
+
+    // Check sessions.json for fresher timestamps and re-derive status
+    for (const [agentId, session] of bestByAgent) {
+      const indexTs = this.readSessionsJson(agentId);
+      if (indexTs && indexTs > session.updatedAtMs) {
+        session.updatedAtMs = indexTs;
+        session.updatedAt = new Date(indexTs).toISOString();
+        session.status = deriveStatus(session.lastRole, indexTs);
       }
     }
 
@@ -378,6 +394,27 @@ export class SessionReader {
     }
 
     return { targetId: null, interactionType: 'consulting' };
+  }
+
+  /**
+   * Read sessions.json index for an agent to get the most recent updatedAt timestamp.
+   * Returns epoch ms or null if file missing/unparseable.
+   */
+  private readSessionsJson(agentId: string): number | null {
+    const indexPath = join(this.agentsBase, agentId, 'sessions', 'sessions.json');
+    try {
+      const raw = readFileSync(indexPath, 'utf-8');
+      const data = JSON.parse(raw) as Record<string, { sessionId?: string; updatedAt?: number }>;
+      let maxUpdated = 0;
+      for (const entry of Object.values(data)) {
+        if (typeof entry.updatedAt === 'number' && entry.updatedAt > maxUpdated) {
+          maxUpdated = entry.updatedAt;
+        }
+      }
+      return maxUpdated > 0 ? maxUpdated : null;
+    } catch {
+      return null;
+    }
   }
 
   private findAgentRef(

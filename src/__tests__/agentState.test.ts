@@ -27,21 +27,14 @@ import { AgentStateMachine, type AgentStateInput } from '../systems/AgentStateMa
 
 // ─── Helpers ──────────────────────────────────────────────
 
-/** All valid (from → to) pairs per the StateTransition type */
+const ALL_STATES: AgentVisualState[] = ['idle', 'waiting', 'running', 'communicating', 'using_skill'];
+
 const VALID_TRANSITIONS: [AgentVisualState, AgentVisualState][] = [
-  ['idle', 'waiting'],
-  ['idle', 'running'],
-  ['waiting', 'running'],
-  ['waiting', 'communicating'],
-  ['running', 'waiting'],
-  ['running', 'communicating'],
-  ['running', 'using_skill'],
-  ['communicating', 'running'],
-  ['communicating', 'waiting'],
+  ['idle', 'waiting'], ['idle', 'running'], ['waiting', 'running'],
+  ['waiting', 'communicating'], ['running', 'waiting'], ['running', 'communicating'],
+  ['running', 'using_skill'], ['communicating', 'running'], ['communicating', 'waiting'],
   ['using_skill', 'running'],
 ];
-
-const ALL_STATES: AgentVisualState[] = ['idle', 'waiting', 'running', 'communicating', 'using_skill'];
 
 /** Build all theoretically possible pairs and filter out valid ones → invalid set */
 const ALL_PAIRS: [AgentVisualState, AgentVisualState][] = ALL_STATES.flatMap(
@@ -51,6 +44,7 @@ const ALL_PAIRS: [AgentVisualState, AgentVisualState][] = ALL_STATES.flatMap(
 const INVALID_TRANSITIONS = ALL_PAIRS.filter(
   ([from, to]) => !VALID_TRANSITIONS.some(([vf, vt]) => vf === from && vt === to)
 );
+void INVALID_TRANSITIONS; // reserved for future negative-path tests
 
 function makeInput(overrides: Partial<AgentStateInput> & { agentId: string }): AgentStateInput {
   return {
