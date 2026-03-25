@@ -29,6 +29,13 @@ import { AgentStateMachine, type AgentStateInput } from '../systems/AgentStateMa
 
 const ALL_STATES: AgentVisualState[] = ['idle', 'waiting', 'running', 'communicating', 'using_skill'];
 
+const VALID_TRANSITIONS: [AgentVisualState, AgentVisualState][] = [
+  ['idle', 'waiting'], ['idle', 'running'], ['waiting', 'running'],
+  ['waiting', 'communicating'], ['running', 'waiting'], ['running', 'communicating'],
+  ['running', 'using_skill'], ['communicating', 'running'], ['communicating', 'waiting'],
+  ['using_skill', 'running'],
+];
+
 /** Build all theoretically possible pairs and filter out valid ones → invalid set */
 const ALL_PAIRS: [AgentVisualState, AgentVisualState][] = ALL_STATES.flatMap(
   from => ALL_STATES.filter(to => to !== from).map(to => [from, to] as [AgentVisualState, AgentVisualState])
