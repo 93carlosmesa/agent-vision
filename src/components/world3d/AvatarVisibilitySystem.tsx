@@ -1,11 +1,13 @@
 /**
  * AvatarVisibilitySystem — Spawn/despawn avatars based on real session status.
  *
- * NEW LOGIC (replaces AgentMotionSystem + pathfinding):
- *   - Avatar ONLY exists in scene when agent status === "running"
+ * LOGIC (replaces AgentMotionSystem + pathfinding):
+ *   - Avatar appears when agent status === "running" OR "waiting"
  *   - Spawns DIRECTLY at desk position (no walking/pathfinding)
  *   - Spawn animation: scale 0→1 + opacity 0→1 over 0.5s
  *   - Despawn animation: scale 1→0 + opacity 1→0 over 0.4s, then remove
+ *   - Running agents: seated at their desk
+ *   - Waiting agents: standing near desk area (lobby/comunicacion rooms)
  *
  * This component is rendered inside R3F Canvas (uses useFrame).
  */
@@ -16,7 +18,7 @@ import * as THREE from 'three';
 import type { Group } from 'three';
 import { Agent3D } from './Agent3D';
 import type { AgentMotionState } from '../../hooks/useAgentMotion';
-import type { ISession, AgentNameMap } from '../../types';
+import type { ISession, AgentNameMap, SessionStatus } from '../../types';
 import type { Desk } from '../../systems/DeskManager';
 import { DeskManager, SAMANTHA_DESK } from '../../systems/DeskManager';
 import { isCEO } from '../../config/agentConfig';
@@ -32,6 +34,7 @@ interface SpawnedAgent {
   desk: Desk;
   phase: SpawnPhase;
   phaseStartTime: number; // clock time when phase began
+  sessionStatus: SessionStatus; // 'running' or 'waiting'
 }
 
 interface AvatarVisibilitySystemProps {
@@ -112,11 +115,11 @@ function SpawnedAvatarWrapper({
         name={agent.name}
         agentId={agent.agentId}
         position={agent.desk.position}
-        status="running"
-        visualState="running"
+        status={agent.sessionStatus}
+        visualState={agent.sessionStatus === 'running' ? 'running' : 'waiting'}
         isActive={true}
         motionRef={motionRef}
-        activityLabel="🔧 Working"
+        activityLabel={agent.sessionStatus === 'running' ? '🔧 Working' : '⏳ Waiting'}
         speechBubble={speechBubble}
       />
     </group>
@@ -142,15 +145,16 @@ export function AvatarVisibilitySystem({
   });
 
   useEffect(() => {
-    const runningSessions = sessions.filter(s => s.status === 'running');
-    const runningIds = new Set(runningSessions.map(s => s.agentId));
+    // Show both running AND waiting agents
+    const activeSessions = sessions.filter(s => s.status === 'running' || s.status === 'waiting');
+    const activeIds = new Set(activeSessions.map(s => s.agentId));
 
     setSpawnedMap(prev => {
       const next = new Map(prev);
       const now = clockRef.current;
 
-      // Spawn new running agents
-      for (const session of runningSessions) {
+      // Spawn new active agents (running or waiting)
+      for (const session of activeSessions) {
         const id = session.agentId;
         const existing = next.get(id);
 
@@ -172,6 +176,7 @@ export function AvatarVisibilitySystem({
             desk,
             phase: 'spawning',
             phaseStartTime: now,
+            sessionStatus: session.status,
           });
         } else if (existing.phase === 'despawning') {
           // Agent came back online during despawn → re-spawn
@@ -179,14 +184,15 @@ export function AvatarVisibilitySystem({
             ...existing,
             phase: 'spawning',
             phaseStartTime: now,
+            sessionStatus: session.status,
           });
         }
         // If spawning or visible → no change
       }
 
-      // Despawn agents no longer running
+      // Despawn agents no longer active (idle or idle)
       for (const [id, agent] of next) {
-        if (!runningIds.has(id) && agent.phase !== 'despawning') {
+        if (!activeIds.has(id) && agent.phase !== 'despawning') {
           next.set(id, {
             ...agent,
             phase: 'despawning',
