@@ -51,6 +51,7 @@ const ALL_PAIRS: [AgentVisualState, AgentVisualState][] = ALL_STATES.flatMap(
 const INVALID_TRANSITIONS = ALL_PAIRS.filter(
   ([from, to]) => !VALID_TRANSITIONS.some(([vf, vt]) => vf === from && vt === to)
 );
+void INVALID_TRANSITIONS; // reserved for future negative-path tests
 
 function makeInput(overrides: Partial<AgentStateInput> & { agentId: string }): AgentStateInput {
   return {
