@@ -39,7 +39,8 @@ function getTargetForStatus(
   status: SessionStatus,
   seed: number,
 ): { pos: [number, number, number]; facingAngle: number; room: RoomKey } {
-  if (status === 'running' && isCEO(agentId)) {
+  // Samantha always stays in her Despacho CEO regardless of status
+  if (isCEO(agentId)) {
     return { pos: SAMANTHA_DESK.position, facingAngle: SAMANTHA_DESK.facingAngle, room: 'biblioteca' };
   }
   const room = getRoomForStatus(status === 'running' ? 'running' : status === 'waiting' ? 'waiting' : 'idle');
@@ -62,7 +63,10 @@ export function AvatarVisibilitySystem({
   const [motionTargets, setMotionTargets] = useState<AgentTarget[]>([]);
 
   useEffect(() => {
-    const activeSessions = sessions.filter(s => s.status === 'running' || s.status === 'waiting');
+    // CEO always visible; others only when running or waiting
+    const activeSessions = sessions.filter(s =>
+      s.status === 'running' || s.status === 'waiting' || isCEO(s.agentId)
+    );
     const activeIds = new Set(activeSessions.map(s => s.agentId));
     const states = agentStatesRef.current;
     const newTargets: AgentTarget[] = [];
@@ -138,7 +142,7 @@ export function AvatarVisibilitySystem({
           agentId={agent.agentId}
           position={agent.targetPos}
           status={agent.sessionStatus}
-          visualState={agent.sessionStatus === 'running' ? 'running' : 'waiting'}
+          visualState={agent.sessionStatus === 'running' ? 'running' : agent.sessionStatus === 'waiting' ? 'waiting' : 'idle'}
           isActive={true}
           motionRef={motionRef}
           activityLabel={agent.sessionStatus === 'running' ? '🔧 Working' : '⏳ Waiting'}
