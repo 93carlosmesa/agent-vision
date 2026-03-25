@@ -114,7 +114,7 @@ export interface Agent3DProps {
    MASTER AVATAR — female humanoid Pixar-style
    ══════════════════════════════════════════ */
 function MasterAvatar({
-  agentId, name, position, status, visualState, isActive, motionRef, activityLabel, speechBubble,
+  agentId, name, position, status, visualState, motionRef, activityLabel, speechBubble,
 }: Agent3DProps) {
   const groupRef    = useRef<Group>(null);
   const bodyRef     = useRef<Group>(null);
@@ -560,14 +560,6 @@ function MasterAvatar({
           </mesh>
         </group>
 
-        {/* Status ring */}
-        {isActive && (
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-            <ringGeometry args={[0.36, 0.44, 28]} />
-            <meshStandardMaterial color={glow.color} emissive={glow.color} emissiveIntensity={1.4} transparent opacity={0.75} />
-          </mesh>
-        )}
-
         {/* Speech bubble */}
         {speechBubble && <SpeechBubble3D message={speechBubble} />}
 
@@ -582,7 +574,7 @@ function MasterAvatar({
    ROBOT AVATAR — agente genérico mecánico
    ══════════════════════════════════════════ */
 function RobotAvatar({
-  agentId, name, position, status, visualState, isActive, motionRef, activityLabel, speechBubble,
+  agentId, name, position, status, visualState, motionRef, activityLabel, speechBubble,
 }: Agent3DProps) {
   const groupRef    = useRef<Group>(null);
   const bodyRef     = useRef<Group>(null);
@@ -855,14 +847,6 @@ function RobotAvatar({
           <meshStandardMaterial color={metalColor} metalness={0.8} roughness={0.2} />
         </mesh>
 
-        {/* Status ring */}
-        {isActive && (
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-            <ringGeometry args={[0.38, 0.46, 20]} />
-            <meshStandardMaterial color={glow.color} emissive={glow.color} emissiveIntensity={1.2} transparent opacity={0.65} />
-          </mesh>
-        )}
-
         {/* Speech bubble */}
         {speechBubble && <SpeechBubble3D message={speechBubble} />}
 
@@ -877,7 +861,7 @@ function RobotAvatar({
    SAMANTHA AVATAR — high-detail full-body suit
    ══════════════════════════════════════════ */
 function SamanthaAvatarDetailed({
-  agentId, name, position, status, visualState, isActive, motionRef, activityLabel, speechBubble,
+  agentId, name, position, status, visualState, motionRef, activityLabel, speechBubble,
 }: Agent3DProps) {
   const groupRef    = useRef<Group>(null);
   const bodyRef     = useRef<Group>(null);
@@ -1433,14 +1417,6 @@ function SamanthaAvatarDetailed({
             <meshStandardMaterial color="#1a1a1a" metalness={0.30} roughness={0.35} />
           </mesh>
         </group>
-
-        {/* Status ring */}
-        {isActive && (
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-            <ringGeometry args={[0.34, 0.42, 28]} />
-            <meshStandardMaterial color={glow.color} emissive={glow.color} emissiveIntensity={1.4} transparent opacity={0.75} />
-          </mesh>
-        )}
 
         {/* Speech bubble */}
         {speechBubble && <SpeechBubble3D message={speechBubble} />}

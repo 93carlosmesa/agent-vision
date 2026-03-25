@@ -87,30 +87,6 @@ function DeskParticles({ origin }: { origin: [number, number, number] }) {
   );
 }
 
-/* ── Floor halo ring ── */
-function HaloRing({ position }: { position: [number, number, number] }) {
-  const ref = useRef<THREE.Mesh>(null);
-  useFrame(({ clock }) => {
-    if (ref.current) {
-      (ref.current.material as THREE.MeshStandardMaterial).emissiveIntensity =
-        0.35 + Math.sin(clock.elapsedTime * 1.2) * 0.15;
-    }
-  });
-  return (
-    <mesh ref={ref} position={[position[0], 0.005, position[2]]} rotation={[-Math.PI / 2, 0, 0]}>
-      <ringGeometry args={[1.05, 1.35, 48]} />
-      <meshStandardMaterial
-        color="#7c3aed"
-        emissive="#a855f7"
-        emissiveIntensity={0.4}
-        transparent
-        opacity={0.55}
-        depthWrite={false}
-        side={THREE.DoubleSide}
-      />
-    </mesh>
-  );
-}
 
 /* ── Violet monitor ── */
 function VioletMonitor({ position }: { position: [number, number, number] }) {
@@ -244,15 +220,12 @@ export function SamanthaDesk() {
 
   return (
     <group>
-      {/* Floor halo */}
-      <HaloRing position={pos} />
-
       {/* Desk + monitor */}
       <SamanthaDeskTop position={pos} />
       <VioletMonitor position={[pos[0], pos[1], pos[2] - 0.27]} />
 
-      {/* CEO chair (slightly behind desk, agent sits here) */}
-      <CEOChair position={[pos[0], pos[1], pos[2]]} />
+      {/* CEO chair — behind desk so Samantha sits in it */}
+      <CEOChair position={[pos[0], pos[1], pos[2] + 0.55]} />
 
       {/* Particles */}
       <DeskParticles origin={[pos[0], pos[1], pos[2] - 0.27]} />
