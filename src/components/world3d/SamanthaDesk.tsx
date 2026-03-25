@@ -11,7 +11,7 @@
 import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
-import { SAMANTHA_DESK_POSITION } from '../../systems/DeskManager';
+import { SAMANTHA_DESK_POSITION, SAMANTHA_AVATAR_POSITION } from '../../systems/DeskManager';
 
 /* ── Pulsing violet light ── */
 function VioletGlow({ position }: { position: [number, number, number] }) {
@@ -216,22 +216,21 @@ function SamanthaDeskTop({ position }: { position: [number, number, number] }) {
 
 /* ── Main export ── */
 export function SamanthaDesk() {
-  const pos = SAMANTHA_DESK_POSITION;
+  const deskPos = SAMANTHA_DESK_POSITION;    // furniture center
+  const chairPos = SAMANTHA_AVATAR_POSITION; // where avatar sits = where chair is
 
   return (
     <group>
-      {/* Desk + monitor */}
-      <SamanthaDeskTop position={pos} />
-      <VioletMonitor position={[pos[0], pos[1], pos[2] - 0.27]} />
+      {/* Desk furniture + monitor — at desk center */}
+      <SamanthaDeskTop position={deskPos} />
+      <VioletMonitor position={[deskPos[0], deskPos[1], deskPos[2] - 0.27]} />
 
-      {/* CEO chair — further back so avatar fits seated between chair and desk */}
-      <CEOChair position={[pos[0], pos[1], pos[2] + 1.1]} />
+      {/* CEO chair — exactly at avatar position so Samantha sits in it */}
+      <CEOChair position={[chairPos[0], chairPos[1], chairPos[2]]} />
 
-      {/* Particles */}
-      <DeskParticles origin={[pos[0], pos[1], pos[2] - 0.27]} />
-
-      {/* Dynamic glow light */}
-      <VioletGlow position={[pos[0], pos[1] + 1.4, pos[2] - 0.27]} />
+      {/* Particles + glow around monitor */}
+      <DeskParticles origin={[deskPos[0], deskPos[1], deskPos[2] - 0.27]} />
+      <VioletGlow position={[deskPos[0], deskPos[1] + 1.4, deskPos[2] - 0.27]} />
     </group>
   );
 }
