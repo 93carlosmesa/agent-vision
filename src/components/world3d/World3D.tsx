@@ -358,17 +358,17 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
         <meshStandardMaterial color={theme.floorBase} roughness={0.85} />
       </mesh>
 
-      {/* Grid overlay */}
+      {/* Grid overlay — office uses larger cells for perf, beach fine-grained */}
       <Grid
         position={[0, 0, 0]}
         args={[76, 70]}
-        cellSize={2}
-        cellThickness={isBeach ? 0.12 : 0.2}
+        cellSize={isBeach ? 2 : 4}
+        cellThickness={isBeach ? 0.12 : 0.15}
         cellColor={theme.gridCell}
-        sectionSize={6}
-        sectionThickness={isBeach ? 0.2 : 0.4}
+        sectionSize={isBeach ? 6 : 8}
+        sectionThickness={isBeach ? 0.2 : 0.25}
         sectionColor={theme.gridSection}
-        fadeDistance={isBeach ? 35 : 45}
+        fadeDistance={isBeach ? 35 : 30}
         infiniteGrid
       />
 
@@ -419,6 +419,10 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
         maxDistance={50}
         maxPolarAngle={Math.PI / 2.1}
         target={[0, 0, 0]}
+        enableDamping={false}
+        rotateSpeed={isBeach ? 0.8 : 1.4}
+        zoomSpeed={isBeach ? 1.2 : 2.0}
+        panSpeed={isBeach ? 1.0 : 1.8}
       />
       <CameraControls3D controlsRef={controlsRef} />
 
@@ -447,8 +451,8 @@ export function World3D({ sessions, agentNames, interactions, environmentId = 'o
     <div style={{ width: '100%', height: '100%', background: bgColor, position: 'relative' }}>
       <Canvas
         camera={{ position: [0, 25, 30], fov: 50 }}
-        dpr={[1, 1.5]}
-        performance={{ min: 0.5 }}
+        dpr={[1, environment.beachMode ? 1.5 : 1.2]}
+        performance={{ min: environment.beachMode ? 0.5 : 0.8 }}
         gl={{ antialias: true, alpha: false }}
         scene={{ background: environment.beachMode ? new THREE.Color('#87CEEB') : new THREE.Color(dnc.skyColor) }}
         style={{ width: '100%', height: '100%' }}
