@@ -47,6 +47,9 @@ export const SAMANTHA_DESK: Desk = {
  * Layout: 4 cols × 5 rows starting at (-16, 0, -6), dx=8, dz=2.2
  * Chair is at z+0.95, so agent sits facing the screen (rotation Math.PI)
  */
+/** Grid positions reserved for manager desks (col-row) */
+const RESERVED_GRID_SLOTS = new Set(['0-0', '3-0']); // Emma=col0-row0, Ginny=col3-row0
+
 const TRABAJO_DESKS: Desk[] = (() => {
   const desks: Desk[] = [];
   const startX = -16;
@@ -58,6 +61,7 @@ const TRABAJO_DESKS: Desk[] = (() => {
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
+      if (RESERVED_GRID_SLOTS.has(`${col}-${row}`)) continue; // skip manager desk slots
       const x = startX + col * dx;
       const z = startZ + row * dz;
       desks.push({
@@ -81,7 +85,29 @@ const BIBLIOTECA_DESKS: Desk[] = [-20, -15, -10].map((x, i) => ({
   room: 'biblioteca',
 }));
 
-export const ALL_DESKS: Desk[] = [SAMANTHA_DESK, ...TRABAJO_DESKS, ...BIBLIOTECA_DESKS];
+/**
+ * Emma's permanent desk — Dev Manager, left side of Work Hub
+ */
+export const EMMA_DESK_ID = 'emma-desk';
+export const EMMA_DESK: Desk = {
+  id: EMMA_DESK_ID,
+  position: [-16, 0, -4.9],  // avatar sits here (chair)
+  facingAngle: Math.PI,
+  room: 'trabajo',
+};
+
+/**
+ * Ginny's permanent desk — Investment Manager, right side of Work Hub
+ */
+export const GINNY_DESK_ID = 'ginny-desk';
+export const GINNY_DESK: Desk = {
+  id: GINNY_DESK_ID,
+  position: [8, 0, -4.9],    // avatar sits here (chair)
+  facingAngle: Math.PI,
+  room: 'trabajo',
+};
+
+export const ALL_DESKS: Desk[] = [SAMANTHA_DESK, EMMA_DESK, GINNY_DESK, ...TRABAJO_DESKS, ...BIBLIOTECA_DESKS];
 
 /** Distance between two 3D points (ignoring Y) */
 function dist2D(a: [number, number, number], b: [number, number, number]): number {
@@ -106,10 +132,20 @@ export class DeskManager {
         reservedAt: null,
       });
     }
-    // Permanently reserve Samantha's desk
+    // Permanently reserve manager desks
     this.occupancy.set(SAMANTHA_DESK_ID, {
       deskId: SAMANTHA_DESK_ID,
       agentId: 'main',
+      reservedAt: Date.now(),
+    });
+    this.occupancy.set(EMMA_DESK_ID, {
+      deskId: EMMA_DESK_ID,
+      agentId: 'emma',
+      reservedAt: Date.now(),
+    });
+    this.occupancy.set(GINNY_DESK_ID, {
+      deskId: GINNY_DESK_ID,
+      agentId: 'ginny',
       reservedAt: Date.now(),
     });
   }
@@ -149,10 +185,20 @@ export class DeskManager {
     this.releaseDesk(agentId);
 
     // Find free desks, sorted by distance
-    // Never let other agents claim Samantha's desk
-    const isSamantha = agentId === 'main' || agentId === 'samantha';
+    // Reserved desk IDs — only the owner can claim them
+    const RESERVED: Record<string, string[]> = {
+      [SAMANTHA_DESK_ID]: ['main', 'samantha'],
+      [EMMA_DESK_ID]: ['emma'],
+      [GINNY_DESK_ID]: ['ginny'],
+    };
+
     const freeDesks = ALL_DESKS
-      .filter(d => this.isFree(d.id) && (isSamantha || d.id !== SAMANTHA_DESK_ID))
+      .filter(d => {
+        if (!this.isFree(d.id)) return false;
+        const owners = RESERVED[d.id];
+        if (owners && !owners.includes(agentId)) return false;
+        return true;
+      })
       .sort((a, b) => dist2D(a.position, fromPosition) - dist2D(b.position, fromPosition));
 
     if (freeDesks.length === 0) return null;
