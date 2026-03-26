@@ -32,6 +32,7 @@ import {
 } from './OfficeFurniture3D';
 import { getWorldEnvironment } from './officeTheme';
 import { SamanthaDesk } from './SamanthaDesk';
+import { ManagerDesks } from './ManagerDesks';
 import { SystemMetricsPanel } from './SystemMetricsPanel';
 import { TaskCompletionParticles } from './TaskCompletionParticles';
 import type { ISession, AgentNameMap, IInteraction, SessionStatus } from '../../types';
@@ -394,8 +395,9 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
         <InteractionBeam3D key={b.id} from={b.from} to={b.to} type={b.type} />
       ))}
 
-      {/* Samantha's personal CEO desk — always at fixed position */}
+      {/* Personal desks — always at fixed positions */}
       <SamanthaDesk />
+      <ManagerDesks />
       <SystemMetricsPanel />
 
       {/* Skill folders removed — bookshelves visible via BibliotecaFurniture */}

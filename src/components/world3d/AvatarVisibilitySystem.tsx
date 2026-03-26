@@ -14,7 +14,7 @@ import { useAgentMotion } from '../../hooks/useAgentMotion';
 import type { AgentTarget } from '../../hooks/useAgentMotion';
 import { Agent3D } from './Agent3D';
 import { isCEO } from '../../config/agentConfig';
-import { SAMANTHA_DESK } from '../../systems/DeskManager';
+import { SAMANTHA_DESK, EMMA_DESK, GINNY_DESK } from '../../systems/DeskManager';
 import { getRoomForStatus, getRandomSeat } from '../../systems/RoomPositions';
 import { findPath } from '../../utils/officePathfinding';
 import type { RoomKey } from '../../utils/officePathfinding';
@@ -37,6 +37,18 @@ function cleanName(raw: string): string {
 /** Idle rooms where agents chill when squad has no work */
 const IDLE_ROOMS: RoomKey[] = ['lobby', 'descanso', 'exterior'];
 
+/** Get the fixed desk for managers (Emma/Ginny) when working */
+function getManagerDesk(agentId: string): { pos: [number, number, number]; facingAngle: number; room: RoomKey } | null {
+  const lower = agentId.toLowerCase();
+  if (lower === 'emma') {
+    return { pos: EMMA_DESK.position, facingAngle: EMMA_DESK.facingAngle, room: 'trabajo' };
+  }
+  if (lower === 'ginny') {
+    return { pos: GINNY_DESK.position, facingAngle: GINNY_DESK.facingAngle, room: 'trabajo' };
+  }
+  return null;
+}
+
 function getTargetForStatus(
   agentId: string,
   status: SessionStatus,
@@ -47,7 +59,10 @@ function getTargetForStatus(
     return { pos: SAMANTHA_DESK.position, facingAngle: SAMANTHA_DESK.facingAngle, room: 'despacho' };
   }
 
+  // Emma & Ginny go to their fixed desks when running
   if (status === 'running') {
+    const mgrDesk = getManagerDesk(agentId);
+    if (mgrDesk) return mgrDesk;
     const room = getRoomForStatus('running');
     const seat = getRandomSeat(room, seed);
     return { pos: seat.pos, facingAngle: seat.facingAngle, room };
