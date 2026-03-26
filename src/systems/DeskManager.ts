@@ -31,9 +31,9 @@ export interface DeskOccupancy {
  */
 export const SAMANTHA_DESK_ID = 'samantha-desk';
 /** Center of the desk FURNITURE — used for mueble rendering in SamanthaDesk.tsx */
-export const SAMANTHA_DESK_POSITION: [number, number, number] = [3, 0, -14];
+export const SAMANTHA_DESK_POSITION: [number, number, number] = [2, 0, -11];
 /** Where Samantha's avatar sits — in front of the desk, on the chair */
-export const SAMANTHA_AVATAR_POSITION: [number, number, number] = [3, 0, -12.9];
+export const SAMANTHA_AVATAR_POSITION: [number, number, number] = [2, 0, -9.9];
 
 export const SAMANTHA_DESK: Desk = {
   id: SAMANTHA_DESK_ID,
@@ -47,9 +47,6 @@ export const SAMANTHA_DESK: Desk = {
  * Layout: 4 cols × 5 rows starting at (-16, 0, -6), dx=8, dz=2.2
  * Chair is at z+0.95, so agent sits facing the screen (rotation Math.PI)
  */
-/** Grid positions reserved for manager desks (col-row) */
-const RESERVED_GRID_SLOTS = new Set(['0-0', '3-0']); // Emma=col0-row0, Ginny=col3-row0
-
 const TRABAJO_DESKS: Desk[] = (() => {
   const desks: Desk[] = [];
   const startX = -16;
@@ -61,7 +58,6 @@ const TRABAJO_DESKS: Desk[] = (() => {
 
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
-      if (RESERVED_GRID_SLOTS.has(`${col}-${row}`)) continue; // skip manager desk slots
       const x = startX + col * dx;
       const z = startZ + row * dz;
       desks.push({
@@ -91,21 +87,27 @@ const BIBLIOTECA_DESKS: Desk[] = [-20, -15, -10].map((x, i) => ({
 export const EMMA_DESK_ID = 'emma-desk';
 export const EMMA_DESK: Desk = {
   id: EMMA_DESK_ID,
-  position: [-16, 0, -4.9],  // avatar sits here (chair)
+  position: [-1, 0, -15.1],  // avatar sits here — behind Samantha, left
   facingAngle: Math.PI,
-  room: 'trabajo',
+  room: 'despacho',
 };
 
+/** Emma desk furniture position (for rendering) */
+export const EMMA_DESK_POSITION: [number, number, number] = [-1, 0, -16];
+
 /**
- * Ginny's permanent desk — Investment Manager, right side of Work Hub
+ * Ginny's permanent desk — Investment Manager, behind Samantha, right
  */
 export const GINNY_DESK_ID = 'ginny-desk';
 export const GINNY_DESK: Desk = {
   id: GINNY_DESK_ID,
-  position: [8, 0, -4.9],    // avatar sits here (chair)
+  position: [5, 0, -15.1],   // avatar sits here — behind Samantha, right
   facingAngle: Math.PI,
-  room: 'trabajo',
+  room: 'despacho',
 };
+
+/** Ginny desk furniture position (for rendering) */
+export const GINNY_DESK_POSITION: [number, number, number] = [5, 0, -16];
 
 export const ALL_DESKS: Desk[] = [SAMANTHA_DESK, EMMA_DESK, GINNY_DESK, ...TRABAJO_DESKS, ...BIBLIOTECA_DESKS];
 

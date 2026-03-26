@@ -43,9 +43,12 @@ const LOBBY_SEATS: SeatPosition[] = [
 ];
 
 const DESPACHO_SEATS: SeatPosition[] = [
-  // Samantha's CEO desk area — visitors can sit across
-  { pos: [3, 0, -15.5], facingAngle: 0 },
-  { pos: [1, 0, -13.5], facingAngle: Math.PI / 4 },
+  // Samantha's desk (front): chair at z=-9.9
+  { pos: [2, 0, -9.9], facingAngle: Math.PI },
+  // Emma's desk (behind left): chair at z=-15.1
+  { pos: [-1, 0, -15.1], facingAngle: Math.PI },
+  // Ginny's desk (behind right): chair at z=-15.1
+  { pos: [5, 0, -15.1], facingAngle: Math.PI },
 ];
 
 const EXTERIOR_SEATS: SeatPosition[] = [
