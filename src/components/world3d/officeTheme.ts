@@ -141,4 +141,6 @@ export const ROOM_CENTERS: Record<RoomKey, { cx: number; cz: number }> = {
   comunicacion: { cx: 10, cz: 6.5 },
   trabajo: { cx: 0, cz: -3 },
   biblioteca: { cx: -7, cz: -14 },
+  despacho: { cx: 2, cz: -14 },
+  exterior: { cx: 17, cz: -14 },
 };

@@ -34,6 +34,9 @@ function cleanName(raw: string): string {
   return raw.replace(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F?)\s*/u, '').trim() || raw;
 }
 
+/** Idle rooms where agents chill when squad has no work */
+const IDLE_ROOMS: RoomKey[] = ['lobby', 'descanso', 'exterior'];
+
 function getTargetForStatus(
   agentId: string,
   status: SessionStatus,
@@ -41,11 +44,25 @@ function getTargetForStatus(
 ): { pos: [number, number, number]; facingAngle: number; room: RoomKey } {
   // Samantha always stays in her Despacho CEO regardless of status
   if (isCEO(agentId)) {
-    return { pos: SAMANTHA_DESK.position, facingAngle: SAMANTHA_DESK.facingAngle, room: 'biblioteca' };
+    return { pos: SAMANTHA_DESK.position, facingAngle: SAMANTHA_DESK.facingAngle, room: 'despacho' };
   }
-  const room = getRoomForStatus(status === 'running' ? 'running' : status === 'waiting' ? 'waiting' : 'idle');
-  const seat = getRandomSeat(room, seed);
-  return { pos: seat.pos, facingAngle: seat.facingAngle, room };
+
+  if (status === 'running') {
+    const room = getRoomForStatus('running');
+    const seat = getRandomSeat(room, seed);
+    return { pos: seat.pos, facingAngle: seat.facingAngle, room };
+  }
+
+  if (status === 'waiting') {
+    const room = getRoomForStatus('waiting');
+    const seat = getRandomSeat(room, seed);
+    return { pos: seat.pos, facingAngle: seat.facingAngle, room };
+  }
+
+  // Idle — distribute agents across lobby, descanso, exterior
+  const idleRoom = IDLE_ROOMS[Math.abs(seed) % IDLE_ROOMS.length];
+  const seat = getRandomSeat(idleRoom, seed);
+  return { pos: seat.pos, facingAngle: seat.facingAngle, room: idleRoom };
 }
 
 interface AvatarVisibilitySystemProps {
