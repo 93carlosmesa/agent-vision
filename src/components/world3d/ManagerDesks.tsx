@@ -169,18 +169,12 @@ function ManagerDeskUnit({ config }: { config: ManagerDeskConfig }) {
   );
 }
 
-/* ── Fixed positions in Work Hub ── */
+/* ── Fixed positions in Sala de Dirección (behind Samantha) ── */
 
-// Emma's desk: left side of trabajo, front row — near the squad she manages
-export const EMMA_DESK_POS: [number, number, number] = [-16, 0, -6];
-export const EMMA_AVATAR_POS: [number, number, number] = [-16, 0, -4.9];
-
-// Ginny's desk: right side of trabajo, front row — near the edge for focus
-export const GINNY_DESK_POS: [number, number, number] = [8, 0, -6];
-export const GINNY_AVATAR_POS: [number, number, number] = [8, 0, -4.9];
+import { EMMA_DESK_POSITION, GINNY_DESK_POSITION } from '../../systems/DeskManager';
 
 const EMMA_CONFIG: ManagerDeskConfig = {
-  position: EMMA_DESK_POS,
+  position: EMMA_DESK_POSITION,   // [-1, 0, -16] — behind Samantha, left
   chairOffset: 1.1,
   primary: '#c2610a',    // warm amber
   dark: '#7c3d00',       // deep amber
@@ -190,7 +184,7 @@ const EMMA_CONFIG: ManagerDeskConfig = {
 };
 
 const GINNY_CONFIG: ManagerDeskConfig = {
-  position: GINNY_DESK_POS,
+  position: GINNY_DESK_POSITION,  // [5, 0, -16] — behind Samantha, right
   chairOffset: 1.1,
   primary: '#0d7377',    // deep teal
   dark: '#064e52',       // dark teal

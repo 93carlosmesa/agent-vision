@@ -347,7 +347,7 @@ export function OfficeLayout3D({ environment }: { environment: WorldEnvironment 
         <RoomLabel position={[10, 3.7, 6.5]} label="Meeting Palapa" color={theme.accent.mint} />
         <RoomLabel position={[0, 3.7, -3]} label="Beach Work Hub" color={theme.accent.violet} />
         <RoomLabel position={[-15, 3.7, -14]} label="Quiet Cove" color="#E8D8B0" />
-        <RoomLabel position={[2, 3.7, -14]} label="CEO Cove" color="#c084fc" />
+        <RoomLabel position={[2, 3.7, -14]} label="Command Deck" color="#c084fc" />
         <RoomLabel position={[17, 3.7, -14]} label="Tiki Terrace" color="#80D8A0" />
       </group>
     );
@@ -423,7 +423,7 @@ export function OfficeLayout3D({ environment }: { environment: WorldEnvironment 
       <RoomLabel position={[10, 3.7, 6.5]} label="Comunicacion & Reuniones" color={theme.accent.mint} />
       <RoomLabel position={[0, 3.7, -3]} label="Work Hub" color={theme.accent.violet} />
       <RoomLabel position={[-15, 3.7, -14]} label="Biblioteca" color="#E0D2A8" />
-      <RoomLabel position={[2, 3.7, -14]} label="Despacho CEO" color="#c084fc" />
+      <RoomLabel position={[2, 3.7, -14]} label="Sala de Dirección" color="#c084fc" />
       <RoomLabel position={[17, 3.7, -14]} label="Terraza Exterior" color="#9EF3BE" />
     </group>
   );

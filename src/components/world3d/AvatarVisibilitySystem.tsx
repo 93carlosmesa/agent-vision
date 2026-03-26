@@ -41,10 +41,10 @@ const IDLE_ROOMS: RoomKey[] = ['lobby', 'descanso', 'exterior'];
 function getManagerDesk(agentId: string): { pos: [number, number, number]; facingAngle: number; room: RoomKey } | null {
   const lower = agentId.toLowerCase();
   if (lower === 'emma') {
-    return { pos: EMMA_DESK.position, facingAngle: EMMA_DESK.facingAngle, room: 'trabajo' };
+    return { pos: EMMA_DESK.position, facingAngle: EMMA_DESK.facingAngle, room: 'despacho' };
   }
   if (lower === 'ginny') {
-    return { pos: GINNY_DESK.position, facingAngle: GINNY_DESK.facingAngle, room: 'trabajo' };
+    return { pos: GINNY_DESK.position, facingAngle: GINNY_DESK.facingAngle, room: 'despacho' };
   }
   return null;
 }
