@@ -42,6 +42,20 @@ const LOBBY_SEATS: SeatPosition[] = [
   { pos: [0,  0, 12.5],  facingAngle: Math.PI },
 ];
 
+const DESPACHO_SEATS: SeatPosition[] = [
+  // Samantha's CEO desk area — visitors can sit across
+  { pos: [3, 0, -15.5], facingAngle: 0 },
+  { pos: [1, 0, -13.5], facingAngle: Math.PI / 4 },
+];
+
+const EXTERIOR_SEATS: SeatPosition[] = [
+  // Terraza exterior — outdoor relaxation
+  { pos: [15, 0, -16], facingAngle: Math.PI / 4 },
+  { pos: [17, 0, -13], facingAngle: 0 },
+  { pos: [19, 0, -16], facingAngle: -Math.PI / 4 },
+  { pos: [21, 0, -13], facingAngle: Math.PI },
+];
+
 export const ROOM_SEATS: Record<RoomKey, SeatPosition[]> = {
   lobby:        LOBBY_SEATS,
   descanso:     DESCANSO_SEATS,
@@ -52,6 +66,8 @@ export const ROOM_SEATS: Record<RoomKey, SeatPosition[]> = {
   biblioteca:   ALL_DESKS
     .filter(d => d.room === 'biblioteca')
     .map(d => ({ pos: d.position, facingAngle: d.facingAngle })),
+  despacho:     DESPACHO_SEATS,
+  exterior:     EXTERIOR_SEATS,
 };
 
 export function getRandomSeat(room: RoomKey, seed?: number): SeatPosition {

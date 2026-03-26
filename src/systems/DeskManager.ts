@@ -16,7 +16,7 @@ export interface Desk {
   /** Facing angle (radians) when seated */
   facingAngle: number;
   /** Which room this desk is in */
-  room: 'trabajo' | 'biblioteca';
+  room: 'trabajo' | 'biblioteca' | 'despacho';
 }
 
 export interface DeskOccupancy {
@@ -39,7 +39,7 @@ export const SAMANTHA_DESK: Desk = {
   id: SAMANTHA_DESK_ID,
   position: SAMANTHA_AVATAR_POSITION,  // avatar goes here (on the chair)
   facingAngle: Math.PI,
-  room: 'biblioteca',
+  room: 'despacho',
 };
 
 /**

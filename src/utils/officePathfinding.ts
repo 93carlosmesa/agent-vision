@@ -3,7 +3,7 @@
  * Layout supports the expanded office footprint and keeps motion compatibility.
  */
 
-export type RoomKey = 'lobby' | 'descanso' | 'comunicacion' | 'trabajo' | 'biblioteca';
+export type RoomKey = 'lobby' | 'descanso' | 'comunicacion' | 'trabajo' | 'biblioteca' | 'despacho' | 'exterior';
 
 export interface Obstacle {
   cx: number;
@@ -47,6 +47,10 @@ export const FURNITURE_OBSTACLES: Obstacle[] = [
   { cx: -15, cz: -12, hw: 0.95, hd: 0.45 },
   { cx: -10, cz: -12, hw: 0.95, hd: 0.45 },
   { cx: 3, cz: -14, hw: 0.95, hd: 0.45 },  // Samantha desk in Despacho CEO
+
+  // Exterior / Terraza
+  { cx: 17, cz: -16, hw: 1.0, hd: 0.6 },  // outdoor table
+  { cx: 20, cz: -12, hw: 0.6, hd: 0.6 },  // planter/seating
 ];
 
 interface DoorWaypoint {
@@ -63,6 +67,10 @@ const DOORS: DoorWaypoint[] = [
   { from: 'descanso', to: 'trabajo', point: [-8.5, 0, 2] },     // gap x: -9.5 → -7.5
   { from: 'comunicacion', to: 'trabajo', point: [8.5, 0, 2] },  // gap x:  7.5 → 9.5
   { from: 'trabajo', to: 'biblioteca', point: [-4, 0, -8] },     // gap x:  -5 → -3
+  // Biblioteca ↔ Despacho CEO — gap in dividing wall at z=-11 to z=-13
+  { from: 'biblioteca', to: 'despacho', point: [-5, 0, -12] },
+  // Trabajo ↔ Exterior — glass wall gap at x=12, z=-8
+  { from: 'trabajo', to: 'exterior', point: [12, 0, -8] },
 ];
 
 const ADJ = new Map<RoomKey, { neighbor: RoomKey; door: [number, number, number] }[]>();
