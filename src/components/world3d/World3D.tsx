@@ -34,6 +34,7 @@ import { getWorldEnvironment } from './officeTheme';
 import { SamanthaDesk } from './SamanthaDesk';
 import { ManagerDesks } from './ManagerDesks';
 import { SystemMetricsPanel } from './SystemMetricsPanel';
+import { EmmaHUDPanel, GinnyHUDPanel } from './ManagerHUDPanels';
 import { TaskCompletionParticles } from './TaskCompletionParticles';
 import type { ISession, AgentNameMap, IInteraction, SessionStatus } from '../../types';
 import { getLightingConfig } from '../../systems/DayNightCycle';
@@ -399,6 +400,8 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
       <SamanthaDesk />
       <ManagerDesks />
       <SystemMetricsPanel />
+      <EmmaHUDPanel />
+      <GinnyHUDPanel />
 
       {/* Skill folders removed — bookshelves visible via BibliotecaFurniture */}
 

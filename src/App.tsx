@@ -2,11 +2,9 @@
  * App — Composition root.
  */
 
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useAgentSessions } from './hooks/useAgentSessions';
-import { useSkillVisits } from './hooks/useSkillVisits';
 import { useInteractions } from './hooks/useInteractions';
-import { AgentScene } from './components/AgentScene';
 import { CreatorPanel } from './components/CreatorPanel';
 import { OrchestratorView } from './components/OrchestratorView';
 import { SceneSelector } from './components/SceneSelector';
@@ -16,28 +14,14 @@ import { TimelinePanel } from './components/TimelinePanel';
 import { SquadPanel } from './components/SquadPanel';
 import { setIdleFavicon, startActiveFavicon } from './utils/favicon';
 
-/** Lazy-load 3D world (Three.js) — only downloaded when user selects 3D scene */
 const World3D = lazy(() => import('./components/world3d/World3D').then(m => ({ default: m.World3D })));
 
 export default function App() {
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [orchestratorOpen, setOrchestratorOpen] = useState(false);
   const [worldEnvironment, setWorldEnvironment] = useState(DEFAULT_WORLD_ENVIRONMENT);
-  const { sessions, agentNames, interactions: serverInteractions, isConnected, currentScene, setScene, squads } = useAgentSessions();
-  const skillVisits = useSkillVisits(sessions);
+  const { sessions, agentNames, interactions: serverInteractions, isConnected, squads } = useAgentSessions();
   const interactions = useInteractions(serverInteractions);
-
-  const memberMetaBySession = useMemo(
-    () => Object.fromEntries(
-      squads.flatMap((squad) => squad.members.map((member) => [member.sessionKey, {
-        squadId: member.squadId,
-        squadLabel: member.squadLabel,
-        roleLabel: member.roleLabel,
-        collaborationTag: member.collaborationTag,
-      }])),
-    ),
-    [squads],
-  );
 
   useEffect(() => {
     const hasRunningAgents = sessions.some((s) => s.status === 'running');
@@ -59,8 +43,6 @@ export default function App() {
           <button className="header-btn" onClick={() => setOrchestratorOpen(true)}>Orchestrator</button>
           <button className="header-btn" onClick={() => setCreatorOpen(true)}>+ Create</button>
           <SceneSelector
-            currentScene={currentScene.id}
-            onSceneChange={setScene}
             currentEnvironment={worldEnvironment}
             onEnvironmentChange={setWorldEnvironment}
           />
@@ -69,25 +51,14 @@ export default function App() {
       </header>
 
       <main className="app-main">
-        {currentScene.id === '3d' ? (
-          <Suspense fallback={<div className="scene-loading">Loading 3D…</div>}>
-            <World3D
-              sessions={sessions}
-              agentNames={agentNames}
-              interactions={interactions}
-              environmentId={worldEnvironment}
-            />
-          </Suspense>
-        ) : (
-          <AgentScene
+        <Suspense fallback={<div className="scene-loading">Loading 3D…</div>}>
+          <World3D
             sessions={sessions}
             agentNames={agentNames}
-            sceneConfig={currentScene}
-            memberMetaBySession={memberMetaBySession}
-            skillVisits={skillVisits}
             interactions={interactions}
+            environmentId={worldEnvironment}
           />
-        )}
+        </Suspense>
       </main>
 
       <aside className="app-sidebar">

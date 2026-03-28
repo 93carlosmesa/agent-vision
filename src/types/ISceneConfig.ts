@@ -1,15 +1,15 @@
 /**
- * ISceneConfig — Configuration for a visual scene (office, beach, etc.).
+ * ISceneConfig — Configuration for the 3D world scene.
  *
- * Each scene defines its zones, labels, background, and title.
- * Scenes are pure data — no behavior, just configuration.
+ * Defines zones, labels, background, and title.
+ * Pure data — no behavior, just configuration.
  */
 
 import type { ZoneMapping, ZoneLabelMapping } from './IZone';
 
-/** Configuration for a single scene */
+/** Configuration for the scene */
 export interface ISceneConfig {
-  /** Scene identifier (e.g. "oficina", "playa") */
+  /** Scene identifier */
   id: string;
   /** Display title */
   title: string;
@@ -20,6 +20,3 @@ export interface ISceneConfig {
   /** Human-readable labels per status zone */
   zoneLabels: ZoneLabelMapping;
 }
-
-/** Registry of all available scenes, keyed by scene ID */
-export type SceneRegistry = Record<string, ISceneConfig>;
