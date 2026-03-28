@@ -9,9 +9,11 @@
  * so they always have their own spot alongside the squad.
  */
 
-import { useRef } from 'react';
+import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { Text } from '@react-three/drei';
 import * as THREE from 'three';
+import type { ISession } from '../../types';
 
 /* ── Shared desk builder ── */
 
@@ -29,10 +31,19 @@ interface ManagerDeskConfig {
   glowColor: string;
   /** Label on the monitor top */
   label: string;
+  /** Agent ID for session lookup */
+  agentId: string;
 }
 
-function ManagerDeskUnit({ config }: { config: ManagerDeskConfig }) {
+function ManagerDeskUnit({ config, sessions }: { config: ManagerDeskConfig; sessions: ISession[] }) {
   const { position, primary, dark, emissive, glowColor } = config;
+
+  const taskText = useMemo(() => {
+    const session = sessions.find(s => s.agentId === config.agentId && s.status === 'running');
+    if (!session) return null;
+    const text = session.lastSnippet || 'Working...';
+    return text.length > 40 ? text.slice(0, 37) + '...' : text;
+  }, [sessions, config.agentId]);
   const [x, y, z] = position;
 
   const screenRef = useRef<THREE.Mesh>(null);
@@ -119,6 +130,29 @@ function ManagerDeskUnit({ config }: { config: ManagerDeskConfig }) {
             opacity={0.8}
           />
         </mesh>
+        {/* Agent label on screen */}
+        <Text
+          position={[0, 0.35, 0.001]}
+          fontSize={0.04}
+          color={primary}
+          anchorX="center"
+          anchorY="middle"
+        >
+          {config.label}
+        </Text>
+        {/* Active task text on screen */}
+        {taskText && (
+          <Text
+            position={[0, 0.24, 0.001]}
+            fontSize={0.028}
+            color="#e0e0e0"
+            anchorX="center"
+            anchorY="middle"
+            maxWidth={0.38}
+          >
+            {taskText}
+          </Text>
+        )}
       </group>
 
       {/* ── Chair ── */}
@@ -181,6 +215,7 @@ const EMMA_CONFIG: ManagerDeskConfig = {
   emissive: '#ff9f43',   // orange glow
   glowColor: '#ff9f43',
   label: 'EMMA',
+  agentId: 'emma',
 };
 
 const GINNY_CONFIG: ManagerDeskConfig = {
@@ -191,14 +226,15 @@ const GINNY_CONFIG: ManagerDeskConfig = {
   emissive: '#53e3c2',   // emerald glow
   glowColor: '#53e3c2',
   label: 'GINNY',
+  agentId: 'ginny',
 };
 
 /* ── Main export ── */
-export function ManagerDesks() {
+export function ManagerDesks({ sessions = [] }: { sessions?: ISession[] }) {
   return (
     <group>
-      <ManagerDeskUnit config={EMMA_CONFIG} />
-      <ManagerDeskUnit config={GINNY_CONFIG} />
+      <ManagerDeskUnit config={EMMA_CONFIG} sessions={sessions} />
+      <ManagerDeskUnit config={GINNY_CONFIG} sessions={sessions} />
     </group>
   );
 }

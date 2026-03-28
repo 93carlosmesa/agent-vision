@@ -398,10 +398,10 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
 
       {/* Personal desks — always at fixed positions */}
       <SamanthaDesk />
-      <ManagerDesks />
+      <ManagerDesks sessions={sessions} />
       <SystemMetricsPanel />
-      <EmmaHUDPanel />
-      <GinnyHUDPanel />
+      <EmmaHUDPanel sessions={sessions} />
+      <GinnyHUDPanel sessions={sessions} />
 
       {/* Skill folders removed — bookshelves visible via BibliotecaFurniture */}
 
