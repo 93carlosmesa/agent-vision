@@ -35,6 +35,8 @@ import { ManagerDesks } from './ManagerDesks';
 import { SystemMetricsPanel } from './SystemMetricsPanel';
 import { EmmaHUDPanel, GinnyHUDPanel } from './ManagerHUDPanels';
 import { TaskCompletionParticles } from './TaskCompletionParticles';
+import { RainyNightWindow } from './RainyNightWindow';
+import { AmbientDustMotes } from './AmbientDustMotes';
 import type { ISession, AgentNameMap, IInteraction, SessionStatus } from '../../types';
 import { getLightingConfig } from '../../systems/DayNightCycle';
 import type { LightingConfig } from '../../systems/DayNightCycle';
@@ -402,6 +404,10 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
       <SystemMetricsPanel />
       <EmmaHUDPanel />
       <GinnyHUDPanel />
+
+      {/* ── Ambient visual effects ── */}
+      {!isBeach && <RainyNightWindow timeOfDay={dnc.timeOfDay} />}
+      {!isBeach && <AmbientDustMotes timeOfDay={dnc.timeOfDay} />}
 
       {/* Skill folders removed — bookshelves visible via BibliotecaFurniture */}
 
