@@ -1,9 +1,7 @@
 /**
- * @deprecated AgentStateMachine is superseded by AvatarVisibilitySystem.
- * Avatars now spawn/despawn based on session status directly.
- * Kept for reference only — not used in the active render pipeline.
- *
  * AgentStateMachine — Formal state machine for agent 3D world behavior.
+ *
+ * Integrated by AvatarVisibilitySystem for full 5-state agent management.
  *
  * Derives AgentVisualState from:
  *   - Session status (running/waiting/idle from server)
@@ -286,9 +284,9 @@ export class AgentStateMachine {
 }
 
 /**
- * New simple visibility check — replaces full state machine for avatar display.
- * An agent's avatar is visible if and only if its session status is "running".
+ * Visibility check — all agents with a session are visible in the 3D world.
+ * The state machine handles placement (idle agents go to lobby/descanso/exterior).
  */
 export function isAgentVisible(status: import('../types').SessionStatus): boolean {
-  return status === 'running';
+  return status === 'running' || status === 'waiting' || status === 'idle';
 }
