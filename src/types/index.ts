@@ -6,7 +6,7 @@ export type { AgentVisualState, AgentZone, AgentStateConfig, AgentStateMetrics, 
 export { AGENT_STATE_CONFIGS, IDLE_ZONES, getIdleZone } from './AgentState';
 export type { IAgentIdentity, AgentNameMap } from './IAgent';
 export type { IZoneDef, ZoneMapping, ZoneLabelMapping } from './IZone';
-export type { ISceneConfig, SceneRegistry } from './ISceneConfig';
+export type { ISceneConfig } from './ISceneConfig';
 export type { AgentRole, ISquad, ISquadMember } from './ISquad';
 export type { ISkill, ISkillVisit, SkillDistrict } from './ISkill';
 export type { IInteraction, InteractionType } from './IInteraction';
