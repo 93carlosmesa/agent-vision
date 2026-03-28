@@ -84,13 +84,17 @@ interface AvatarVisibilitySystemProps {
   sessions: ISession[];
   agentNames: AgentNameMap;
   bubbleMap: Map<string, string>;
+  /** When not 'office', agents walk directly without door pathfinding */
+  environmentId?: string;
 }
 
 export function AvatarVisibilitySystem({
   sessions,
   agentNames,
   bubbleMap,
+  environmentId = 'office',
 }: AvatarVisibilitySystemProps) {
+  const usePathfinding = environmentId === 'office';
   const agentStatesRef = useRef<Map<string, AgentMoveState>>(new Map());
   const [motionTargets, setMotionTargets] = useState<AgentTarget[]>([]);
 
@@ -127,7 +131,9 @@ export function AvatarVisibilitySystem({
         // Status changed → compute new target room + walk path
         const seed = existing.roomSeed + Date.now() % 1000;
         const target = getTargetForStatus(id, status, seed);
-        const doorWaypoints = findPath(existing.currentRoom, target.room);
+        const doorWaypoints = usePathfinding
+          ? findPath(existing.currentRoom, target.room)
+          : [];
         const fullPath: [number, number, number][] = [
           ...doorWaypoints,
           target.pos,
