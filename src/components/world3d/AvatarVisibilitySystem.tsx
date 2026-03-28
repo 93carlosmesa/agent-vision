@@ -1,10 +1,12 @@
 /**
- * AvatarVisibilitySystem — Full agent movement with room-based pathfinding.
+ * AvatarVisibilitySystem — Full 5-state agent movement with room-based pathfinding.
  *
- * Agents walk between rooms when their session status changes:
- *   - running → random desk in Trabajo (Samantha always gets her desk)
- *   - waiting → random seat in Comunicación
- *   - idle    → agent removed (not visible)
+ * Integrates AgentStateMachine for proper state derivation:
+ *   - running       → desk in Trabajo (nearest free) or Despacho (managers)
+ *   - waiting       → seat in Comunicación
+ *   - idle          → random zone: Lobby / Descanso / Exterior (distributed)
+ *   - communicating → Comunicación
+ *   - using_skill   → Biblioteca → back to desk
  *
  * State changes trigger a real walk: current pos → door waypoints → destination seat.
  */
@@ -14,10 +16,13 @@ import { useAgentMotion } from '../../hooks/useAgentMotion';
 import type { AgentTarget } from '../../hooks/useAgentMotion';
 import { Agent3D } from './Agent3D';
 import { isCEO } from '../../config/agentConfig';
-import { SAMANTHA_DESK, EMMA_DESK, GINNY_DESK } from '../../systems/DeskManager';
-import { getRoomForStatus, getRandomSeat } from '../../systems/RoomPositions';
+import { DeskManager, SAMANTHA_DESK } from '../../systems/DeskManager';
+import { AgentStateMachine } from '../../systems/AgentStateMachine';
+import type { AgentStateInput, AgentStateOutput } from '../../systems/AgentStateMachine';
+import { getRandomSeat } from '../../systems/RoomPositions';
 import { findPath } from '../../utils/officePathfinding';
 import type { RoomKey } from '../../utils/officePathfinding';
+import type { AgentVisualState, AgentStateMetrics } from '../../types/AgentState';
 import type { ISession, AgentNameMap, SessionStatus } from '../../types';
 
 interface AgentMoveState {
@@ -27,6 +32,8 @@ interface AgentMoveState {
   targetPos: [number, number, number];
   facingAngle: number;
   sessionStatus: SessionStatus;
+  visualState: AgentVisualState;
+  activityLabel: string;
   roomSeed: number;
 }
 
@@ -34,50 +41,10 @@ function cleanName(raw: string): string {
   return raw.replace(/^(\p{Emoji_Presentation}|\p{Emoji}\uFE0F?)\s*/u, '').trim() || raw;
 }
 
-/** Idle rooms where agents chill when squad has no work */
-const IDLE_ROOMS: RoomKey[] = ['lobby', 'descanso', 'exterior'];
-
-/** Get the fixed desk for managers (Emma/Ginny) when working */
-function getManagerDesk(agentId: string): { pos: [number, number, number]; facingAngle: number; room: RoomKey } | null {
-  const lower = agentId.toLowerCase();
-  if (lower === 'emma') {
-    return { pos: EMMA_DESK.position, facingAngle: EMMA_DESK.facingAngle, room: 'despacho' };
-  }
-  if (lower === 'ginny') {
-    return { pos: GINNY_DESK.position, facingAngle: GINNY_DESK.facingAngle, room: 'despacho' };
-  }
-  return null;
-}
-
-function getTargetForStatus(
-  agentId: string,
-  status: SessionStatus,
-  seed: number,
-): { pos: [number, number, number]; facingAngle: number; room: RoomKey } {
-  // Samantha always stays in her Despacho CEO regardless of status
-  if (isCEO(agentId)) {
-    return { pos: SAMANTHA_DESK.position, facingAngle: SAMANTHA_DESK.facingAngle, room: 'despacho' };
-  }
-
-  // Emma & Ginny go to their fixed desks when running
-  if (status === 'running') {
-    const mgrDesk = getManagerDesk(agentId);
-    if (mgrDesk) return mgrDesk;
-    const room = getRoomForStatus('running');
-    const seat = getRandomSeat(room, seed);
-    return { pos: seat.pos, facingAngle: seat.facingAngle, room };
-  }
-
-  if (status === 'waiting') {
-    const room = getRoomForStatus('waiting');
-    const seat = getRandomSeat(room, seed);
-    return { pos: seat.pos, facingAngle: seat.facingAngle, room };
-  }
-
-  // Idle — distribute agents across lobby, descanso, exterior
-  const idleRoom = IDLE_ROOMS[Math.abs(seed) % IDLE_ROOMS.length];
-  const seat = getRandomSeat(idleRoom, seed);
-  return { pos: seat.pos, facingAngle: seat.facingAngle, room: idleRoom };
+/** Resolve a target position within a room (desk position or random seat) */
+function getSeatInRoom(room: RoomKey, seed: number): { pos: [number, number, number]; facingAngle: number } {
+  const seat = getRandomSeat(room, seed);
+  return { pos: seat.pos, facingAngle: seat.facingAngle };
 }
 
 interface AvatarVisibilitySystemProps {
@@ -91,68 +58,122 @@ export function AvatarVisibilitySystem({
   agentNames,
   bubbleMap,
 }: AvatarVisibilitySystemProps) {
+  // Persistent refs — survive re-renders without triggering them
+  const deskManagerRef = useRef<DeskManager>(new DeskManager());
+  const stateMachineRef = useRef<AgentStateMachine>(new AgentStateMachine(deskManagerRef.current));
   const agentStatesRef = useRef<Map<string, AgentMoveState>>(new Map());
+  const metricsRef = useRef<Map<string, AgentStateMetrics>>(new Map());
   const [motionTargets, setMotionTargets] = useState<AgentTarget[]>([]);
 
   useEffect(() => {
-    // CEO always visible; others only when running or waiting
-    const activeSessions = sessions.filter(s =>
-      s.status === 'running' || s.status === 'waiting' || isCEO(s.agentId)
-    );
-    const activeIds = new Set(activeSessions.map(s => s.agentId));
+    const stateMachine = stateMachineRef.current;
     const states = agentStatesRef.current;
+
+    // ALL sessions are active — every agent is visible in the 3D world
+    const activeIds = new Set(sessions.map(s => s.agentId));
+
+    // Determine squad-level activity: any agent running?
+    const squadHasActiveTasks = sessions.some(s => s.status === 'running');
+
+    // Build inputs for the state machine
+    const stateInputs: AgentStateInput[] = sessions.map((session, index) => {
+      const existing = states.get(session.agentId);
+      return {
+        agentId: session.agentId,
+        agentIndex: index,
+        sessionStatus: session.status,
+        squadHasActiveTasks,
+        previousVisualState: existing?.visualState,
+        currentPosition: existing?.targetPos,
+      };
+    });
+
+    // Run the state machine to get proper visual states + desk assignments
+    const stateOutputs = stateMachine.computeStates(stateInputs);
+
     const newTargets: AgentTarget[] = [];
 
-    for (const session of activeSessions) {
+    for (const session of sessions) {
       const id = session.agentId;
       const name = cleanName(agentNames[id] ?? id);
-      const status = session.status;
+      const output = stateOutputs.get(id);
+      if (!output) continue;
+
       const existing = states.get(id);
+      const seed = id.split('').reduce((a, c) => a + c.charCodeAt(0), 0) + (existing?.roomSeed ?? 0);
+
+      // Resolve target position from state machine output
+      let targetPos: [number, number, number];
+      let facingAngle: number;
+      const targetRoom = output.targetRoom;
+
+      if (output.desk) {
+        // State machine assigned a desk — use its exact position
+        targetPos = output.desk.position;
+        facingAngle = output.desk.facingAngle;
+      } else if (isCEO(id)) {
+        // Samantha always at her desk
+        targetPos = SAMANTHA_DESK.position;
+        facingAngle = SAMANTHA_DESK.facingAngle;
+      } else {
+        // Use a seat in the target room
+        const seat = getSeatInRoom(targetRoom, seed);
+        targetPos = seat.pos;
+        facingAngle = seat.facingAngle;
+      }
 
       if (!existing) {
-        // New agent — spawn directly at target position (no walk for first appear)
-        const seed = id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-        const target = getTargetForStatus(id, status, seed);
+        // New agent — spawn directly at target (no walk for first appearance)
         states.set(id, {
           agentId: id,
           name,
-          currentRoom: target.room,
-          targetPos: target.pos,
-          facingAngle: target.facingAngle,
-          sessionStatus: status,
+          currentRoom: targetRoom,
+          targetPos,
+          facingAngle,
+          sessionStatus: session.status,
+          visualState: output.visualState,
+          activityLabel: output.activityLabel,
           roomSeed: seed,
         });
-        newTargets.push({ id, waypoints: [target.pos], facingAngle: target.facingAngle });
-      } else if (existing.sessionStatus !== status) {
-        // Status changed → compute new target room + walk path
-        const seed = existing.roomSeed + Date.now() % 1000;
-        const target = getTargetForStatus(id, status, seed);
-        const doorWaypoints = findPath(existing.currentRoom, target.room);
-        const fullPath: [number, number, number][] = [
-          ...doorWaypoints,
-          target.pos,
-        ];
+        newTargets.push({ id, waypoints: [targetPos], facingAngle });
+      } else if (existing.visualState !== output.visualState || existing.currentRoom !== targetRoom) {
+        // State or room changed → walk to new position
+        const newSeed = seed + Date.now() % 1000;
+        const doorWaypoints = findPath(existing.currentRoom, targetRoom);
+        const fullPath: [number, number, number][] = [...doorWaypoints, targetPos];
 
-        existing.sessionStatus = status;
+        existing.sessionStatus = session.status;
+        existing.visualState = output.visualState;
+        existing.activityLabel = output.activityLabel;
         existing.name = name;
-        existing.currentRoom = target.room;
-        existing.targetPos = target.pos;
-        existing.facingAngle = target.facingAngle;
-        existing.roomSeed = seed;
+        existing.currentRoom = targetRoom;
+        existing.targetPos = targetPos;
+        existing.facingAngle = facingAngle;
+        existing.roomSeed = newSeed;
 
-        newTargets.push({ id, waypoints: fullPath, facingAngle: target.facingAngle });
+        newTargets.push({ id, waypoints: fullPath, facingAngle });
       } else {
         // No change — keep current target
         existing.name = name;
+        existing.activityLabel = output.activityLabel;
         newTargets.push({ id, waypoints: [existing.targetPos], facingAngle: existing.facingAngle });
       }
     }
 
-    // Remove agents no longer active
+    // Remove agents no longer in sessions
     for (const id of states.keys()) {
       if (!activeIds.has(id)) {
         states.delete(id);
+        deskManagerRef.current.releaseDesk(id);
       }
+    }
+
+    // Update metrics ref for external access
+    const allMetrics = stateMachine.getAllMetrics();
+    const metricsMap = metricsRef.current;
+    metricsMap.clear();
+    for (const m of allMetrics) {
+      metricsMap.set(m.agentId, m);
     }
 
     setMotionTargets(newTargets);
@@ -174,13 +195,18 @@ export function AvatarVisibilitySystem({
           agentId={agent.agentId}
           position={agent.targetPos}
           status={agent.sessionStatus}
-          visualState={agent.sessionStatus === 'running' ? 'running' : agent.sessionStatus === 'waiting' ? 'waiting' : 'idle'}
+          visualState={agent.visualState}
           isActive={true}
           motionRef={motionRef}
-          activityLabel={agent.sessionStatus === 'running' ? '🔧 Working' : '⏳ Waiting'}
+          activityLabel={agent.activityLabel}
           speechBubble={bubbleMap.get(agent.agentId)}
         />
       ))}
     </>
   );
+}
+
+/** Access metrics for a specific agent (call from parent via ref if needed) */
+export function useAgentMetrics(): React.MutableRefObject<Map<string, AgentStateMetrics>> {
+  return useRef<Map<string, AgentStateMetrics>>(new Map());
 }
