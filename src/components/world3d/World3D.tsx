@@ -1,13 +1,12 @@
 /**
  * World3D — R3F Canvas with multi-room office building.
  *
- * AVATAR PHILOSOPHY (v2 — spawn/despawn):
- *   Avatars ONLY appear when an agent has status === "running".
- *   They spawn directly at their desk (no walking/pathfinding).
- *   Spawn animation: scale 0→1 + fade in (0.5s)
- *   Despawn animation: scale 1→0 + fade out (0.4s)
+ * AVATAR PHILOSOPHY (v3 — walk + spawn/despawn):
+ *   Avatars appear when an agent has status running/waiting (CEO always visible).
+ *   On status change they walk through doors (office) or directly (tropical).
+ *   First appearance: spawn at target position (no walk).
  *
- *   AvatarVisibilitySystem handles all avatar lifecycle.
+ *   AvatarVisibilitySystem handles all avatar lifecycle + pathfinding.
  *   World3D just manages environment, lighting, furniture, and scene.
  */
 
@@ -380,6 +379,7 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
         sessions={sessions}
         agentNames={agentNames}
         bubbleMap={bubbleMap}
+        environmentId={environmentId}
       />
 
       {/* Task completion particle bursts */}
