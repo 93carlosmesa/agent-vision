@@ -23,7 +23,7 @@ import type { AgentVisualState, AgentStateMetrics } from '../types/AgentState';
 import { getIdleZone } from '../types/AgentState';
 import type { DeskManager } from './DeskManager';
 import type { Desk } from './DeskManager';
-import { SAMANTHA_DESK, SAMANTHA_DESK_ID } from './DeskManager';
+import { SAMANTHA_DESK, SAMANTHA_DESK_ID, EMMA_DESK, EMMA_DESK_ID, GINNY_DESK, GINNY_DESK_ID } from './DeskManager';
 import type { RoomKey } from '../utils/officePathfinding';
 
 export interface AgentStateInput {
@@ -156,16 +156,33 @@ export class AgentStateMachine {
 
       // Desk management based on state transitions
       const isSamantha = input.agentId === 'main' || input.agentId === 'samantha';
-      if (newState === 'running') {
-        if (isSamantha) {
-          // Samantha always goes to her own dedicated desk
-          desk = SAMANTHA_DESK;
-          // Ensure DeskManager reflects Samantha's occupancy (re-claim if needed)
-          const occupiedDesk = this.deskManager.getDeskForAgent(input.agentId);
-          if (!occupiedDesk || occupiedDesk.id !== SAMANTHA_DESK_ID) {
-            this.deskManager.claimNearestDesk(input.agentId, SAMANTHA_DESK.position);
-          }
-        } else if (prev === 'using_skill') {
+      const isEmma = input.agentId === 'emma';
+      const isGinny = input.agentId === 'ginny';
+
+      // Managers always at their personal desks regardless of state
+      if (isSamantha) {
+        desk = SAMANTHA_DESK;
+        const occupiedDesk = this.deskManager.getDeskForAgent(input.agentId);
+        if (!occupiedDesk || occupiedDesk.id !== SAMANTHA_DESK_ID) {
+          this.deskManager.claimNearestDesk(input.agentId, SAMANTHA_DESK.position);
+        }
+        seated = newState === 'running';
+      } else if (isEmma) {
+        desk = EMMA_DESK;
+        const occupiedDesk = this.deskManager.getDeskForAgent('emma');
+        if (!occupiedDesk || occupiedDesk.id !== EMMA_DESK_ID) {
+          this.deskManager.claimNearestDesk('emma', EMMA_DESK.position);
+        }
+        seated = true;
+      } else if (isGinny) {
+        desk = GINNY_DESK;
+        const occupiedDesk = this.deskManager.getDeskForAgent('ginny');
+        if (!occupiedDesk || occupiedDesk.id !== GINNY_DESK_ID) {
+          this.deskManager.claimNearestDesk('ginny', GINNY_DESK.position);
+        }
+        seated = true;
+      } else if (newState === 'running') {
+        if (prev === 'using_skill') {
           // Return to previously reserved desk
           desk = this.skillReturnDesks.get(input.agentId)
             ?? this.deskManager.getDeskForAgent(input.agentId)
@@ -204,9 +221,12 @@ export class AgentStateMachine {
       this.agentStates.set(input.agentId, newState);
       this.updateMetrics(input.agentId, newState, prev);
 
+      // Managers always stay in despacho
+      const finalTargetRoom = (isEmma || isGinny) ? 'despacho' : targetRoom;
+
       results.set(input.agentId, {
         visualState: newState,
-        targetRoom,
+        targetRoom: finalTargetRoom,
         desk,
         seated,
         activityLabel: getStateLabel(newState),

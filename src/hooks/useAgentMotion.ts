@@ -31,6 +31,7 @@ interface InternalState {
   facingAngle: number;
   targetFacingAngle: number;
   isMoving: boolean;
+  justArrived: boolean;
   desiredFacingAngle: number;
   hasInitialized: boolean;
 }
@@ -94,6 +95,7 @@ export function useAgentMotion(
           facingAngle: desired,
           targetFacingAngle: desired,
           isMoving: false,
+          justArrived: false,
           desiredFacingAngle: desired,
           hasInitialized: true,
         });
@@ -147,6 +149,7 @@ export function useAgentMotion(
         // All waypoints consumed — arrived
         if (s.isMoving) {
           s.isMoving = false;
+          s.justArrived = true;
         }
         // Snap/look at desired idle facing (seat/table orientation)
         s.targetFacingAngle = s.desiredFacingAngle;
@@ -176,6 +179,7 @@ export function useAgentMotion(
           // Check if there are more waypoints
           if (s.waypointIndex >= s.waypoints.length) {
             s.isMoving = false;
+            s.justArrived = true;
           }
         }
       }
@@ -193,15 +197,15 @@ export function useAgentMotion(
       }
     }
 
-    // Second pass: collision avoidance (only between moving agents)
+    // Second pass: collision avoidance (between moving agents and recently arrived)
     const entries = Array.from(state.entries());
     for (let i = 0; i < entries.length; i++) {
       const [, a] = entries[i];
-      if (!a.isMoving) continue;
+      if (!a.isMoving && !a.justArrived) continue;
 
       for (let j = i + 1; j < entries.length; j++) {
         const [, b] = entries[j];
-        if (!b.isMoving) continue;
+        if (!b.isMoving && !b.justArrived) continue;
 
         const dx = b.currentPos[0] - a.currentPos[0];
         const dz = b.currentPos[2] - a.currentPos[2];
@@ -217,6 +221,33 @@ export function useAgentMotion(
           a.currentPos[2] -= perpZ * push;
           b.currentPos[0] += perpX * push;
           b.currentPos[2] += perpZ * push;
+        }
+      }
+    }
+
+    // Reset justArrived flags after collision pass
+    for (const [, s] of state) {
+      s.justArrived = false;
+    }
+
+    // Static overlap emergency separation
+    for (let i = 0; i < entries.length; i++) {
+      const [, a] = entries[i];
+      if (a.isMoving) continue;
+      for (let j = i + 1; j < entries.length; j++) {
+        const [, b] = entries[j];
+        if (b.isMoving) continue;
+        const dx = b.currentPos[0] - a.currentPos[0];
+        const dz = b.currentPos[2] - a.currentPos[2];
+        const dist = Math.sqrt(dx * dx + dz * dz);
+        if (dist < 0.5 && dist > 0.001) {
+          // Hard separate — push each agent 0.3 units apart
+          const nx = dx / dist;
+          const nz = dz / dist;
+          a.currentPos[0] -= nx * 0.3;
+          a.currentPos[2] -= nz * 0.3;
+          b.currentPos[0] += nx * 0.3;
+          b.currentPos[2] += nz * 0.3;
         }
       }
     }

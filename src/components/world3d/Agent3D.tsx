@@ -154,14 +154,14 @@ function MasterAvatar({
     // Position from motion system
     if (motion) {
       const bobSpeed = isMoving ? 6 : status === 'idle' ? 0.8 : 1.3;
-      const bobAmount = isMoving ? 0.12 : status === 'idle' ? 0.15 : 0.07;
+      const bobAmount = isMoving ? 0.04 : status === 'idle' ? 0.03 : 0.02;
       groupRef.current.position.x = motion.currentPos[0];
       groupRef.current.position.z = motion.currentPos[2];
       groupRef.current.position.y = motion.currentPos[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
     } else {
       // Fallback: use initial position with bobbing
       const bobSpeed = status === 'idle' ? 0.8 : 1.3;
-      const bobAmount = status === 'idle' ? 0.15 : 0.07;
+      const bobAmount = status === 'idle' ? 0.03 : 0.02;
       groupRef.current.position.y = position[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
     }
 
@@ -171,7 +171,7 @@ function MasterAvatar({
       if (groupRef.current && motion) {
         groupRef.current.position.x = motion.currentPos[0];
         groupRef.current.position.z = motion.currentPos[2];
-        groupRef.current.position.y = motion.currentPos[1] + Math.sin(t * 0.5 + seed) * 0.03;
+        groupRef.current.position.y = motion.currentPos[1] + Math.sin(t * 0.5 + seed) * 0.015;
       }
       // Reset body to neutral pose (one-time convergence)
       if (bodyRef.current) {
@@ -605,14 +605,14 @@ function RobotAvatar({
     // Position from motion system
     if (motion) {
       const bobSpeed = isMoving ? 7 : status === 'idle' ? 0.8 : 1.5;
-      const bobAmount = isMoving ? 0.12 : status === 'idle' ? 0.15 : 0.05;
+      const bobAmount = isMoving ? 0.04 : status === 'idle' ? 0.03 : 0.02;
       groupRef.current.position.x = motion.currentPos[0];
       groupRef.current.position.z = motion.currentPos[2];
       groupRef.current.position.y = motion.currentPos[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
     } else {
       // Fallback: use initial position with bobbing
       const bobSpeed = status === 'idle' ? 0.8 : 1.5;
-      const bobAmount = status === 'idle' ? 0.15 : 0.05;
+      const bobAmount = status === 'idle' ? 0.03 : 0.02;
       groupRef.current.position.y = position[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
     }
 
@@ -622,7 +622,7 @@ function RobotAvatar({
       if (groupRef.current && motion) {
         groupRef.current.position.x = motion.currentPos[0];
         groupRef.current.position.z = motion.currentPos[2];
-        groupRef.current.position.y = motion.currentPos[1] + Math.sin(t * 0.5 + seed) * 0.03;
+        groupRef.current.position.y = motion.currentPos[1] + Math.sin(t * 0.5 + seed) * 0.015;
       }
       // Reset body to neutral pose (one-time convergence)
       if (bodyRef.current) {
@@ -908,13 +908,13 @@ function SamanthaAvatarDetailed({
     // Position from motion system
     if (motion) {
       const bobSpeed = isMoving ? 6 : status === 'idle' ? 0.8 : 1.3;
-      const bobAmount = isMoving ? 0.10 : status === 'idle' ? 0.12 : 0.05;
+      const bobAmount = isMoving ? 0.03 : status === 'idle' ? 0.025 : 0.02;
       groupRef.current.position.x = motion.currentPos[0];
       groupRef.current.position.z = motion.currentPos[2];
       groupRef.current.position.y = motion.currentPos[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
     } else {
       const bobSpeed = status === 'idle' ? 0.8 : 1.3;
-      const bobAmount = status === 'idle' ? 0.12 : 0.05;
+      const bobAmount = status === 'idle' ? 0.025 : 0.02;
       groupRef.current.position.y = position[1] + Math.sin(t * bobSpeed + seed) * bobAmount;
     }
 
@@ -924,7 +924,7 @@ function SamanthaAvatarDetailed({
       if (groupRef.current && motion) {
         groupRef.current.position.x = motion.currentPos[0];
         groupRef.current.position.z = motion.currentPos[2];
-        groupRef.current.position.y = motion.currentPos[1] + Math.sin(t * 0.5 + seed) * 0.03;
+        groupRef.current.position.y = motion.currentPos[1] + Math.sin(t * 0.5 + seed) * 0.01;
       }
       // Reset body to neutral pose (one-time convergence)
       if (bodyRef.current) {
