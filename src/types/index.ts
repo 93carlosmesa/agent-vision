@@ -20,6 +20,14 @@ export type {
   IWsSessionDetail,
   IWsInteractionsUpdate,
   IWsError,
+  IWsToolActivity,
+  IWsAgentStatusChange,
   IWsRequestDetail,
   IWsUnsubscribeDetail,
 } from './IWebSocketMessage';
+export type {
+  ClaudeEventType,
+  IClaudeEvent,
+  IClaudeWatcherSession,
+  IClaudeWatcherDebugInfo,
+} from './IClaudeEvent';

@@ -42,4 +42,15 @@ export interface ISession {
   messageCount: number;
   /** Last N events for quick preview */
   recentEvents: ISessionEvent[];
+
+  // ─── Claude Code integration (all optional) ───
+
+  /** Currently active tools reported by ClaudeWatcher */
+  activeTools?: Array<{ toolId: string; toolName: string; status: string; startedAt: number }>;
+  /** Human-readable description of current activity */
+  currentActivity?: string;
+  /** Whether the agent is waiting for user permission approval */
+  isWaitingPermission?: boolean;
+  /** Number of active subagents spawned by this agent */
+  subagentCount?: number;
 }

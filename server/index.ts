@@ -13,12 +13,17 @@ import { existsSync } from 'fs';
 import { SessionReader } from './SessionReader.js';
 import { AgentNameResolver } from './AgentNameResolver.js';
 import { WebSocketServer } from './WebSocketServer.js';
+import { SessionResolver } from './SessionResolver.js';
+import { ClaudeWatcher } from './ClaudeWatcher.js';
 
 const PORT = Number(process.env.PORT) || 4173;
 
 // Paths to OpenClaw data
 const AGENTS_BASE = join(homedir(), '.openclaw', 'agents');
 const OPENCLAW_CONFIG = join(homedir(), '.openclaw', 'openclaw.json');
+
+// Path to Claude Code projects
+const CLAUDE_PROJECTS_BASE = join(homedir(), '.claude', 'projects');
 
 // Static files directory: prefer Vite build (dist), fallback to public
 const DIST_DIR = resolve('dist');
@@ -97,10 +102,21 @@ app.use((req, res, next) => {
   res.sendFile(resolve(staticDir, 'index.html'));
 });
 
+// ─── Claude Code integration (graceful if ~/.claude/ doesn't exist) ───
+let claudeWatcher: ClaudeWatcher | null = null;
+if (existsSync(CLAUDE_PROJECTS_BASE)) {
+  const sessionResolver = new SessionResolver();
+  claudeWatcher = new ClaudeWatcher(CLAUDE_PROJECTS_BASE, sessionResolver);
+  claudeWatcher.start();
+  console.log(`[agent-vision] ClaudeWatcher started — monitoring ${CLAUDE_PROJECTS_BASE}`);
+} else {
+  console.log('[agent-vision] Claude Code not detected — ClaudeWatcher disabled');
+}
+
 // ─── HTTP server ───
 const httpServer = createServer(app);
 
-const wsServer = new WebSocketServer(httpServer, sessionReader, nameResolver);
+const wsServer = new WebSocketServer(httpServer, sessionReader, nameResolver, claudeWatcher);
 
 // ─── Start WebSocket server ───
 wsServer.setup();
