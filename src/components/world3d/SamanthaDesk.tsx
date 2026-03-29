@@ -12,6 +12,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { SAMANTHA_DESK_POSITION, SAMANTHA_AVATAR_POSITION } from '../../systems/DeskManager';
+import { AgentMonitorScreen } from './AgentMonitorScreen';
 
 /* ── Pulsing violet light ── */
 function VioletGlow({ position }: { position: [number, number, number] }) {
@@ -89,18 +90,8 @@ function DeskParticles({ origin }: { origin: [number, number, number] }) {
 
 
 /* ── Violet monitor ── */
-function VioletMonitor({ position }: { position: [number, number, number] }) {
-  const screenRef = useRef<THREE.Mesh>(null);
-  useFrame(({ clock }) => {
-    if (screenRef.current) {
-      (screenRef.current.material as THREE.MeshStandardMaterial).emissiveIntensity =
-        0.65 + Math.sin(clock.elapsedTime * 2.2) * 0.2;
-    }
-  });
-
+function VioletMonitor({ position, isNight = false }: { position: [number, number, number]; isNight?: boolean }) {
   const [x, y, z] = position;
-  // The desk surface is at y+0.79 (desk top at 0.74 + 0.05 half-thickness)
-  // monitor stand base sits on desk surface
   const baseY = y + 0.79;
 
   return (
@@ -115,17 +106,15 @@ function VioletMonitor({ position }: { position: [number, number, number] }) {
         <boxGeometry args={[0.52, 0.34, 0.022]} />
         <meshStandardMaterial color="#1a0a2e" metalness={0.4} roughness={0.4} />
       </mesh>
-      {/* Screen face — glowing violet */}
-      <mesh ref={screenRef} position={[0, 0.31, -0.008]}>
-        <planeGeometry args={[0.46, 0.28]} />
-        <meshStandardMaterial
-          color="#3b0764"
-          emissive="#a855f7"
-          emissiveIntensity={0.7}
-          transparent
-          opacity={1}
-        />
-      </mesh>
+      {/* Screen face — live neural network animation */}
+      <AgentMonitorScreen
+        agentId="samantha"
+        isActive
+        isNight={isNight}
+        position={[0, 0.31, -0.008]}
+        width={0.46}
+        height={0.28}
+      />
       {/* Subtle top logo stripe */}
       <mesh position={[0, 0.47, -0.02]}>
         <planeGeometry args={[0.12, 0.025]} />

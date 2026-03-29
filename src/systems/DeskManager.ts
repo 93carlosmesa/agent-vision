@@ -43,33 +43,55 @@ export const SAMANTHA_DESK: Desk = {
 };
 
 /**
- * Explicit desk positions in Sala de Trabajo.
- * Layout: 4 cols × 5 rows starting at (-16, 0, -6), dx=8, dz=2.2
- * Chair is at z+0.95, so agent sits facing the screen (rotation Math.PI)
+ * Explicit desk positions in Sala de Trabajo — grouped by squad.
+ *
+ * Layout (no overlap, gap ≥ 2.5 between avatars):
+ *   dev_core:    left upper  — X: -20 to -8,  Z: -4
+ *   dev_quality: left lower  — X: -20 to -8,  Z: -8
+ *   dev_vision:  center      — X: -5  to +7,  Z: -4
+ *   inv_core:    right       — X: +8  to +20, Z: -4 and -8 (2 rows)
+ *   other:       center low  — X: -2  to +1,  Z: -12
  */
-const TRABAJO_DESKS: Desk[] = (() => {
-  const desks: Desk[] = [];
-  const startX = -16;
-  const startZ = -6;
-  const dx = 8;
-  const dz = 2.2;
-  const cols = 4;  // medium density
-  const rows = 4;
+const SQUAD_DESKS: Desk[] = [
+  // ── dev_core (5 desks) — row at Z=-4, X from -20 ──
+  { id: 'dev-core-0', position: [-20, 0, -4], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'dev-core-1', position: [-17, 0, -4], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'dev-core-2', position: [-14, 0, -4], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'dev-core-3', position: [-11, 0, -4], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'dev-core-4', position: [ -8, 0, -4], facingAngle: Math.PI, room: 'trabajo' },
 
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      const x = startX + col * dx;
-      const z = startZ + row * dz;
-      desks.push({
-        id: `trabajo-${col}-${row}`,
-        position: [x, 0, z + 0.95],   // seated at chair
-        facingAngle: Math.PI,           // facing the screen
-        room: 'trabajo',
-      });
-    }
-  }
-  return desks;
-})();
+  // ── dev_quality (5 desks) — row at Z=-8, X from -20 ──
+  { id: 'dev-quality-0', position: [-20, 0, -8], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'dev-quality-1', position: [-17, 0, -8], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'dev-quality-2', position: [-14, 0, -8], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'dev-quality-3', position: [-11, 0, -8], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'dev-quality-4', position: [ -8, 0, -8], facingAngle: Math.PI, room: 'trabajo' },
+
+  // ── dev_vision (5 desks) — row at Z=-4, X from -5 ──
+  { id: 'dev-vision-0', position: [-5, 0, -4], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'dev-vision-1', position: [-2, 0, -4], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'dev-vision-2', position: [ 1, 0, -4], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'dev-vision-3', position: [ 4, 0, -4], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'dev-vision-4', position: [ 7, 0, -4], facingAngle: Math.PI, room: 'trabajo' },
+
+  // ── inv_core (9 desks) — 2 rows ──
+  { id: 'inv-0', position: [ 8, 0, -4], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'inv-1', position: [11, 0, -4], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'inv-2', position: [14, 0, -4], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'inv-3', position: [17, 0, -4], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'inv-4', position: [20, 0, -4], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'inv-5', position: [ 9, 0, -8], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'inv-6', position: [12, 0, -8], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'inv-7', position: [15, 0, -8], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'inv-8', position: [18, 0, -8], facingAngle: Math.PI, room: 'trabajo' },
+
+  // ── other (2 desks) — center bottom ──
+  { id: 'other-0', position: [-2, 0, -12], facingAngle: Math.PI, room: 'trabajo' },
+  { id: 'other-1', position: [ 1, 0, -12], facingAngle: Math.PI, room: 'trabajo' },
+];
+
+/** Legacy alias — all trabajo desks now come from SQUAD_DESKS */
+const TRABAJO_DESKS: Desk[] = SQUAD_DESKS;
 
 /**
  * Desk positions in Biblioteca (4 desks for overflow / library work)
@@ -110,6 +132,51 @@ export const GINNY_DESK: Desk = {
 export const GINNY_DESK_POSITION: [number, number, number] = [5, 0, -16];
 
 export const ALL_DESKS: Desk[] = [SAMANTHA_DESK, EMMA_DESK, GINNY_DESK, ...TRABAJO_DESKS, ...BIBLIOTECA_DESKS];
+
+/**
+ * Fixed desk assignment per specialist agentId.
+ * When an agent transitions to running, it gets its predetermined desk
+ * instead of claiming the nearest free one dynamically.
+ */
+export const FIXED_DESKS: Partial<Record<string, string>> = {
+  // dev_core
+  'dev-git-guardian':              'dev-core-0',
+  'dev-senior-frontend-architect': 'dev-core-1',
+  'dev-backend-socket-architect':  'dev-core-2',
+  'dev-ui-usability-analyst':      'dev-core-3',
+  'dev-tester':                    'dev-core-4',
+  // dev_quality
+  'dev-codereviewer':   'dev-quality-0',
+  'dev-cybersec':       'dev-quality-1',
+  'dev-linter':         'dev-quality-2',
+  'dev-prettier':       'dev-quality-3',
+  'dev-controlnaming':  'dev-quality-4',
+  // dev_vision
+  'dev-vision-3d-architect':     'dev-vision-0',
+  'dev-vision-world-designer':   'dev-vision-1',
+  'dev-vision-avatar-creator':   'dev-vision-2',
+  'dev-vision-fx-animator':      'dev-vision-3',
+  'dev-vision-office-decorator': 'dev-vision-4',
+  // inv_core (2 rows)
+  'inv-risk-profiler':         'inv-0',
+  'inv-strategist':            'inv-1',
+  'inv-analyst-stocks':        'inv-2',
+  'inv-analyst-crypto':        'inv-3',
+  'inv-analyst-forex':         'inv-4',
+  'inv-analyst-commodities':   'inv-5',
+  'inv-analyst-ai':            'inv-6',
+  'inv-technical-analyst':     'inv-7',
+  'inv-psych-market':          'inv-8',
+  // other
+  'hedwig': 'other-0',
+};
+
+/** Get the fixed desk for an agent, or null if not mapped */
+export function getFixedDesk(agentId: string): Desk | null {
+  const deskId = FIXED_DESKS[agentId];
+  if (!deskId) return null;
+  return ALL_DESKS.find(d => d.id === deskId) ?? null;
+}
 
 /** Distance between two 3D points (ignoring Y) */
 function dist2D(a: [number, number, number], b: [number, number, number]): number {

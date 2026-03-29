@@ -21,6 +21,7 @@ import { SpeechBubble3D } from './SpeechBubble3D';
 import { SpeechBubble } from '../SpeechBubble';
 import { PermissionBadge } from '../PermissionBadge';
 import { isMaster, isCEO, getAgentColor, getAgentConfig } from '../../config/agentConfig';
+import { getSquadColor, getSquad } from '../../config/agentGroups';
 import type { AgentVisualState } from '../../types/AgentState';
 
 /* ── Agent label — WebGL-based (no DOM overhead) ── */
@@ -67,6 +68,19 @@ function AgentLabel3D({
         </Text>
       )}
     </Billboard>
+  );
+}
+
+/* ── Squad disc — flat circle below avatar indicating squad membership ── */
+function SquadDisc({ agentId }: { agentId: string }) {
+  const color = getSquadColor(agentId);
+  const isManagerSquad = getSquad(agentId) === 'managers';
+  const radius = isManagerSquad ? 0.5 : 0.4;
+  return (
+    <mesh position={[0, -0.49, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <cylinderGeometry args={[radius, radius, 0.05, 24]} />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.4} metalness={0.3} roughness={0.5} />
+    </mesh>
   );
 }
 
@@ -566,6 +580,9 @@ function MasterAvatar({
           </mesh>
         </group>
 
+        {/* Squad disc indicator */}
+        <SquadDisc agentId={agentId} />
+
         {/* Speech bubble */}
         {speechBubble && <SpeechBubble3D message={speechBubble} />}
 
@@ -856,6 +873,9 @@ function RobotAvatar({
           <boxGeometry args={[0.17, 0.08, 0.22]} />
           <meshStandardMaterial color={metalColor} metalness={0.8} roughness={0.2} />
         </mesh>
+
+        {/* Squad disc indicator */}
+        <SquadDisc agentId={agentId} />
 
         {/* Speech bubble */}
         {speechBubble && <SpeechBubble3D message={speechBubble} />}
@@ -1431,6 +1451,9 @@ function SamanthaAvatarDetailed({
             <meshStandardMaterial color="#1a1a1a" metalness={0.30} roughness={0.35} />
           </mesh>
         </group>
+
+        {/* Squad disc indicator */}
+        <SquadDisc agentId={agentId} />
 
         {/* Speech bubble */}
         {speechBubble && <SpeechBubble3D message={speechBubble} />}

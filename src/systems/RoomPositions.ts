@@ -12,17 +12,30 @@ export interface SeatPosition {
 }
 
 const COMUNICACION_SEATS: SeatPosition[] = [
-  // Conference table chairs (around table at cx=10, cz=6.3)
-  { pos: [8,   0, 5.8],  facingAngle: 0 },
-  { pos: [10,  0, 5.8],  facingAngle: 0 },
-  { pos: [12,  0, 5.8],  facingAngle: 0 },
-  { pos: [8,   0, 6.8],  facingAngle: Math.PI },
-  { pos: [10,  0, 6.8],  facingAngle: Math.PI },
-  { pos: [12,  0, 6.8],  facingAngle: Math.PI },
-  // Side chairs
-  { pos: [4.5, 0, 4.5],  facingAngle: Math.PI / 4 },
-  { pos: [19,  0, 9.0],  facingAngle: Math.PI },
-  { pos: [21,  0, 9.0],  facingAngle: Math.PI },
+  // ── Row 1: dev squads zone (X 4–14, Z 5) ──
+  { pos: [4,   0, 5],    facingAngle: 0 },
+  { pos: [6.5, 0, 5],    facingAngle: 0 },
+  { pos: [9,   0, 5],    facingAngle: 0 },
+  { pos: [11.5,0, 5],    facingAngle: 0 },
+  { pos: [14,  0, 5],    facingAngle: 0 },
+  // ── Row 2: dev squads zone (X 4–14, Z 7) ──
+  { pos: [4,   0, 7],    facingAngle: Math.PI },
+  { pos: [6.5, 0, 7],    facingAngle: Math.PI },
+  { pos: [9,   0, 7],    facingAngle: Math.PI },
+  { pos: [11.5,0, 7],    facingAngle: Math.PI },
+  { pos: [14,  0, 7],    facingAngle: Math.PI },
+  // ── Row 3: inv squad zone (X 15–23, Z 5) ──
+  { pos: [15,  0, 5],    facingAngle: 0 },
+  { pos: [17.5,0, 5],    facingAngle: 0 },
+  { pos: [20,  0, 5],    facingAngle: 0 },
+  { pos: [22.5,0, 5],    facingAngle: 0 },
+  // ── Row 4: inv squad zone (X 15–23, Z 7) ──
+  { pos: [15,  0, 7],    facingAngle: Math.PI },
+  { pos: [17.5,0, 7],    facingAngle: Math.PI },
+  { pos: [20,  0, 7],    facingAngle: Math.PI },
+  { pos: [22.5,0, 7],    facingAngle: Math.PI },
+  // ── Overflow / managers / other (side) ──
+  { pos: [4.5, 0, 9],    facingAngle: Math.PI / 4 },
 ];
 
 const DESCANSO_SEATS: SeatPosition[] = [

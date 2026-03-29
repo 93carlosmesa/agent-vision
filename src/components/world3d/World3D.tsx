@@ -403,7 +403,7 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
 
       {/* Personal desks — always at fixed positions */}
       <SamanthaDesk />
-      <ManagerDesks sessions={sessions} />
+      <ManagerDesks sessions={sessions} isNight={dnc.timeOfDay === 'night' || dnc.timeOfDay === 'late_evening'} />
       <SystemMetricsPanel />
       <EmmaHUDPanel />
       <GinnyHUDPanel />
