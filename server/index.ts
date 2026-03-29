@@ -113,6 +113,15 @@ if (existsSync(CLAUDE_PROJECTS_BASE)) {
   console.log('[agent-vision] Claude Code not detected — ClaudeWatcher disabled');
 }
 
+// ─── Debug endpoint (needs claudeWatcher ref) ───
+app.get('/api/debug/claude-watcher', (_req, res) => {
+  if (!claudeWatcher) {
+    res.json({ enabled: false, sessions: [] });
+    return;
+  }
+  res.json({ enabled: true, sessions: claudeWatcher.getDebugInfo() });
+});
+
 // ─── HTTP server ───
 const httpServer = createServer(app);
 

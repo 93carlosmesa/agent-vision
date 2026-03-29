@@ -67,7 +67,7 @@ export class WebSocketServer {
       ws.on('message', (data) => {
         try {
           const msg = JSON.parse(data.toString()) as ClientMessage;
-          this.handleClientMessage(msg);
+          this.handleClientMessage(msg, ws);
         } catch {
           // Ignore malformed messages
         }
@@ -147,7 +147,7 @@ export class WebSocketServer {
     'session:unsubscribe',
   ]);
 
-  handleClientMessage(message: ClientMessage): void {
+  handleClientMessage(message: ClientMessage, ws?: WebSocket): void {
     // Security: reject unknown message types
     if (!message.type || !WebSocketServer.ALLOWED_CLIENT_TYPES.has(message.type)) {
       return;
@@ -155,10 +155,17 @@ export class WebSocketServer {
 
     switch (message.type) {
       case 'session:subscribe':
-        // Could push detailed session data for this key
+        // Send tool history for this session if available
+        if (ws && this.claudeWatcher) {
+          const history = this.claudeWatcher.getToolHistory(message.sessionKey);
+          this.sendTo(ws, {
+            type: 'agent:tool_history',
+            sessionKey: message.sessionKey,
+            history,
+          });
+        }
         break;
       case 'session:unsubscribe':
-        // Could stop sending detail for this key
         break;
     }
   }

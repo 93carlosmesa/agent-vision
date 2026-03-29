@@ -59,3 +59,13 @@ export interface IClaudeWatcherDebugInfo {
   linesProcessed: number;
   lastDataAt: number;
 }
+
+/** A single entry in the tool execution history buffer */
+export interface IToolHistoryEntry {
+  toolId: string;
+  toolName: string;
+  status: string;
+  startedAt: number;
+  endedAt?: number;
+  durationMs?: number;
+}

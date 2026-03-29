@@ -13,6 +13,8 @@ import { ROLE_LABELS, ROLE_TAGS, SQUAD_DEFINITIONS, resolveRoleFromText } from '
 
 export type { IAgentActivity };
 
+export type StatusChangeCallback = (msg: import('../types').IWsAgentStatusChange) => void;
+
 export interface IUseAgentSessions {
   sessions: ISession[];
   agentNames: AgentNameMap;
@@ -20,6 +22,7 @@ export interface IUseAgentSessions {
   isConnected: boolean;
   squads: ISquad[];
   activities: Map<string, IAgentActivity>;
+  statusChangeRef: React.MutableRefObject<StatusChangeCallback | null>;
 }
 
 const ROLE_ORDER: AgentRole[] = ['seniorFrontendArchitect', 'codeReviewer', 'slinter', 'formateur'];
@@ -149,6 +152,7 @@ export function useAgentSessions(): IUseAgentSessions {
   const currentScene = world3d;
 
   const { activities, processToolActivity, processStatusChange } = useClaudeActivity();
+  const statusChangeRef = useRef<StatusChangeCallback | null>(null);
 
   useEffect(() => {
     const wsClient = new WebSocketClient();
@@ -167,6 +171,7 @@ export function useAgentSessions(): IUseAgentSessions {
           processToolActivity(msg);
         } else if (msg.type === 'agent:status_change') {
           processStatusChange(msg);
+          statusChangeRef.current?.(msg);
         }
       } catch {
         // JSON parse errors already handled by SessionService
@@ -194,5 +199,5 @@ export function useAgentSessions(): IUseAgentSessions {
     [sessions, agentNames, currentScene],
   );
 
-  return { sessions, agentNames, interactions, isConnected, squads, activities };
+  return { sessions, agentNames, interactions, isConnected, squads, activities, statusChangeRef };
 }

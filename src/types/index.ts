@@ -21,6 +21,7 @@ export type {
   IWsInteractionsUpdate,
   IWsError,
   IWsToolActivity,
+  IWsToolHistory,
   IWsAgentStatusChange,
   IWsRequestDetail,
   IWsUnsubscribeDetail,
@@ -30,4 +31,5 @@ export type {
   IClaudeEvent,
   IClaudeWatcherSession,
   IClaudeWatcherDebugInfo,
+  IToolHistoryEntry,
 } from './IClaudeEvent';

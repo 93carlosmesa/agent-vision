@@ -5,6 +5,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { useAgentSessions } from './hooks/useAgentSessions';
 import { useInteractions } from './hooks/useInteractions';
+import { useNotifications } from './hooks/useNotifications';
 import { CreatorPanel } from './components/CreatorPanel';
 import { OrchestratorView } from './components/OrchestratorView';
 import { SceneSelector } from './components/SceneSelector';
@@ -12,6 +13,9 @@ import { StatusDot } from './components/StatusDot';
 import { DEFAULT_WORLD_ENVIRONMENT } from './components/world3d/officeTheme';
 import { TimelinePanel } from './components/TimelinePanel';
 import { SquadPanel } from './components/SquadPanel';
+import { ActivityTimeline } from './components/ActivityTimeline';
+import { TurnNotification } from './components/TurnNotification';
+import { DebugPanel, isDebugEnabled } from './components/DebugPanel';
 import { setIdleFavicon, startActiveFavicon } from './utils/favicon';
 
 const World3D = lazy(() => import('./components/world3d/World3D').then(m => ({ default: m.World3D })));
@@ -20,8 +24,16 @@ export default function App() {
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [orchestratorOpen, setOrchestratorOpen] = useState(false);
   const [worldEnvironment, setWorldEnvironment] = useState(DEFAULT_WORLD_ENVIRONMENT);
-  const { sessions, agentNames, interactions: serverInteractions, isConnected, squads, activities } = useAgentSessions();
+  const [timelineSessionKey, setTimelineSessionKey] = useState<string | null>(null);
+  const [debugVisible, setDebugVisible] = useState(isDebugEnabled);
+  const { sessions, agentNames, interactions: serverInteractions, isConnected, squads, activities, statusChangeRef } = useAgentSessions();
   const interactions = useInteractions(serverInteractions);
+  const { notifications, dismiss, processStatusChange: notifProcessStatus } = useNotifications();
+
+  // Wire notification hook to WS status changes via mutable ref
+  useEffect(() => {
+    statusChangeRef.current = (msg) => notifProcessStatus(msg, agentNames);
+  }, [statusChangeRef, notifProcessStatus, agentNames]);
 
   useEffect(() => {
     const hasRunningAgents = sessions.some((s) => s.status === 'running');
@@ -46,6 +58,7 @@ export default function App() {
             currentEnvironment={worldEnvironment}
             onEnvironmentChange={setWorldEnvironment}
           />
+          <button className="header-btn" onClick={() => setDebugVisible((v) => !v)}>Debug</button>
           <StatusDot isConnected={isConnected} />
         </div>
       </header>
@@ -68,6 +81,14 @@ export default function App() {
       </aside>
       <CreatorPanel isOpen={creatorOpen} onClose={() => setCreatorOpen(false)} agentNames={agentNames} />
       <OrchestratorView isOpen={orchestratorOpen} onClose={() => setOrchestratorOpen(false)} sessions={sessions} agentNames={agentNames} />
+      {timelineSessionKey && (
+        <ActivityTimeline
+          sessionKey={timelineSessionKey}
+          onClose={() => setTimelineSessionKey(null)}
+        />
+      )}
+      <TurnNotification notifications={notifications} dismiss={dismiss} />
+      <DebugPanel visible={debugVisible} onClose={() => setDebugVisible(false)} />
     </div>
   );
 }

@@ -8,6 +8,7 @@
 import type { ISession, ISessionEvent, SessionStatus } from './ISession';
 import type { IInteraction } from './IInteraction';
 import type { AgentNameMap } from './IAgent';
+import type { IToolHistoryEntry } from './IClaudeEvent';
 
 // ─── Server → Client messages ───
 
@@ -61,6 +62,13 @@ export interface IWsToolActivity {
   timestamp: number;
 }
 
+/** Tool execution history for a session */
+export interface IWsToolHistory {
+  type: 'agent:tool_history';
+  sessionKey: string;
+  history: IToolHistoryEntry[];
+}
+
 /** Agent status change from Claude Code activity */
 export interface IWsAgentStatusChange {
   type: 'agent:status_change';
@@ -82,6 +90,7 @@ export type ServerMessage =
   | IWsInteractionsUpdate
   | IWsError
   | IWsToolActivity
+  | IWsToolHistory
   | IWsAgentStatusChange;
 
 // ─── Client → Server messages ───

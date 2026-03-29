@@ -19,6 +19,7 @@ import type {
   IClaudeEvent,
   IClaudeWatcherSession,
   IClaudeWatcherDebugInfo,
+  IToolHistoryEntry,
 } from '../src/types/IClaudeEvent.js';
 import { formatToolStatus } from '../src/utils/toolStatusMapper.js';
 
@@ -27,6 +28,7 @@ const SCAN_INTERVAL_MS = 5_000;
 const MAX_READ_BYTES = 65_536; // 64KB per cycle
 const TEXT_IDLE_DELAY_MS = 4_000;
 const PERMISSION_TIMER_MS = 8_000;
+const MAX_TOOL_HISTORY = 50;
 
 /** Tools that never require user permission approval */
 const PERMISSION_EXEMPT_TOOLS = new Set([
@@ -81,6 +83,7 @@ export class ClaudeWatcher extends EventEmitter {
   private readonly claudeBase: string;
   private readonly resolver: SessionResolver;
   private sessions: Map<string, IClaudeWatcherSession> = new Map();
+  private toolHistory: Map<string, IToolHistoryEntry[]> = new Map();
   private pollTimer: ReturnType<typeof setInterval> | null = null;
   private scanTimer: ReturnType<typeof setInterval> | null = null;
   private idleTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
@@ -162,6 +165,13 @@ export class ClaudeWatcher extends EventEmitter {
       return tools;
     }
     return [];
+  }
+
+  /**
+   * Get tool execution history for a session key.
+   */
+  getToolHistory(sessionKey: string): IToolHistoryEntry[] {
+    return this.toolHistory.get(sessionKey) ?? [];
   }
 
   /**
@@ -362,6 +372,17 @@ export class ClaudeWatcher extends EventEmitter {
           toolStatus,
         });
 
+        // Push to tool history buffer
+        const history = this.toolHistory.get(session.sessionKey) ?? [];
+        history.push({
+          toolId: toolBlock.id,
+          toolName: toolBlock.name,
+          status: toolStatus,
+          startedAt: now,
+        });
+        if (history.length > MAX_TOOL_HISTORY) history.shift();
+        this.toolHistory.set(session.sessionKey, history);
+
         // Clear any existing idle timer
         this.clearIdleTimer(session.sessionKey);
 
@@ -410,6 +431,16 @@ export class ClaudeWatcher extends EventEmitter {
           toolId,
           toolName: toolName ?? 'unknown',
         });
+
+        // Update tool history entry with completion data
+        const hist = this.toolHistory.get(session.sessionKey);
+        if (hist) {
+          const entry = hist.findLast((e) => e.toolId === toolId);
+          if (entry && !entry.endedAt) {
+            entry.endedAt = now;
+            entry.durationMs = now - entry.startedAt;
+          }
+        }
 
         // If no more active tools and no pending permission, emit permission_clear
         if (session.activeToolIds.size === 0) {
