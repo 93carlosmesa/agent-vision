@@ -5,9 +5,15 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { WebSocketClient } from '../services/WebSocketClient';
 import { SessionService } from '../services/SessionService';
-import type { ISession, IInteraction, AgentNameMap, ISceneConfig, ISquad, AgentRole } from '../types';
+import { useClaudeActivity } from './useClaudeActivity';
+import type { IAgentActivity } from './useClaudeActivity';
+import type { ISession, IInteraction, AgentNameMap, ISceneConfig, ISquad, AgentRole, ServerMessage } from '../types';
 import { world3d } from '../scenes/sceneConfig';
 import { ROLE_LABELS, ROLE_TAGS, SQUAD_DEFINITIONS, resolveRoleFromText } from '../config/squads';
+
+export type { IAgentActivity };
+
+export type StatusChangeCallback = (msg: import('../types').IWsAgentStatusChange) => void;
 
 export interface IUseAgentSessions {
   sessions: ISession[];
@@ -15,6 +21,8 @@ export interface IUseAgentSessions {
   interactions: IInteraction[];
   isConnected: boolean;
   squads: ISquad[];
+  activities: Map<string, IAgentActivity>;
+  statusChangeRef: React.MutableRefObject<StatusChangeCallback | null>;
 }
 
 const ROLE_ORDER: AgentRole[] = ['seniorFrontendArchitect', 'codeReviewer', 'slinter', 'formateur'];
@@ -143,6 +151,9 @@ export function useAgentSessions(): IUseAgentSessions {
   const [isConnected, setIsConnected] = useState(false);
   const currentScene = world3d;
 
+  const { activities, processToolActivity, processStatusChange } = useClaudeActivity();
+  const statusChangeRef = useRef<StatusChangeCallback | null>(null);
+
   useEffect(() => {
     const wsClient = new WebSocketClient();
     const sessionService = new SessionService();
@@ -152,6 +163,19 @@ export function useAgentSessions(): IUseAgentSessions {
 
     wsClient.onMessage((raw) => {
       sessionService.processRaw(raw);
+
+      // Route Claude Code messages to activity tracker
+      try {
+        const msg = JSON.parse(raw) as ServerMessage;
+        if (msg.type === 'agent:tool_activity') {
+          processToolActivity(msg);
+        } else if (msg.type === 'agent:status_change') {
+          processStatusChange(msg);
+          statusChangeRef.current?.(msg);
+        }
+      } catch {
+        // JSON parse errors already handled by SessionService
+      }
     });
 
     sessionService.onChange((state) => {
@@ -168,12 +192,12 @@ export function useAgentSessions(): IUseAgentSessions {
     return () => {
       wsClient.disconnect();
     };
-  }, []);
+  }, [processToolActivity, processStatusChange]);
 
   const squads = useMemo(
     () => mapSquads(sessions, agentNames, currentScene),
     [sessions, agentNames, currentScene],
   );
 
-  return { sessions, agentNames, interactions, isConnected, squads };
+  return { sessions, agentNames, interactions, isConnected, squads, activities, statusChangeRef };
 }

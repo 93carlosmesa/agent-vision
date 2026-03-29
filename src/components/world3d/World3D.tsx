@@ -38,6 +38,7 @@ import { TaskCompletionParticles } from './TaskCompletionParticles';
 import { RainyNightWindow } from './RainyNightWindow';
 import { AmbientDustMotes } from './AmbientDustMotes';
 import type { ISession, AgentNameMap, IInteraction, SessionStatus } from '../../types';
+import type { IAgentActivity } from '../../hooks/useClaudeActivity';
 import { getLightingConfig } from '../../systems/DayNightCycle';
 import type { LightingConfig } from '../../systems/DayNightCycle';
 import {
@@ -55,6 +56,7 @@ export interface World3DProps {
   agentNames: AgentNameMap;
   interactions?: IInteraction[];
   environmentId?: string;
+  activities?: Map<string, IAgentActivity>;
 }
 
 /* ── Speech bubble types ── */
@@ -203,7 +205,7 @@ function useDayNightCycle(): LightingConfig {
 }
 
 /* ── Scene internals ── */
-function SceneContent({ sessions, agentNames, interactions = [], environmentId = 'office' }: World3DProps) {
+function SceneContent({ sessions, agentNames, interactions = [], environmentId = 'office', activities }: World3DProps) {
   const environment = getWorldEnvironment(environmentId);
   const theme = environment.theme;
   const controlsRef = useRef<OrbitControlsImpl>(null);
@@ -382,6 +384,7 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
         agentNames={agentNames}
         bubbleMap={bubbleMap}
         environmentId={environmentId}
+        activities={activities}
       />
 
       {/* Task completion particle bursts */}
@@ -434,7 +437,7 @@ function SceneContent({ sessions, agentNames, interactions = [], environmentId =
   );
 }
 
-export function World3D({ sessions, agentNames, interactions, environmentId = 'office' }: World3DProps) {
+export function World3D({ sessions, agentNames, interactions, environmentId = 'office', activities }: World3DProps) {
   const environment = getWorldEnvironment(environmentId);
   const dnc = useDayNightCycle();
 
@@ -457,7 +460,7 @@ export function World3D({ sessions, agentNames, interactions, environmentId = 'o
         scene={{ background: environment.beachMode ? new THREE.Color('#87CEEB') : new THREE.Color(dnc.skyColor) }}
         style={{ width: '100%', height: '100%' }}
       >
-        <SceneContent sessions={sessions} agentNames={agentNames} interactions={interactions} environmentId={environmentId} />
+        <SceneContent sessions={sessions} agentNames={agentNames} interactions={interactions} environmentId={environmentId} activities={activities} />
       </Canvas>
       <CameraHUD />
     </div>

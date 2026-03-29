@@ -10,7 +10,8 @@ import { WebSocketServer as WsServer, WebSocket } from 'ws';
 import type { Server as HttpServer } from 'http';
 import type { SessionReader } from './SessionReader.js';
 import type { AgentNameResolver } from './AgentNameResolver.js';
-import type { ServerMessage, ClientMessage } from '../src/types/index.js';
+import type { ClaudeWatcher } from './ClaudeWatcher.js';
+import type { ServerMessage, ClientMessage, IClaudeEvent } from '../src/types/index.js';
 
 const PUSH_INTERVAL_MS = 1500;
 const MAX_CONNECTIONS = 10;          // Local dev tool — no reason for many clients
@@ -23,15 +24,18 @@ export class WebSocketServer {
   private readonly httpServer: HttpServer;
   private readonly sessionReader: SessionReader;
   private readonly nameResolver: AgentNameResolver;
+  private readonly claudeWatcher: ClaudeWatcher | null;
 
   constructor(
     httpServer: HttpServer,
     sessionReader: SessionReader,
     nameResolver: AgentNameResolver,
+    claudeWatcher?: ClaudeWatcher | null,
   ) {
     this.httpServer = httpServer;
     this.sessionReader = sessionReader;
     this.nameResolver = nameResolver;
+    this.claudeWatcher = claudeWatcher ?? null;
   }
 
   /**
@@ -63,7 +67,7 @@ export class WebSocketServer {
       ws.on('message', (data) => {
         try {
           const msg = JSON.parse(data.toString()) as ClientMessage;
-          this.handleClientMessage(msg);
+          this.handleClientMessage(msg, ws);
         } catch {
           // Ignore malformed messages
         }
@@ -78,16 +82,35 @@ export class WebSocketServer {
     this.intervalId = setInterval(() => {
       this.broadcastSessions();
     }, PUSH_INTERVAL_MS);
+
+    // Subscribe to ClaudeWatcher events for real-time tool activity
+    if (this.claudeWatcher) {
+      this.claudeWatcher.on('claude-event', (event: IClaudeEvent) => {
+        this.handleClaudeEvent(event);
+      });
+    }
   }
 
   /**
    * Broadcast sessions + interactions update to all connected clients.
+   * Enriches sessions with ClaudeWatcher data when available.
    */
   private broadcastSessions(): void {
     if (!this.wss) return;
     const sessions = this.sessionReader.getSessions();
     const names = this.nameResolver.resolve();
     const interactions = this.sessionReader.getInteractions(sessions);
+
+    // Enrich sessions with active tool data from ClaudeWatcher
+    if (this.claudeWatcher) {
+      for (const session of sessions) {
+        const tools = this.claudeWatcher.getActiveToolsForAgent(session.agentId);
+        if (tools.length > 0) {
+          session.activeTools = tools;
+          session.currentActivity = tools[tools.length - 1].status;
+        }
+      }
+    }
 
     this.broadcast({ type: 'sessions:update', sessions });
     this.broadcast({ type: 'agentNames:update', names });
@@ -124,7 +147,7 @@ export class WebSocketServer {
     'session:unsubscribe',
   ]);
 
-  handleClientMessage(message: ClientMessage): void {
+  handleClientMessage(message: ClientMessage, ws?: WebSocket): void {
     // Security: reject unknown message types
     if (!message.type || !WebSocketServer.ALLOWED_CLIENT_TYPES.has(message.type)) {
       return;
@@ -132,11 +155,134 @@ export class WebSocketServer {
 
     switch (message.type) {
       case 'session:subscribe':
-        // Could push detailed session data for this key
+        // Send tool history for this session if available
+        if (ws && this.claudeWatcher) {
+          const history = this.claudeWatcher.getToolHistory(message.sessionKey);
+          this.sendTo(ws, {
+            type: 'agent:tool_history',
+            sessionKey: message.sessionKey,
+            history,
+          });
+        }
         break;
       case 'session:unsubscribe':
-        // Could stop sending detail for this key
         break;
+    }
+  }
+
+  /**
+   * Handle a ClaudeWatcher event and broadcast immediately.
+   */
+  private handleClaudeEvent(event: IClaudeEvent): void {
+    switch (event.type) {
+      case 'tool_start':
+        this.broadcast({
+          type: 'agent:tool_activity',
+          agentId: event.agentId,
+          sessionKey: event.sessionKey,
+          toolId: event.toolId ?? '',
+          toolName: event.toolName ?? '',
+          status: event.toolStatus ?? '',
+          action: 'start',
+          timestamp: event.timestamp,
+        });
+        break;
+
+      case 'tool_done':
+        this.broadcast({
+          type: 'agent:tool_activity',
+          agentId: event.agentId,
+          sessionKey: event.sessionKey,
+          toolId: event.toolId ?? '',
+          toolName: event.toolName ?? '',
+          status: '',
+          action: 'done',
+          timestamp: event.timestamp,
+        });
+        break;
+
+      case 'turn_end':
+        this.broadcast({
+          type: 'agent:status_change',
+          agentId: event.agentId,
+          sessionKey: event.sessionKey,
+          status: 'waiting',
+          turnCompleted: true,
+          timestamp: event.timestamp,
+        });
+        // Clear all tools for this agent
+        this.broadcast({
+          type: 'agent:tool_activity',
+          agentId: event.agentId,
+          sessionKey: event.sessionKey,
+          toolId: '',
+          toolName: '',
+          status: '',
+          action: 'clear',
+          timestamp: event.timestamp,
+        });
+        break;
+
+      case 'waiting':
+        this.broadcast({
+          type: 'agent:status_change',
+          agentId: event.agentId,
+          sessionKey: event.sessionKey,
+          status: 'waiting',
+          timestamp: event.timestamp,
+        });
+        break;
+
+      case 'permission_needed':
+        this.broadcast({
+          type: 'agent:status_change',
+          agentId: event.agentId,
+          sessionKey: event.sessionKey,
+          status: 'waiting',
+          isWaitingPermission: true,
+          activity: event.toolStatus ?? `Permiso: ${event.toolName ?? 'tool'}`,
+          timestamp: event.timestamp,
+        });
+        break;
+
+      case 'permission_clear':
+        this.broadcast({
+          type: 'agent:status_change',
+          agentId: event.agentId,
+          sessionKey: event.sessionKey,
+          status: 'running',
+          isWaitingPermission: false,
+          timestamp: event.timestamp,
+        });
+        break;
+
+      case 'subagent_spawn':
+        this.broadcast({
+          type: 'agent:tool_activity',
+          agentId: event.agentId,
+          sessionKey: event.sessionKey,
+          toolId: event.toolId ?? '',
+          toolName: event.toolName ?? 'Agent',
+          status: event.toolStatus ?? 'Subagente iniciado',
+          action: 'start',
+          timestamp: event.timestamp,
+        });
+        break;
+
+      case 'subagent_done':
+        this.broadcast({
+          type: 'agent:tool_activity',
+          agentId: event.agentId,
+          sessionKey: event.sessionKey,
+          toolId: event.toolId ?? '',
+          toolName: 'Agent',
+          status: '',
+          action: 'done',
+          timestamp: event.timestamp,
+        });
+        break;
+
+      // new_session — no broadcast needed, next poll cycle picks it up
     }
   }
 

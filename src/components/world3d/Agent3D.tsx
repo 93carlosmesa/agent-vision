@@ -18,6 +18,8 @@ import type { Group, Mesh } from 'three';
 import type { SessionStatus } from '../../types';
 import type { AgentMotionState } from '../../hooks/useAgentMotion';
 import { SpeechBubble3D } from './SpeechBubble3D';
+import { SpeechBubble } from '../SpeechBubble';
+import { PermissionBadge } from '../PermissionBadge';
 import { isMaster, isCEO, getAgentColor, getAgentConfig } from '../../config/agentConfig';
 import type { AgentVisualState } from '../../types/AgentState';
 
@@ -108,13 +110,17 @@ export interface Agent3DProps {
   activityLabel?: string;
   /** Optional speech bubble message shown above the agent */
   speechBubble?: string;
+  /** Claude Code tool activity label (persistent, separate from speechBubble) */
+  claudeToolLabel?: string;
+  /** Whether the agent is waiting for permission approval */
+  claudePermission?: boolean;
 }
 
 /* ══════════════════════════════════════════
    MASTER AVATAR — female humanoid Pixar-style
    ══════════════════════════════════════════ */
 function MasterAvatar({
-  agentId, name, position, status, visualState, motionRef, activityLabel, speechBubble,
+  agentId, name, position, status, visualState, motionRef, activityLabel, speechBubble, claudeToolLabel, claudePermission,
 }: Agent3DProps) {
   const groupRef    = useRef<Group>(null);
   const bodyRef     = useRef<Group>(null);
@@ -563,6 +569,10 @@ function MasterAvatar({
         {/* Speech bubble */}
         {speechBubble && <SpeechBubble3D message={speechBubble} />}
 
+        {/* Claude activity bubble + permission badge */}
+        <SpeechBubble text={claudeToolLabel ?? ''} visible={!!claudeToolLabel} />
+        <PermissionBadge visible={claudePermission ?? false} />
+
         {/* Label */}
         <AgentLabel3D yPos={2.15} name={name} nameColor={color} subColor={accentColor} activityLabel={activityLabel} prefix="★" />
       </group>
@@ -574,7 +584,7 @@ function MasterAvatar({
    ROBOT AVATAR — agente genérico mecánico
    ══════════════════════════════════════════ */
 function RobotAvatar({
-  agentId, name, position, status, visualState, motionRef, activityLabel, speechBubble,
+  agentId, name, position, status, visualState, motionRef, activityLabel, speechBubble, claudeToolLabel, claudePermission,
 }: Agent3DProps) {
   const groupRef    = useRef<Group>(null);
   const bodyRef     = useRef<Group>(null);
@@ -850,6 +860,10 @@ function RobotAvatar({
         {/* Speech bubble */}
         {speechBubble && <SpeechBubble3D message={speechBubble} />}
 
+        {/* Claude activity bubble + permission badge */}
+        <SpeechBubble text={claudeToolLabel ?? ''} visible={!!claudeToolLabel} />
+        <PermissionBadge visible={claudePermission ?? false} />
+
         {/* Label */}
         <AgentLabel3D yPos={1.75} name={name} nameColor={color} subColor={color} activityLabel={activityLabel} prefix="●" />
       </group>
@@ -861,7 +875,7 @@ function RobotAvatar({
    SAMANTHA AVATAR — high-detail full-body suit
    ══════════════════════════════════════════ */
 function SamanthaAvatarDetailed({
-  agentId, name, position, status, visualState, motionRef, activityLabel, speechBubble,
+  agentId, name, position, status, visualState, motionRef, activityLabel, speechBubble, claudeToolLabel, claudePermission,
 }: Agent3DProps) {
   const groupRef    = useRef<Group>(null);
   const bodyRef     = useRef<Group>(null);
@@ -1420,6 +1434,10 @@ function SamanthaAvatarDetailed({
 
         {/* Speech bubble */}
         {speechBubble && <SpeechBubble3D message={speechBubble} />}
+
+        {/* Claude activity bubble + permission badge */}
+        <SpeechBubble text={claudeToolLabel ?? ''} visible={!!claudeToolLabel} />
+        <PermissionBadge visible={claudePermission ?? false} />
 
         {/* Label */}
         <AgentLabel3D yPos={2.20} name={name} nameColor={color} subColor={accentColor} activityLabel={activityLabel} prefix="★" />

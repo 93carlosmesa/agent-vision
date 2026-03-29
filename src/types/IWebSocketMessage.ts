@@ -5,9 +5,10 @@
  * The server pushes updates; the client can request specific data.
  */
 
-import type { ISession, ISessionEvent } from './ISession';
+import type { ISession, ISessionEvent, SessionStatus } from './ISession';
 import type { IInteraction } from './IInteraction';
 import type { AgentNameMap } from './IAgent';
+import type { IToolHistoryEntry } from './IClaudeEvent';
 
 // ─── Server → Client messages ───
 
@@ -49,6 +50,37 @@ export interface IWsError {
   message: string;
 }
 
+/** Real-time tool activity from Claude Code (via ClaudeWatcher) */
+export interface IWsToolActivity {
+  type: 'agent:tool_activity';
+  agentId: string;
+  sessionKey: string;
+  toolId: string;
+  toolName: string;
+  status: string;
+  action: 'start' | 'done' | 'clear';
+  timestamp: number;
+}
+
+/** Tool execution history for a session */
+export interface IWsToolHistory {
+  type: 'agent:tool_history';
+  sessionKey: string;
+  history: IToolHistoryEntry[];
+}
+
+/** Agent status change from Claude Code activity */
+export interface IWsAgentStatusChange {
+  type: 'agent:status_change';
+  agentId: string;
+  sessionKey: string;
+  status: SessionStatus;
+  activity?: string;
+  isWaitingPermission?: boolean;
+  turnCompleted?: boolean;
+  timestamp: number;
+}
+
 /** Union of all server-to-client messages */
 export type ServerMessage =
   | IWsSessionsUpdate
@@ -56,7 +88,10 @@ export type ServerMessage =
   | IWsAgentNamesUpdate
   | IWsSessionDetail
   | IWsInteractionsUpdate
-  | IWsError;
+  | IWsError
+  | IWsToolActivity
+  | IWsToolHistory
+  | IWsAgentStatusChange;
 
 // ─── Client → Server messages ───
 
