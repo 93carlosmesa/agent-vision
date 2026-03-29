@@ -20,7 +20,7 @@ export default function App() {
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [orchestratorOpen, setOrchestratorOpen] = useState(false);
   const [worldEnvironment, setWorldEnvironment] = useState(DEFAULT_WORLD_ENVIRONMENT);
-  const { sessions, agentNames, interactions: serverInteractions, isConnected, squads } = useAgentSessions();
+  const { sessions, agentNames, interactions: serverInteractions, isConnected, squads, activities } = useAgentSessions();
   const interactions = useInteractions(serverInteractions);
 
   useEffect(() => {
@@ -57,6 +57,7 @@ export default function App() {
             agentNames={agentNames}
             interactions={interactions}
             environmentId={worldEnvironment}
+            activities={activities}
           />
         </Suspense>
       </main>

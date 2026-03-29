@@ -24,6 +24,7 @@ import { findPath } from '../../utils/officePathfinding';
 import type { RoomKey } from '../../utils/officePathfinding';
 import type { AgentVisualState, AgentStateMetrics } from '../../types/AgentState';
 import type { ISession, AgentNameMap, SessionStatus } from '../../types';
+import type { IAgentActivity } from '../../hooks/useClaudeActivity';
 
 interface AgentMoveState {
   agentId: string;
@@ -53,6 +54,8 @@ interface AvatarVisibilitySystemProps {
   bubbleMap: Map<string, string>;
   /** When not 'office', agents walk directly without door pathfinding */
   environmentId?: string;
+  /** Claude Code activity per agent */
+  activities?: Map<string, IAgentActivity>;
 }
 
 export function AvatarVisibilitySystem({
@@ -60,6 +63,7 @@ export function AvatarVisibilitySystem({
   agentNames,
   bubbleMap,
   environmentId = 'office',
+  activities,
 }: AvatarVisibilitySystemProps) {
   const usePathfinding = environmentId === 'office';
   // Persistent refs — survive re-renders without triggering them
@@ -194,20 +198,30 @@ export function AvatarVisibilitySystem({
 
   return (
     <>
-      {activeAgents.map(agent => (
-        <Agent3D
-          key={agent.agentId}
-          name={agent.name}
-          agentId={agent.agentId}
-          position={agent.targetPos}
-          status={agent.sessionStatus}
-          visualState={agent.visualState}
-          isActive={true}
-          motionRef={motionRef}
-          activityLabel={agent.activityLabel}
-          speechBubble={bubbleMap.get(agent.agentId)}
-        />
-      ))}
+      {activeAgents.map(agent => {
+        const activity = activities?.get(agent.agentId);
+        const claudeToolLabel = activity?.isWaiting
+          ? '\u23F8 Esperando...'
+          : activity?.isWaitingPermission
+            ? '\uD83D\uDD10 Aprobaci\u00F3n requerida'
+            : activity?.currentTool ?? '';
+        return (
+          <Agent3D
+            key={agent.agentId}
+            name={agent.name}
+            agentId={agent.agentId}
+            position={agent.targetPos}
+            status={agent.sessionStatus}
+            visualState={agent.visualState}
+            isActive={true}
+            motionRef={motionRef}
+            activityLabel={agent.activityLabel}
+            speechBubble={bubbleMap.get(agent.agentId)}
+            claudeToolLabel={claudeToolLabel || undefined}
+            claudePermission={activity?.isWaitingPermission}
+          />
+        );
+      })}
     </>
   );
 }
