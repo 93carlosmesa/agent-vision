@@ -14,6 +14,7 @@ import { useFrame } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import * as THREE from 'three';
 import type { ISession } from '../../types';
+import { AgentMonitorScreen, type MonitorAgentId } from './AgentMonitorScreen';
 
 /* ── Shared desk builder ── */
 
@@ -33,9 +34,11 @@ interface ManagerDeskConfig {
   label: string;
   /** Agent ID for session lookup */
   agentId: string;
+  /** Agent ID for monitor screensaver */
+  monitorAgentId: MonitorAgentId;
 }
 
-function ManagerDeskUnit({ config, sessions }: { config: ManagerDeskConfig; sessions: ISession[] }) {
+function ManagerDeskUnit({ config, sessions, isNight = false }: { config: ManagerDeskConfig; sessions: ISession[]; isNight?: boolean }) {
   const { position, primary, dark, emissive, glowColor } = config;
 
   const taskText = useMemo(() => {
@@ -46,15 +49,10 @@ function ManagerDeskUnit({ config, sessions }: { config: ManagerDeskConfig; sess
   }, [sessions, config.agentId]);
   const [x, y, z] = position;
 
-  const screenRef = useRef<THREE.Mesh>(null);
   const lightRef = useRef<THREE.PointLight>(null);
 
   useFrame(({ clock }) => {
     const t = clock.elapsedTime;
-    if (screenRef.current) {
-      (screenRef.current.material as THREE.MeshStandardMaterial).emissiveIntensity =
-        0.55 + Math.sin(t * 2.0) * 0.15;
-    }
     if (lightRef.current) {
       lightRef.current.intensity = 0.6 + Math.sin(t * 1.6) * 0.2;
     }
@@ -108,17 +106,15 @@ function ManagerDeskUnit({ config, sessions }: { config: ManagerDeskConfig; sess
           <boxGeometry args={[0.48, 0.30, 0.02]} />
           <meshStandardMaterial color="#0f0f1a" metalness={0.4} roughness={0.4} />
         </mesh>
-        {/* Screen face — glowing */}
-        <mesh ref={screenRef} position={[0, 0.28, -0.008]}>
-          <planeGeometry args={[0.42, 0.24]} />
-          <meshStandardMaterial
-            color={dark}
-            emissive={emissive}
-            emissiveIntensity={0.6}
-            transparent
-            opacity={1}
-          />
-        </mesh>
+        {/* Screen face — live animated screensaver */}
+        <AgentMonitorScreen
+          agentId={config.monitorAgentId}
+          isActive={!!sessions.find(s => s.agentId === config.agentId && s.status === 'running')}
+          isNight={isNight}
+          position={[0, 0.28, -0.008]}
+          width={0.42}
+          height={0.24}
+        />
         {/* Top logo stripe */}
         <mesh position={[0, 0.42, -0.02]}>
           <planeGeometry args={[0.10, 0.022]} />
@@ -216,6 +212,7 @@ const EMMA_CONFIG: ManagerDeskConfig = {
   glowColor: '#ff9f43',
   label: 'EMMA',
   agentId: 'emma',
+  monitorAgentId: 'emma',
 };
 
 const GINNY_CONFIG: ManagerDeskConfig = {
@@ -227,14 +224,15 @@ const GINNY_CONFIG: ManagerDeskConfig = {
   glowColor: '#53e3c2',
   label: 'GINNY',
   agentId: 'ginny',
+  monitorAgentId: 'ginny',
 };
 
 /* ── Main export ── */
-export function ManagerDesks({ sessions = [] }: { sessions?: ISession[] }) {
+export function ManagerDesks({ sessions = [], isNight = false }: { sessions?: ISession[]; isNight?: boolean }) {
   return (
     <group>
-      <ManagerDeskUnit config={EMMA_CONFIG} sessions={sessions} />
-      <ManagerDeskUnit config={GINNY_CONFIG} sessions={sessions} />
+      <ManagerDeskUnit config={EMMA_CONFIG} sessions={sessions} isNight={isNight} />
+      <ManagerDeskUnit config={GINNY_CONFIG} sessions={sessions} isNight={isNight} />
     </group>
   );
 }
