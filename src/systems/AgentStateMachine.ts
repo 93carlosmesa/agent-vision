@@ -23,7 +23,7 @@ import type { AgentVisualState, AgentStateMetrics } from '../types/AgentState';
 import { getIdleZone } from '../types/AgentState';
 import type { DeskManager } from './DeskManager';
 import type { Desk } from './DeskManager';
-import { SAMANTHA_DESK, SAMANTHA_DESK_ID, EMMA_DESK, EMMA_DESK_ID, GINNY_DESK, GINNY_DESK_ID } from './DeskManager';
+import { SAMANTHA_DESK, SAMANTHA_DESK_ID, EMMA_DESK, EMMA_DESK_ID, GINNY_DESK, GINNY_DESK_ID, getFixedDesk } from './DeskManager';
 import type { RoomKey } from '../utils/officePathfinding';
 
 export interface AgentStateInput {
@@ -186,16 +186,16 @@ export class AgentStateMachine {
           // Return to previously reserved desk
           desk = this.skillReturnDesks.get(input.agentId)
             ?? this.deskManager.getDeskForAgent(input.agentId)
-            ?? this.deskManager.claimNearestDesk(input.agentId, input.currentPosition ?? [0, 0, -3]);
+            ?? this.claimDeskForAgent(input.agentId, input.currentPosition ?? [0, 0, -3]);
           this.skillReturnDesks.delete(input.agentId);
         } else if (prev !== 'running' && prev !== 'communicating') {
-          // Newly running — claim nearest free desk
-          desk = this.deskManager.claimNearestDesk(input.agentId, input.currentPosition ?? [0, 0, -3]);
+          // Newly running — try fixed desk first, then nearest free
+          desk = this.claimDeskForAgent(input.agentId, input.currentPosition ?? [0, 0, -3]);
         } else {
           // Already running — keep existing desk
           desk = this.deskManager.getDeskForAgent(input.agentId);
           if (!desk) {
-            desk = this.deskManager.claimNearestDesk(input.agentId, input.currentPosition ?? [0, 0, -3]);
+            desk = this.claimDeskForAgent(input.agentId, input.currentPosition ?? [0, 0, -3]);
           }
         }
         seated = desk !== null;
@@ -249,6 +249,20 @@ export class AgentStateMachine {
   /** Get all metrics (for debugging/display) */
   getAllMetrics(): AgentStateMetrics[] {
     return [...this.metrics.values()];
+  }
+
+  /**
+   * Claim a desk for an agent — try fixed squad desk first, fallback to nearest free.
+   */
+  private claimDeskForAgent(agentId: string, fromPosition: [number, number, number]): Desk | null {
+    const fixed = getFixedDesk(agentId);
+    if (fixed) {
+      // Release any previous desk, then claim the fixed one
+      this.deskManager.releaseDesk(agentId);
+      // Directly claim by positioning near the fixed desk
+      return this.deskManager.claimNearestDesk(agentId, fixed.position);
+    }
+    return this.deskManager.claimNearestDesk(agentId, fromPosition);
   }
 
   /** Deterministically assign idle zones to spread agents across 3 zones */

@@ -16,6 +16,7 @@ import { useAgentMotion } from '../../hooks/useAgentMotion';
 import type { AgentTarget } from '../../hooks/useAgentMotion';
 import { Agent3D } from './Agent3D';
 import { isCEO } from '../../config/agentConfig';
+import { ALWAYS_VISIBLE_AGENTS } from '../../config/agentGroups';
 import { DeskManager, SAMANTHA_DESK } from '../../systems/DeskManager';
 import { AgentStateMachine } from '../../systems/AgentStateMachine';
 import type { AgentStateInput } from '../../systems/AgentStateMachine';
@@ -77,14 +78,18 @@ export function AvatarVisibilitySystem({
     const stateMachine = stateMachineRef.current;
     const states = agentStatesRef.current;
 
-    // ALL sessions are active — every agent is visible in the 3D world
-    const activeIds = new Set(sessions.map(s => s.agentId));
+    // Only render managers (always visible) + agents that are running or waiting.
+    // Idle specialists are hidden to avoid clutter (26 idle agents stacking).
+    const visibleSessions = sessions.filter(s =>
+      ALWAYS_VISIBLE_AGENTS.has(s.agentId) || s.status === 'running' || s.status === 'waiting'
+    );
+    const activeIds = new Set(visibleSessions.map(s => s.agentId));
 
-    // Determine squad-level activity: any agent running?
+    // Determine squad-level activity: any agent running? (check ALL sessions, not just visible)
     const squadHasActiveTasks = sessions.some(s => s.status === 'running');
 
-    // Build inputs for the state machine
-    const stateInputs: AgentStateInput[] = sessions.map((session, index) => {
+    // Build inputs for the state machine (only visible agents)
+    const stateInputs: AgentStateInput[] = visibleSessions.map((session, index) => {
       const existing = states.get(session.agentId);
       return {
         agentId: session.agentId,
@@ -101,7 +106,7 @@ export function AvatarVisibilitySystem({
 
     const newTargets: AgentTarget[] = [];
 
-    for (const session of sessions) {
+    for (const session of visibleSessions) {
       const id = session.agentId;
       const name = cleanName(agentNames[id] ?? id);
       const output = stateOutputs.get(id);
