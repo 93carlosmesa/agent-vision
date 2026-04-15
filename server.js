@@ -130,6 +130,10 @@ function loadSessionSummaries() {
   return sessions;
 }
 
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', service: 'agent-vision', uptime: process.uptime() });
+});
+
 app.get('/api/sessions', (_req, res) => {
   try {
     res.json({ sessions: loadSessionSummaries() });
